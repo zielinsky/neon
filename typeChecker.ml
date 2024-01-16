@@ -22,7 +22,11 @@ type term =
   | Product of string * var * term * term
   | App of term * term
 
-type env = (var * term) EnvHashtbl.t 
+type env_var = 
+  | Abstract of term
+  | Transparent of term * term
+
+type env = (var * env_var) EnvHashtbl.t 
 let counter = ref 0
 
 type sub_map = term VarMap.t
@@ -36,12 +40,12 @@ type whnf =
   | Lambda of var * term * term
   | Product of var * term * term
 
-let fresh_var (): int =
+let fresh_var () : int =
   let fresh_var = !counter in
   let _ = counter := !counter + 1 in
   fresh_var
 
-let rec substitute (t: term) (sub: sub_map): term =
+let rec substitute (t: term) (sub: sub_map) : term =
   begin match t with
   | Var x -> begin match VarMap.find_opt x sub with
     | Some t -> t
@@ -54,7 +58,7 @@ let rec substitute (t: term) (sub: sub_map): term =
     let y = fresh_var () in
     Product (nm, y, (substitute t sub), substitute body (VarMap.add x (Var y) sub))
   | App (t1, t2) -> App (substitute t1 sub, substitute t2 sub)
-  | Type | Kind -> failwith "Can't substitute in Type nor Kind"
+  | Type | Kind -> failwith "Can't substitute neither in Type nor Kind"
   end
   
   
@@ -74,7 +78,7 @@ let rec to_whnf (t: term) : whnf =
   end
 
 
-let rec equiv (t1 : term) (t2 : term) : bool =
+let rec equiv (t1: term) (t2: term) : bool =
   match (to_whnf t1, to_whnf t2) with
   | (Type, Type) -> true
   | (Kind, Kind) -> true
@@ -96,13 +100,15 @@ let rec equiv (t1 : term) (t2 : term) : bool =
 
 (* functions *)
 
-let rec infer_type (env : env) (t: UExpr.term) : (term * term) = 
+let rec infer_type (env: env) (t: UExpr.term) : (term * term) = 
   match t with 
   | Type -> (Type, Kind)
   | Kind -> raise (Failure "Can't infer the type of Kind")
   | Var x -> 
     begin match EnvHashtbl.find_opt env x with
-    | Some (y, tp) -> (Var y, tp) 
+    | Some (y, Abstract tp) -> (Var y, tp) 
+    (* TODO: ASK PPO *)
+    | Some (y, Transparent (body, tp)) -> (body, tp) 
     | None -> raise (Failure ("Variable " ^ x ^ " not found"))
     end
   | Lambda (_, None, _) -> raise (Failure "Can't infer the type of lambda with omitted argument type")
@@ -111,7 +117,7 @@ let rec infer_type (env : env) (t: UExpr.term) : (term * term) =
     begin match tp_of_tp with
       | Type | Kind -> 
         let fresh_var = fresh_var () in
-        let _ = EnvHashtbl.add env x (fresh_var, tp) in
+        let _ = EnvHashtbl.add env x (fresh_var, Abstract tp) in
         let (body, body_tp) = infer_type env t in
         let _ = EnvHashtbl.remove env x in
         (Lambda (x, fresh_var, tp, body) , Product (x, fresh_var, tp, body_tp))
@@ -122,7 +128,7 @@ let rec infer_type (env : env) (t: UExpr.term) : (term * term) =
     begin match tp_of_tp with
       | Type | Kind -> 
         let fresh_var = fresh_var () in
-        let _ = EnvHashtbl.add env x (fresh_var, tp) in
+        let _ = EnvHashtbl.add env x (fresh_var, Abstract tp) in
         let (body, body_tp) = infer_type env t in
         let _ = EnvHashtbl.remove env x in
         begin match body_tp with
@@ -140,16 +146,33 @@ let rec infer_type (env : env) (t: UExpr.term) : (term * term) =
       (App (t1, t2), substitute body (VarMap.singleton x t2))
     | _ -> failwith "The type of Application's first argument must be a Product"
     end
+  | TermWithTypeAnno (t, tp) -> 
+    let (tp, tp_of_tp) = infer_type env tp in 
+    begin match tp_of_tp with
+    | Type | Kind -> (check_type env t tp, tp)
+    | _ -> failwith "Type annotation must be a Type or Kind"
+    end
+  | Let (x, t1, t2) -> 
+    let (t1, tp_t1) = infer_type env t1 in
+    let fresh_var = fresh_var () in
+    let _ = EnvHashtbl.add env x (fresh_var, Transparent (t1, tp_t1)) in
+    infer_type env t2
+  | Lemma (x, t1, t2) -> 
+    let (t1, tp_t1) = infer_type env t1 in
+    let fresh_var = fresh_var () in
+    let _ = EnvHashtbl.add env x (fresh_var, Abstract tp_t1) in
+    infer_type env t2
+    
 and check_type (env : env) (t: UExpr.term) (tp: term) : term =
   match t with 
-  | Type | Var _ | App _ | Product _ -> 
+  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | Let _ | Lemma _-> 
     let (t, t_tp) = infer_type env t in
     if equiv tp t_tp then t else failwith "Type mismatch"
   | Lambda (x, None, body) -> 
     begin match to_whnf tp with
     | Product (y, y_tp, body_tp) -> 
       let fresh_var = fresh_var () in
-      let _ = EnvHashtbl.add env x (fresh_var, y_tp) in
+      let _ = EnvHashtbl.add env x (fresh_var, Abstract y_tp) in
       let body' = check_type env body (substitute (Var fresh_var) (VarMap.singleton y body_tp)) in 
       Lambda (x, fresh_var, y_tp, body')
     | _ -> failwith "The type of Lambda must be a Product"
@@ -162,3 +185,4 @@ and check_type (env : env) (t: UExpr.term) (tp: term) : term =
     | _ -> failwith "Lambda must be lambda lolz"
     end
   | Kind -> failwith "Kind doesn't have a type"
+  
