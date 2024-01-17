@@ -1,5 +1,5 @@
 (* modules *)
-open UExpr
+open UserExpression
 
 type var = int
 
@@ -10,9 +10,6 @@ end
 
 module EnvHashtbl = Hashtbl.Make(String)
 module VarMap = Map.Make(Var)
-
-(* types *)
-type counter = int ref
 
 type term = 
   | Type
@@ -51,10 +48,10 @@ let rec substitute (t: term) (sub: sub_map) : term =
     | Some t -> t
     | None -> Var x
     end
-  | Lambda (nm, x, x_tp, body) -> 
+  | Lambda (nm, x, _, body) -> 
     let y = fresh_var () in
     Lambda (nm, y, (substitute t sub), substitute body (VarMap.add x (Var y) sub))
-  | Product (nm, x, x_tp, body) ->
+  | Product (nm, x, _, body) ->
     let y = fresh_var () in
     Product (nm, y, (substitute t sub), substitute body (VarMap.add x (Var y) sub))
   | App (t1, t2) -> App (substitute t1 sub, substitute t2 sub)
@@ -68,12 +65,12 @@ let rec to_whnf (t: term) : whnf =
   | Type -> Type
   | Kind -> Kind
   | Var x -> Neu (x, [])
-  | Lambda (x_name, x, x_tp, body) -> Lambda (x, x_tp, body)
-  | Product (x_name, x, x_tp, body) -> Product (x, x_tp, body)
+  | Lambda (_, x, x_tp, body) -> Lambda (x, x_tp, body)
+  | Product (_, x, x_tp, body) -> Product (x, x_tp, body)
   | App (t1, t2) ->
     begin match to_whnf t1 with
     | Neu (x, ts) -> Neu (x, (t1 :: ts))
-    | Lambda (x, x_tp, body) -> to_whnf (substitute body (VarMap.singleton x t2))
+    | Lambda (x, _, body) -> to_whnf (substitute body (VarMap.singleton x t2))
     | _ -> failwith "Expected Neu or Lambda when reducing Application with whnf"
     end
   end
@@ -101,7 +98,7 @@ let rec equiv (t1: term) (t2: term) : bool =
 
 (* functions *)
 
-let rec infer_type (env: env) (t: UExpr.term) : (term * term) = 
+let rec infer_type (env: env) (t: UserExpression.term) : (term * term) = 
   match t with 
   | Type -> (Type, Kind)
   | Kind -> raise (Failure "Can't infer the type of Kind")
@@ -109,7 +106,7 @@ let rec infer_type (env: env) (t: UExpr.term) : (term * term) =
     begin match EnvHashtbl.find_opt env x with
     | Some (y, Abstract tp) -> (Var y, tp) 
     (* TODO: ASK PPO *)
-    | Some (y, Transparent (body, tp)) -> (body, tp) 
+    | Some (_, Transparent (body, tp)) -> (body, tp) 
     | None -> raise (Failure ("Variable " ^ x ^ " not found"))
     end
   | Lambda (_, None, _) -> raise (Failure "Can't infer the type of lambda with omitted argument type")
@@ -159,12 +156,12 @@ let rec infer_type (env: env) (t: UExpr.term) : (term * term) =
     let _ = EnvHashtbl.add env x (fresh_var, Transparent (t1, tp_t1)) in
     infer_type env t2
   | Lemma (x, t1, t2) -> 
-    let (t1, tp_t1) = infer_type env t1 in
+    let (_, tp_t1) = infer_type env t1 in
     let fresh_var = fresh_var () in
     let _ = EnvHashtbl.add env x (fresh_var, Abstract tp_t1) in
     infer_type env t2
     
-and check_type (env : env) (t: UExpr.term) (tp: term) : term =
+and check_type (env : env) (t: UserExpression.term) (tp: term) : term =
   match t with 
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | Let _ | Lemma _-> 
     let (t, t_tp) = infer_type env t in

@@ -29,11 +29,3 @@ let parse_file fname =
     end
   | exception Sys_error message ->
     raise (Errors.Cannot_open_file { fname; message })
-(* 
-let parse_query chan =
-  let lexbuf = Lexing.from_channel chan in
-  run_parser YaccParser.query lexbuf
-
-let parse_query_string str =
-  let lexbuf = Lexing.from_string str in
-  run_parser YaccParser.query lexbuf *)

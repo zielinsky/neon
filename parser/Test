@@ -1,1 +1,0 @@
-let Xvar = fun Yvar -> YVar in fun YVar : type -> Xvar

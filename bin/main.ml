@@ -1,0 +1,1 @@
+let () = Parser.parse_file "xd"
