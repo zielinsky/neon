@@ -58,7 +58,8 @@ let rec substitute (t: term) (sub: sub_map) : term =
     let y = fresh_var () in
     Product (nm, y, (substitute t sub), substitute body (VarMap.add x (Var y) sub))
   | App (t1, t2) -> App (substitute t1 sub, substitute t2 sub)
-  | Type | Kind -> failwith "Can't substitute neither in Type nor Kind"
+  (* TODO: ASK PPO *)
+  | Type | Kind -> t
   end
   
   
@@ -141,9 +142,9 @@ let rec infer_type (env: env) (t: UExpr.term) : (term * term) =
   | App (t1, t2) ->
     let (t1, t1_tp) = infer_type env t1 in
     begin match to_whnf t1_tp with
-    | Product (x, x_tp, body) ->
+    | Product (x, x_tp, tp_body) ->
       let t2 = check_type env t2 x_tp in
-      (App (t1, t2), substitute body (VarMap.singleton x t2))
+      (App (t1, t2), substitute tp_body (VarMap.singleton x t2))
     | _ -> failwith "The type of Application's first argument must be a Product"
     end
   | TermWithTypeAnno (t, tp) -> 
