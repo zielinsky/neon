@@ -1,0 +1,3 @@
+(library
+ (name prettyPrinter)
+(libraries typeChecker))

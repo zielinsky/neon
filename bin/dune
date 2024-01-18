@@ -1,4 +1,4 @@
 (executable
  (public_name neon)
  (name main)
- (libraries neon parser))
+ (libraries parser typeChecker prettyPrinter))
