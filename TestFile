@@ -1,1 +1,1 @@
-fun X : type -> (let Id = (fun Y : type -> Y) in (Id X))
+lemma X = type in X
