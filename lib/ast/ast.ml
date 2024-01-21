@@ -19,5 +19,6 @@ and term_data =
 | TermWithTypeAnno of term * term
 | Let of string * term * term
 | Lemma of string * term * term
+| Hole of string
 
 type program = term list

@@ -10,7 +10,6 @@ let raise_error (lexbuf : Lexing.lexbuf) reason =
 }
 
 let whitespace = ['\011'-'\r' '\t' ' ']
-let var_start = ['A'-'Z' '_']
 let lower     = ['a'-'z']
 let var_char  = var_start | lower
 
@@ -30,7 +29,8 @@ rule token = parse
   | "pi" { YaccParser.PRODUCT }
   | "let" { YaccParser.LET }
   | "lemma" { YaccParser.LEMMA }
-  | var_start var_char* as x { YaccParser.VAR x }
+  | "?" var_char* as x { YaccParser.HOLE x }
+  | var_char* as x { YaccParser.VAR x }
   | eof    { YaccParser.EOF }
   | _ as x {
       raise_error lexbuf (InvalidChar x)
