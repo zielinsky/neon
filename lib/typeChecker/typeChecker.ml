@@ -67,15 +67,18 @@ let rec substitute (t: term) (sub: sub_map) : term =
     | Some t -> t
     | None -> Var (nm, x)
     end
-  | Lambda (nm, x, _, body) | Product (nm, x, _, body) ->
+  | Lambda (nm, x, tp, body) ->
     let y = fresh_var () in
-    Product (nm, y, (substitute t sub), substitute body (VarMap.add x (Var ("", y)) sub))
+    Lambda (nm, y, (substitute tp sub), substitute body (VarMap.add x (Var (nm, y)) sub))
+  | Product (nm, x, tp, body) ->
+    let y = fresh_var () in
+    Product (nm, y, (substitute tp sub), substitute body (VarMap.add x (Var (nm, y)) sub))
   | App (t1, t2) -> App (substitute t1 sub, substitute t2 sub)
   (* Think about this *)
   (* Ask PPO *)
   | Let (nm, x, t, tp_t, body) -> 
     let y = fresh_var () in
-    Let (nm, y, (substitute t sub), (substitute tp_t sub), substitute body (VarMap.add x (Var ("", y)) sub))
+    Let (nm, y, (substitute t sub), (substitute tp_t sub), substitute body (VarMap.add x (Var (nm, y)) sub))
   | Type | Kind | Hole _ -> t
   end
   
@@ -90,7 +93,7 @@ let rec to_whnf (t: term) (env: env) : whnf =
     begin match EnvHashtbl.find_opt env nm with
     | Some (_, Opaque _) -> Neu(x, [])
     | Some (_, Transparent (body, _)) -> to_whnf body env
-    | None -> failwith "Variable not found"
+    | None -> failwith ("Variable " ^ nm ^ " not found when converting to whnf")
     end
   | Lambda (_, x, x_tp, body) -> Lambda (x, x_tp, body)
   | Product (_, x, x_tp, body) -> Product (x, x_tp, body)
@@ -206,23 +209,24 @@ let rec infer_type (env: env) ({pos; data = t}: Ast.term) : (term * term) =
     let (t1, tp_t1) = infer_type env t1 in
     let fresh_var = fresh_var () in
     let _ = EnvHashtbl.add env x (fresh_var, Opaque tp_t1) in
-    let (t2, tp_t2) = infer_type env t2 in 
+    let (t2, tp_t2) = infer_type env t2 in
     let _ = EnvHashtbl.remove env x in
     (App (Lambda (x, fresh_var, tp_t1, t2), t1), (substitute tp_t2 (VarMap.singleton fresh_var t1)))
+  | Hole x -> failwith (create_error_msg pos "Trying to infer the type of a Hole " ^ x)
 
     
 and check_type (env : env) ({pos; data = t} as term: Ast.term) (tp: term) : term =
   match t with 
   (* Add check type for let and lemma (we know the type of t2)*)
-  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | Let _ | Lemma _-> 
+  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ -> 
     let (t, t_tp) = infer_type env term in
-    if equiv tp t_tp then t else failwith (create_error_msg pos (create_error_msg pos "Type mismatch"))
+    if equiv tp t_tp env then t else failwith (create_error_msg pos (create_error_msg pos "Type mismatch"))
   | Lambda (x, None, body) -> 
     begin match to_whnf tp env with
     | Product (y, y_tp, body_tp) -> 
       let fresh_var = fresh_var () in
       let _ = EnvHashtbl.add env x (fresh_var, Opaque y_tp) in
-      let body' = check_type env body (substitute (Var ("", fresh_var)) (VarMap.singleton y body_tp)) in 
+      let body' = check_type env body (substitute body_tp (VarMap.singleton y y_tp)) in 
       let _ = EnvHashtbl.remove env x in
       Lambda (x, fresh_var, y_tp, body')
     | _ -> failwith (create_error_msg pos "The type of Lambda must be a Product")
@@ -231,8 +235,25 @@ and check_type (env : env) ({pos; data = t} as term: Ast.term) (tp: term) : term
     begin match (check_type env {pos = pos; data = (Lambda (x, None, body))} tp) with
     | Lambda (_, _, arg_tp, _) as lambda -> 
       let (x_tp, _) = infer_type env x_tp in
-      if equiv x_tp arg_tp then lambda else failwith "Type mismatch"
+      if equiv x_tp arg_tp env then lambda else failwith "Type mismatch"
     | _ -> failwith (create_error_msg pos "Lambda must be lambda lolz")
     end
   | Kind -> failwith (create_error_msg pos "Kind doesn't have a type")
+  | Let (x, t1, t2) -> 
+    let (t1, tp_t1) = infer_type env t1 in
+    let fresh_var = fresh_var () in
+    let _ = EnvHashtbl.add env x (fresh_var, Transparent (t1, tp_t1)) in
+    let t2 = check_type env t2 tp in
+    let _ = EnvHashtbl.remove env x in
+    Let (x, fresh_var, t1, tp_t1, t2)
+  | Lemma (x, t1, t2) -> 
+    let (t1, tp_t1) = infer_type env t1 in
+    let fresh_var = fresh_var () in
+    let _ = EnvHashtbl.add env x (fresh_var, Opaque tp_t1) in
+    let t2 = check_type env t2 tp in
+    let _ = EnvHashtbl.remove env x in
+    App (Lambda (x, fresh_var, tp_t1, t2), t1)
+  (* Ask PPO *)
+  (* | Hole nm -> failwith (create_error_msg pos ("Hole " ^ nm ^ " is expected to have type: " ^ term_to_string tp)) *)
+  | Hole nm -> Hole (nm, tp)
   

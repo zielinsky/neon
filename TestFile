@@ -1,1 +1,1 @@
-lemma X = type in X
+(fun x : (pi y : type -> y) -> x) ?hole
