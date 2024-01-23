@@ -1,5 +1,5 @@
 (library
   (name lexer)
-  (libraries ast yaccParser errors))
+  (libraries parserAst yaccParser errors))
 
 (ocamllex lexer)

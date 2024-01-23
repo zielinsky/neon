@@ -1,3 +1,3 @@
 (library
  (name prettyPrinter)
-(libraries typeChecker))
+(libraries ast))

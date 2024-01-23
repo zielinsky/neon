@@ -4,13 +4,13 @@
 %token ASTERISK COMMA COLON IN EQUAL
 %token EOF
 
-%type<Ast.program> program
+%type<ParserAst.program> program
 %start program
 
 
 %{
 
-open Ast
+open ParserAst
 
 let current_pos () =
   let start_p = symbol_start_pos () in

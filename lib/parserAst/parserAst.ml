@@ -1,0 +1,26 @@
+type position =
+  { start  : Lexing.position
+  ; length : int
+  }
+
+type 'a node =
+  { pos  : position
+  ; data : 'a
+  }
+
+type uTerm = term_data node
+and term_data =
+| Type
+| Kind
+| Var of string
+| Lambda of string * uTerm option * uTerm
+| Product of string * uTerm * uTerm
+| App of uTerm * uTerm
+| TermWithTypeAnno of uTerm * uTerm
+| Let of string * uTerm * uTerm
+| Lemma of string * uTerm * uTerm
+| Hole of string
+
+type program = uTerm list
+
+

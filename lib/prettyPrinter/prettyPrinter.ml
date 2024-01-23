@@ -1,4 +1,4 @@
-open TypeChecker
+open Ast
 
 let rec term_to_string (t : term) : string =
   match t with

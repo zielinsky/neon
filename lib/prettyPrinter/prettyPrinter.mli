@@ -1,1 +1,3 @@
-val term_to_string : TypeChecker.term -> string
+open Ast
+
+val term_to_string : term -> string
