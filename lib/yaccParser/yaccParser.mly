@@ -1,4 +1,4 @@
-%token TYPE KIND LAMBDA PRODUCT APP TERMWITHYPEANNO LET LEMMA EQUAL IN ARROW 
+%token TYPE KIND LAMBDA PRODUCT APP TERMWITHYPEANNO LET LEMMA EQUAL IN ARROW TYPE_ARROW
 %token<string> VAR HOLE
 %token BR_OPN BR_CLS
 %token ASTERISK COMMA COLON IN EQUAL
@@ -45,6 +45,7 @@ expression
 | expression COLON expression {make (TermWithTypeAnno ($1, $3)) }
 | LET VAR EQUAL expression IN expression {make (Let ($2, $4, $6)) }
 | LEMMA VAR EQUAL expression IN expression { make (Lemma ($2, $4, $6)) }
+| expression TYPE_ARROW expression {make (TypeArrow ($1, $3)) }
 | BR_OPN expression BR_CLS { $2 }
 | expression expression { make (App ($1, $2)) }
 ;

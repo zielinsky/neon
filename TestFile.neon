@@ -1,0 +1,5 @@
+fun t : type => 
+    fun f : (t -> type) => 
+        fun x : t => 
+            fun g : ((f x) -> t) =>
+                fun y : (f x) => g y

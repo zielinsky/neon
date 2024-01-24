@@ -10,6 +10,7 @@ type term =
   | App of term * term
   | Hole of string * tp 
   | Let of string * var * term * tp * term
+  | TypeArrow of tp * tp
 and tp = term
 
 

@@ -19,7 +19,6 @@ type whnf =
   | Lambda of var * tp * term
   | Product of var * tp * tp
 
-
 let create_error_msg (pos : ParserAst.position) (msg: string) : string =
   "Error at " ^ (Int.to_string pos.start.pos_lnum) ^ ":" ^ (Int.to_string pos.start.pos_cnum) ^ "\n" ^ msg
 
@@ -41,8 +40,7 @@ let rec substitute (t: term) (sub: sub_map) : term =
     let y = fresh_var () in
     Product (nm, y, (substitute tp sub), substitute body (VarMap.add x (Var (nm, y)) sub))
   | App (t1, t2) -> App (substitute t1 sub, substitute t2 sub)
-  (* Think about this *)
-  (* Ask PPO *)
+  | TypeArrow (t1, t2) -> TypeArrow (substitute t1 sub, substitute t2 sub)
   | Let (nm, x, t, tp_t, body) -> 
     let y = fresh_var () in
     Let (nm, y, (substitute t sub), (substitute tp_t sub), substitute body (VarMap.add x (Var (nm, y)) sub))
@@ -66,6 +64,7 @@ let rec to_whnf (t: term) (env: env) : whnf =
     end
   | Lambda (_, x, x_tp, body) -> Lambda (x, x_tp, body)
   | Product (_, x, x_tp, body) -> Product (x, x_tp, body)
+  | TypeArrow (tp1, tp2) -> Product(-1, tp1, tp2)
   | App (t1, t2) ->
     begin match to_whnf t1 env with
     | Neu (x, ts) -> Neu (x, (t2 :: ts))
@@ -118,8 +117,8 @@ let rec equiv (t1: term) (t2: term) (env: env): bool =
     else
       false
   (* Nie kończymy błędem tylko lecimy dalej po wypisaniu *)
-  | (Neu_with_Hole (nm, _, _), _) -> failwith ("Hole " ^ nm ^ "is expected to be equal to " ^ (term_to_string t2))
-  | (_, Neu_with_Hole (nm, _, _)) -> failwith ("Hole " ^ nm ^ "is expected to be equal to " ^ (term_to_string t1))
+  | (Neu_with_Hole (nm, _, _), _) -> failwith ("Hole " ^ nm ^ " is expected to be equal to " ^ (term_to_string t2))
+  | (_, Neu_with_Hole (nm, _, _)) -> failwith ("Hole " ^ nm ^ " is expected to be equal to " ^ (term_to_string t1))
   | _ -> false
 
 let rec infer_type (env: env) ({pos; data = t}: ParserAst.uTerm) : (term * term) = 
@@ -158,6 +157,18 @@ let rec infer_type (env: env) ({pos; data = t}: ParserAst.uTerm) : (term * term)
         end
       | _ -> failwith (create_error_msg pos "The type of Product argument type must be either Type or Kind")
     end
+  | TypeArrow (tp1, tp2) ->
+    let (tp1, tp_of_tp1) = infer_type env tp1 in
+    begin match tp_of_tp1 with
+      | Type | Kind -> 
+        let (tp2, tp_of_tp2) = infer_type env tp2 in
+        begin match tp_of_tp2 with
+        | Type | Kind -> 
+          (TypeArrow (tp1, tp2) , tp_of_tp2)
+        | _ -> failwith (create_error_msg pos "The type of Type Arrow body type must be either Type or Kind")
+        end
+      | _ -> failwith (create_error_msg pos "The type of Type Arrow argument type must be either Type or Kind")
+    end
   | App (t1, t2) ->
     let (t1, t1_tp) = infer_type env t1 in
     begin match to_whnf t1_tp env with
@@ -192,7 +203,7 @@ let rec infer_type (env: env) ({pos; data = t}: ParserAst.uTerm) : (term * term)
 and check_type (env : env) ({pos; data = t} as term: ParserAst.uTerm) (tp: term) : term =
   match t with 
   (* Add check type for let and lemma (we know the type of t2)*)
-  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ -> 
+  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _-> 
     let (t, t_tp) = infer_type env term in
     if equiv tp t_tp env then t else failwith (create_error_msg pos (create_error_msg pos "Type mismatch"))
   | Lambda (x, None, body) -> 

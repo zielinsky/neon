@@ -20,6 +20,7 @@ and term_data =
 | Let of string * uTerm * uTerm
 | Lemma of string * uTerm * uTerm
 | Hole of string
+| TypeArrow of uTerm * uTerm
 
 type program = uTerm list
 

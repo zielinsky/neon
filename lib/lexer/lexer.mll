@@ -21,7 +21,8 @@ rule token = parse
   | ':'  { YaccParser.COLON     }
   | '='  { YaccParser.EQUAL     }
   | "in"  { YaccParser.IN     }
-  | "->" { YaccParser.ARROW     }
+  | "=>" { YaccParser.ARROW     }
+  | "->" { YaccParser.TYPE_ARROW }
   | "type" { YaccParser.TYPE }
   | "kind" { YaccParser.KIND }
   | "fun" { YaccParser.LAMBDA }
