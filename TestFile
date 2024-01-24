@@ -1,1 +1,5 @@
-(fun x : (pi y : type -> y) -> x) ?hole
+fun t : type -> 
+    fun f : (pi a : t -> type) -> 
+        fun x : t -> 
+            fun g : (pi b : (f x) -> t) ->
+                fun y : (f x) -> g y  

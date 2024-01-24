@@ -49,7 +49,8 @@ let rec substitute (t: term) (sub: sub_map) : term =
   | Type | Kind | Hole _ -> t
   end
   
-  
+  (* Dodać drugie środowisko które trzyma mapowanie Var -> var_type (Opaque/transparent), tego środowiska używamy w whnf
+     i infer type. Poprzednie środowisko jest string -> Var (int)*)
 let rec to_whnf (t: term) (env: env) : whnf = 
   begin match t with
   | Type -> Type
@@ -57,6 +58,7 @@ let rec to_whnf (t: term) (env: env) : whnf =
   (* For Opaque Neu, for transparent add var to env and recurse on body ??? *)
   (* Ask PPO *)
   | Var (nm, x) -> 
+    (* używać nowego środowiska *)
     begin match find_opt_in_env env nm with
     | Some (_, Opaque _) -> Neu(x, [])
     | Some (_, Transparent (body, _)) -> to_whnf body env
@@ -72,14 +74,16 @@ let rec to_whnf (t: term) (env: env) : whnf =
     | _ -> failwith "Expected Neu or Lambda when reducing Application with whnf"
     end
   | Hole (nm, tp) -> Neu_with_Hole (nm, tp, [])
-  | Let (nm, y, t1, tp_t1, t2) ->
-    (* let y = fresh_var () in *)
+  (* Użyć nowego środowiska, wygenerować świeżą zmienną i zrobić podstawienie *)
+  | Let (nm, _, t1, tp_t1, t2) ->
+    let y = fresh_var () in
     let _ = add_to_env env nm (y, Transparent (t1, tp_t1)) in
+    (* zrobić funkcję subst dla whnf i tu podstawić po sprowadzeniu do whnf *)
     let t2 = to_whnf t2 env in
     let _ = rm_from_env env nm in
     t2
   (* Ask PPO *)
-  (* For let (let x = A in B) add A to env and recurse on B, ??? substitute x in type of B ??*) 
+  (* For let (let x = A in B) add A to env and recurse on B, *) 
   end
 
 
@@ -91,6 +95,8 @@ let rec equiv (t1: term) (t2: term) (env: env): bool =
     x1 = x2 
     && List.length ts1 = List.length ts2 
     && List.for_all2 (fun x y -> equiv x y env) ts1 ts2
+  (* Tutaj możemy zrobić jeśli jest ta sama dziura, jeśli różnią się nazwą to powiedzmy o tym *)
+  (* Jeżeli dwie dziury mają różne argumenty to pokazać jakie są użytkownikowi i nadal zwracamy true *)
   | (Neu_with_Hole (_, tp1, ts1), Neu_with_Hole (_, tp2, ts2)) ->
     equiv tp1 tp2 env
     && List.length ts1 = List.length ts2 
@@ -111,6 +117,7 @@ let rec equiv (t1: term) (t2: term) (env: env): bool =
       equiv body1' body2' env
     else
       false
+  (* Nie kończymy błędem tylko lecimy dalej po wypisaniu *)
   | (Neu_with_Hole (nm, _, _), _) -> failwith ("Hole " ^ nm ^ "is expected to be equal to " ^ (term_to_string t2))
   | (_, Neu_with_Hole (nm, _, _)) -> failwith ("Hole " ^ nm ^ "is expected to be equal to " ^ (term_to_string t1))
   | _ -> false
@@ -171,7 +178,7 @@ let rec infer_type (env: env) ({pos; data = t}: ParserAst.uTerm) : (term * term)
     let _ = add_to_env env x (fresh_var, Transparent (t1, tp_t1)) in
     let (t2, tp_t2) = infer_type env t2 in
     let _ = rm_from_env env x in
-    Let (x, fresh_var, t1, tp_t1, t2), tp_t2
+    Let (x, fresh_var, t1, tp_t1, t2), (substitute tp_t2 (VarMap.singleton fresh_var t1))
   | Lemma (x, t1, t2) -> 
     let (t1, tp_t1) = infer_type env t1 in
     let fresh_var = fresh_var () in
@@ -221,6 +228,7 @@ and check_type (env : env) ({pos; data = t} as term: ParserAst.uTerm) (tp: term)
     let _ = rm_from_env env x in
     App (Lambda (x, fresh_var, tp_t1, t2), t1)
   (* Ask PPO *)
+  (* wypisać środowisko i typ który przypisaliśmy dziurze *)
   (* | Hole nm -> failwith (create_error_msg pos ("Hole " ^ nm ^ " is expected to have type: " ^ term_to_string tp)) *)
   | Hole nm -> Hole (nm, tp)
   
