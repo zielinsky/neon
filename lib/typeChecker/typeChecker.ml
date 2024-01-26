@@ -1,14 +1,9 @@
 open Ast
 open PrettyPrinter
 
-module Var : sig type t = var val compare : 'a -> 'a -> int end = struct
-  type t = var
-  let compare = compare
-end
-module VarMap = Map.Make(Var)
+module VarMap = Map.Make(Int)
 type sub_map = term VarMap.t
 
-let counter = ref 0
 
 (* The term list in Neu constructor is kept in reverse order *)
 type whnf = 
@@ -21,11 +16,6 @@ type whnf =
 
 let create_error_msg (pos : ParserAst.position) (msg: string) : string =
   "Error at " ^ (Int.to_string pos.start.pos_lnum) ^ ":" ^ (Int.to_string pos.start.pos_cnum) ^ "\n" ^ msg
-
-let fresh_var () : int =
-  let fresh_var = !counter in
-  let _ = counter := !counter + 1 in
-  fresh_var
 
 let rec substitute (t: term) (sub: sub_map) : term =
   begin match t with
@@ -46,21 +36,27 @@ let rec substitute (t: term) (sub: sub_map) : term =
     Let (nm, y, (substitute t sub), (substitute tp_t sub), substitute body (VarMap.add x (Var (nm, y)) sub))
   | Type | Kind | Hole _ -> t
   end
+
+let substitute_whnf (t: whnf) (sub: sub_map) : whnf = 
+  begin match t with
+  | Type | Kind -> t
+  | Neu (var, term_list) -> Neu(var, List.map (fun t -> substitute t sub) term_list)
+  | Neu_with_Hole (nm, tp, term_list) -> Neu_with_Hole(nm, tp, List.map (fun t -> substitute t sub) term_list)
+  | Lambda (var, tp, body) -> Lambda (var, (substitute tp sub), (substitute body sub))
+  | Product (var, tp, body) -> Product (var, (substitute tp sub), (substitute body sub))
+  end
   
-  (* Dodać drugie środowisko które trzyma mapowanie Var -> var_type (Opaque/transparent), tego środowiska używamy w whnf
-     i infer type. Poprzednie środowisko jest string -> Var (int)*)
-let rec to_whnf (t: term) (env: env) : whnf = 
+let rec to_whnf (t: term) (env: termEnv) : whnf = 
   begin match t with
   | Type -> Type
   | Kind -> Kind
   (* For Opaque Neu, for transparent add var to env and recurse on body ??? *)
-  (* Ask PPO *)
+  (* Ask PPO 26/01*)
   | Var (nm, x) -> 
-    (* używać nowego środowiska *)
-    begin match find_opt_in_env env nm with
-    | Some (_, Opaque _) -> Neu(x, [])
-    | Some (_, Transparent (body, _)) -> to_whnf body env
-    | None -> failwith ("Variable " ^ nm ^ " not found when converting to whnf")
+    begin match find_opt_in_termEnv env x with
+    | Some (Opaque _) -> Neu(x, [])
+    | Some (Transparent (body, _)) -> to_whnf body env
+    | None -> failwith ("Variable " ^ nm ^ " " ^ Int.to_string x ^ " not found when converting to whnf")
     end
   | Lambda (_, x, x_tp, body) -> Lambda (x, x_tp, body)
   | Product (_, x, x_tp, body) -> Product (x, x_tp, body)
@@ -73,20 +69,23 @@ let rec to_whnf (t: term) (env: env) : whnf =
     | _ -> failwith "Expected Neu or Lambda when reducing Application with whnf"
     end
   | Hole (nm, tp) -> Neu_with_Hole (nm, tp, [])
+  (* Ask PPO, potrzebujemy fresh_var? A jak tak to jak to zrobić bo chwilowa implementacja chyba na to nie pozwala *)
   (* Użyć nowego środowiska, wygenerować świeżą zmienną i zrobić podstawienie *)
-  | Let (nm, _, t1, tp_t1, t2) ->
-    let y = fresh_var () in
-    let _ = add_to_env env nm (y, Transparent (t1, tp_t1)) in
+  | Let (_, var, t1, tp_t1, t2) ->
+    let _ = add_to_termEnv env var (Transparent (t1, tp_t1)) in
     (* zrobić funkcję subst dla whnf i tu podstawić po sprowadzeniu do whnf *)
     let t2 = to_whnf t2 env in
-    let _ = rm_from_env env nm in
+    let t2 = substitute_whnf t2 (VarMap.singleton var t1) in
+    let _ = rm_from_termEnv env var in
     t2
+    (* let x = A in B ... to whnf B -> zCDx ... subst B {x -> A}*)
+    (* let x = A in B ... to whnf B -> Lambda(y, ..., x) ... subst B {x -> A}*)
   (* Ask PPO *)
   (* For let (let x = A in B) add A to env and recurse on B, *) 
   end
 
 
-let rec equiv (t1: term) (t2: term) (env: env): bool =
+let rec equiv (t1: term) (t2: term) (env: termEnv): bool =
   match (to_whnf t1 env, to_whnf t2 env) with
   | (Type, Type) -> true
   | (Kind, Kind) -> true
@@ -121,7 +120,7 @@ let rec equiv (t1: term) (t2: term) (env: env): bool =
   | (_, Neu_with_Hole (nm, _, _)) -> failwith ("Hole " ^ nm ^ " is expected to be equal to " ^ (term_to_string t1))
   | _ -> false
 
-let rec infer_type (env: env) ({pos; data = t}: ParserAst.uTerm) : (term * term) = 
+let rec infer_type ((_, termEnv) as env : env) ({pos; data = t}: ParserAst.uTerm) : (term * term) = 
   match t with 
   | Type -> (Type, Kind)
   | Kind -> failwith (create_error_msg pos "Can't infer the type of Kind")
@@ -135,8 +134,7 @@ let rec infer_type (env: env) ({pos; data = t}: ParserAst.uTerm) : (term * term)
     let (tp, tp_of_tp) = infer_type env tp in
     begin match tp_of_tp with
       | Type | Kind -> 
-        let fresh_var = fresh_var () in
-        let _ = add_to_env env x (fresh_var, Opaque tp) in
+        let fresh_var = add_to_env env x (Opaque tp) in
         let (body, body_tp) = infer_type env t in
         let _ = rm_from_env env x in
         (Lambda (x, fresh_var, tp, body) , Product (x, fresh_var, tp, body_tp))
@@ -146,8 +144,7 @@ let rec infer_type (env: env) ({pos; data = t}: ParserAst.uTerm) : (term * term)
     let (tp, tp_of_tp) = infer_type env tp in
     begin match tp_of_tp with
       | Type | Kind -> 
-        let fresh_var = fresh_var () in
-        let _ = add_to_env env x (fresh_var, Opaque tp) in
+        let fresh_var = add_to_env env x (Opaque tp) in
         let (body, body_tp) = infer_type env t in
         let _ = rm_from_env env x in
         begin match body_tp with
@@ -171,7 +168,7 @@ let rec infer_type (env: env) ({pos; data = t}: ParserAst.uTerm) : (term * term)
     end
   | App (t1, t2) ->
     let (t1, t1_tp) = infer_type env t1 in
-    begin match to_whnf t1_tp env with
+    begin match to_whnf t1_tp termEnv with
     | Product (x, x_tp, tp_body) ->
       let t2 = check_type env t2 x_tp in
       (App (t1, t2), substitute tp_body (VarMap.singleton x t2))
@@ -185,32 +182,28 @@ let rec infer_type (env: env) ({pos; data = t}: ParserAst.uTerm) : (term * term)
     end
   | Let (x, t1, t2) -> 
     let (t1, tp_t1) = infer_type env t1 in
-    let fresh_var = fresh_var () in
-    let _ = add_to_env env x (fresh_var, Transparent (t1, tp_t1)) in
+    let fresh_var = add_to_env env x (Transparent (t1, tp_t1)) in
     let (t2, tp_t2) = infer_type env t2 in
     let _ = rm_from_env env x in
     Let (x, fresh_var, t1, tp_t1, t2), (substitute tp_t2 (VarMap.singleton fresh_var t1))
   | Lemma (x, t1, t2) -> 
     let (t1, tp_t1) = infer_type env t1 in
-    let fresh_var = fresh_var () in
-    let _ = add_to_env env x (fresh_var, Opaque tp_t1) in
+    let fresh_var = add_to_env env x (Opaque tp_t1) in
     let (t2, tp_t2) = infer_type env t2 in
     let _ = rm_from_env env x in
     (App (Lambda (x, fresh_var, tp_t1, t2), t1), (substitute tp_t2 (VarMap.singleton fresh_var t1)))
   | Hole x -> failwith (create_error_msg pos "Trying to infer the type of a Hole " ^ x)
 
     
-and check_type (env : env) ({pos; data = t} as term: ParserAst.uTerm) (tp: term) : term =
+and check_type ((_, termEnv) as env : env) ({pos; data = t} as term: ParserAst.uTerm) (tp: term) : term =
   match t with 
-  (* Add check type for let and lemma (we know the type of t2)*)
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _-> 
     let (t, t_tp) = infer_type env term in
-    if equiv tp t_tp env then t else failwith (create_error_msg pos (create_error_msg pos "Type mismatch"))
+    if equiv tp t_tp termEnv then t else failwith (create_error_msg pos (create_error_msg pos "Type mismatch"))
   | Lambda (x, None, body) -> 
-    begin match to_whnf tp env with
+    begin match to_whnf tp termEnv with
     | Product (y, y_tp, body_tp) -> 
-      let fresh_var = fresh_var () in
-      let _ = add_to_env env x (fresh_var, Opaque y_tp) in
+      let fresh_var = add_to_env env x (Opaque y_tp) in
       let body' = check_type env body (substitute body_tp (VarMap.singleton y y_tp)) in 
       let _ = rm_from_env env x in
       Lambda (x, fresh_var, y_tp, body')
@@ -220,21 +213,19 @@ and check_type (env : env) ({pos; data = t} as term: ParserAst.uTerm) (tp: term)
     begin match (check_type env {pos = pos; data = (Lambda (x, None, body))} tp) with
     | Lambda (_, _, arg_tp, _) as lambda -> 
       let (x_tp, _) = infer_type env x_tp in
-      if equiv x_tp arg_tp env then lambda else failwith "Type mismatch"
+      if equiv x_tp arg_tp termEnv then lambda else failwith "Type mismatch"
     | _ -> failwith (create_error_msg pos "Lambda must be lambda lolz")
     end
   | Kind -> failwith (create_error_msg pos "Kind doesn't have a type")
   | Let (x, t1, t2) -> 
     let (t1, tp_t1) = infer_type env t1 in
-    let fresh_var = fresh_var () in
-    let _ = add_to_env env x (fresh_var, Transparent (t1, tp_t1)) in
+    let fresh_var = add_to_env env x (Transparent (t1, tp_t1)) in
     let t2 = check_type env t2 tp in
     let _ = rm_from_env env x in
     Let (x, fresh_var, t1, tp_t1, t2)
   | Lemma (x, t1, t2) -> 
     let (t1, tp_t1) = infer_type env t1 in
-    let fresh_var = fresh_var () in
-    let _ = add_to_env env x (fresh_var, Opaque tp_t1) in
+    let fresh_var = add_to_env env x (Opaque tp_t1) in
     let t2 = check_type env t2 tp in
     let _ = rm_from_env env x in
     App (Lambda (x, fresh_var, tp_t1, t2), t1)

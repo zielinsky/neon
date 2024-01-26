@@ -15,20 +15,56 @@ and tp = term
 
 
 (* ENV *)
-module EnvHashtbl = Hashtbl.Make(String)
+module UTermEnvHashtbl = Hashtbl.Make(String)
+module TermEnvHashtbl = Hashtbl.Make(Int)
+
 type env_var = 
   | Opaque of tp
   | Transparent of term * tp
-type env = (var * env_var) EnvHashtbl.t 
+
+type uTermEnv = var UTermEnvHashtbl.t 
+type termEnv =  env_var TermEnvHashtbl.t
+type env = uTermEnv * termEnv
+
+let counter = ref 0
+
+let fresh_var () : int =
+  let fresh_var = !counter in
+  let _ = counter := !counter + 1 in
+  fresh_var
+
+
 
 let create_env () : env =
-  EnvHashtbl.create 10
+  UTermEnvHashtbl.create 10, TermEnvHashtbl.create 10
 
-let add_to_env (env: env) (nm : string) (elem : var * env_var) : unit =
-  EnvHashtbl.add env nm elem
+let add_to_env (uTermEnv, termEnv: env) (nm : string) (var : env_var) : var =
+  let y = fresh_var () in
+  let _ = UTermEnvHashtbl.add uTermEnv nm y in
+  let _ = TermEnvHashtbl.add termEnv y var in
+  y
 
-let rm_from_env (env: env) (nm : string) : unit =
-  EnvHashtbl.remove env nm
+let add_to_termEnv (termEnv: termEnv) (var: var) (env_var : env_var) : unit =
+  TermEnvHashtbl.add termEnv var env_var
 
-let find_opt_in_env (env: env) (nm: string) : (var * env_var) option =
-  EnvHashtbl.find_opt env nm
+let rm_from_env (uTermEnv, termEnv: env) (nm : string) : unit =
+  let y = UTermEnvHashtbl.find uTermEnv nm in
+  let _ = UTermEnvHashtbl.remove uTermEnv nm in
+  TermEnvHashtbl.remove termEnv y
+
+let rm_from_termEnv (termEnv: termEnv) (var: var) : unit =
+  TermEnvHashtbl.remove termEnv var
+
+let find_opt_in_env (uTermEnv, termEnv: env) (nm: string) : (var * env_var) option =
+  match UTermEnvHashtbl.find_opt uTermEnv nm with
+  | None -> None
+  | Some var -> 
+    match TermEnvHashtbl.find_opt termEnv var with
+    | None -> None
+    | Some env_var -> Some (var, env_var)
+
+let find_opt_in_termEnv (termEnv: termEnv) (var : var) : env_var option =
+  match TermEnvHashtbl.find_opt termEnv var with
+  | None -> None
+  | Some env_var -> Some env_var
+  
