@@ -3,3 +3,9 @@ fun t : type ->
         fun x : t -> 
             fun g : (pi b : (f x) -> t) ->
                 fun y : (f x) -> g y  
+
+let x = fun t : type => 
+            fun f : t -> type => 
+                fun x : t => 
+                    fun g : f(x) -> t =>
+                        fun y : f(x) => g(y)

@@ -1,5 +1,12 @@
-let x = fun t : type => 
-            fun f : t -> type => 
-                fun x : t => 
-                    fun g : f(x) -> t =>
-                        fun y : f(x) => g(y)
+let leibnitzEq = 
+    fun A: kind      => 
+    fun x: A         => 
+    fun y: A         => 
+    fun P: A -> type => 
+    pi  p: P(x) => P(y)
+
+let pred = fun x : type => x
+
+lemma prod_id_eq = leibnitzEq(type)(pi x: type => x)(pi x: type => x)(pred)
+
+let x = prod_id_eq

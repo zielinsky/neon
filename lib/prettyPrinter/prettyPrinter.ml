@@ -11,3 +11,5 @@ let rec term_to_string (t : term) : string =
   | Let (nm, _, t1, tp_t1, t2) -> "(let " ^ nm ^ "=" ^ (term_to_string t1) ^ ":" ^ (term_to_string tp_t1) ^ " in\n\t" ^ (term_to_string t2)
   | Hole (nm, tp) -> nm ^ ":" ^ (term_to_string tp)
   | TypeArrow (tp1, tp2) -> "(" ^ (term_to_string tp1) ^ " -> " ^ (term_to_string tp2) ^ ")"
+  | Triangle -> "Idk how u got here"
+

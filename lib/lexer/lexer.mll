@@ -10,7 +10,7 @@ let raise_error (lexbuf : Lexing.lexbuf) reason =
 }
 
 let whitespace = ['\011'-'\r' '\t' ' ']
-let var_char  =  ['a'-'z']
+let var_char  =  ['a'-'z' 'A'-'Z' '_']
 
 rule token = parse
     whitespace+ { token lexbuf }  (* Skip whitespace *)

@@ -34,7 +34,7 @@ let rec substitute (t: term) (sub: sub_map) : term =
   | Let (nm, x, t, tp_t, body) -> 
     let y = fresh_var () in
     Let (nm, y, (substitute t sub), (substitute tp_t sub), substitute body (VarMap.add x (Var (nm, y)) sub))
-  | Type | Kind | Hole _ -> t
+  | Type | Kind | Triangle | Hole _ -> t
   end
 
 let substitute_whnf (t: whnf) (sub: sub_map) : whnf = 
@@ -50,6 +50,7 @@ let rec to_whnf (t: term) (env: termEnv) : whnf =
   begin match t with
   | Type -> Type
   | Kind -> Kind
+  | Triangle -> failwith ("Triangle shouldn't be reduced to whnf")
   (* For Opaque Neu, for transparent add var to env and recurse on body ??? *)
   (* Ask PPO 26/01*)
   | Var (nm, x) -> 
@@ -123,7 +124,7 @@ let rec equiv (t1: term) (t2: term) (env: termEnv): bool =
 let rec infer_type ((_, termEnv) as env : env) ({pos; data = t}: ParserAst.uTerm) : (term * term) = 
   match t with 
   | Type -> (Type, Kind)
-  | Kind -> failwith (create_error_msg pos "Can't infer the type of Kind")
+  | Kind -> (Kind, Triangle)
   | Var x -> 
     begin match find_opt_in_env env x with
     | Some (y, (Opaque tp | (Transparent (_, tp)))) -> (Var (x, y), tp) 
@@ -133,7 +134,7 @@ let rec infer_type ((_, termEnv) as env : env) ({pos; data = t}: ParserAst.uTerm
   | Lambda (x, Some tp, t) -> 
     let (tp, tp_of_tp) = infer_type env tp in
     begin match tp_of_tp with
-      | Type | Kind -> 
+      | Type | Kind | Triangle -> 
         let fresh_var = add_to_env env x (Opaque tp) in
         let (body, body_tp) = infer_type env t in
         let _ = rm_from_env env x in
@@ -143,7 +144,7 @@ let rec infer_type ((_, termEnv) as env : env) ({pos; data = t}: ParserAst.uTerm
   | Product (x, tp, t) ->
     let (tp, tp_of_tp) = infer_type env tp in
     begin match tp_of_tp with
-      | Type | Kind -> 
+      | Type | Kind | Triangle -> 
         let fresh_var = add_to_env env x (Opaque tp) in
         let (body, body_tp) = infer_type env t in
         let _ = rm_from_env env x in
@@ -199,7 +200,6 @@ let rec infer_type ((_, termEnv) as env : env) ({pos; data = t}: ParserAst.uTerm
   | LemmaDef(x, t1) -> 
     let (t1, tp_t1) = infer_type env t1 in
     let _ = add_to_env env x (Opaque tp_t1) in
-    let _ = rm_from_env env x in
     t1, tp_t1
   | Hole x -> failwith (create_error_msg pos "Trying to infer the type of a Hole " ^ x)
 
