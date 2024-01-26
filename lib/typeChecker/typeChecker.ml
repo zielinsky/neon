@@ -186,18 +186,27 @@ let rec infer_type ((_, termEnv) as env : env) ({pos; data = t}: ParserAst.uTerm
     let (t2, tp_t2) = infer_type env t2 in
     let _ = rm_from_env env x in
     Let (x, fresh_var, t1, tp_t1, t2), (substitute tp_t2 (VarMap.singleton fresh_var t1))
+  | LetDef (x, t1) -> 
+    let (t1, tp_t1) = infer_type env t1 in
+    let _ = add_to_env env x (Transparent (t1, tp_t1)) in
+    t1, tp_t1
   | Lemma (x, t1, t2) -> 
     let (t1, tp_t1) = infer_type env t1 in
     let fresh_var = add_to_env env x (Opaque tp_t1) in
     let (t2, tp_t2) = infer_type env t2 in
     let _ = rm_from_env env x in
     (App (Lambda (x, fresh_var, tp_t1, t2), t1), (substitute tp_t2 (VarMap.singleton fresh_var t1)))
+  | LemmaDef(x, t1) -> 
+    let (t1, tp_t1) = infer_type env t1 in
+    let _ = add_to_env env x (Opaque tp_t1) in
+    let _ = rm_from_env env x in
+    t1, tp_t1
   | Hole x -> failwith (create_error_msg pos "Trying to infer the type of a Hole " ^ x)
 
     
 and check_type ((_, termEnv) as env : env) ({pos; data = t} as term: ParserAst.uTerm) (tp: term) : term =
   match t with 
-  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _-> 
+  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ -> 
     let (t, t_tp) = infer_type env term in
     if equiv tp t_tp termEnv then t else failwith (create_error_msg pos (create_error_msg pos "Type mismatch"))
   | Lambda (x, None, body) -> 
@@ -233,4 +242,5 @@ and check_type ((_, termEnv) as env : env) ({pos; data = t} as term: ParserAst.u
   (* wypisać środowisko i typ który przypisaliśmy dziurze *)
   (* | Hole nm -> failwith (create_error_msg pos ("Hole " ^ nm ^ " is expected to have type: " ^ term_to_string tp)) *)
   | Hole nm -> Hole (nm, tp)
+  | LemmaDef _ | LetDef _ -> failwith (create_error_msg pos "Can't check the type of a Lemma/Let definition")
   

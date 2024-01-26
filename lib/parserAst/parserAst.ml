@@ -18,7 +18,9 @@ and term_data =
 | App of uTerm * uTerm
 | TermWithTypeAnno of uTerm * uTerm
 | Let of string * uTerm * uTerm
+| LetDef of string * uTerm
 | Lemma of string * uTerm * uTerm
+| LemmaDef of string * uTerm
 | Hole of string
 | TypeArrow of uTerm * uTerm
 
