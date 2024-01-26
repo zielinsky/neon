@@ -41,7 +41,7 @@ expression
 | expression COLON expression {make (TermWithTypeAnno ($1, $3)) }
 | expression TYPE_ARROW expression {make (TypeArrow ($1, $3)) }
 | BR_OPN expression BR_CLS { $2 }
-| expression expression { make (App ($1, $2)) }
+| expression BR_OPN expression BR_CLS { make (App ($1, $3)) }
 
 expression_definition
 : LET VAR EQUAL expression IN expression {make (Let ($2, $4, $6)) }
@@ -52,14 +52,11 @@ expression_definition
 
 /* ========================================================================= */
 
-expression_list_rev
-: /* empty */            { []       }
-| expression_list_rev expression_definition { $2 :: $1 }
+expression_list
+: /* empty */            { [] }
+| expression_definition expression_list { $1 :: $2 }
 ;
 
-expression_list
-: expression_list_rev { List.rev $1 }
-;
 
 /* ========================================================================= */
 
