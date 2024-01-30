@@ -67,7 +67,7 @@ let rec to_whnf (t: term) (env: termEnv) : whnf =
     | Neu (x, ts) -> Neu (x, (t2 :: ts))
     | Neu_with_Hole (x, tp, ts) -> Neu_with_Hole (x, tp, (t2 :: ts))
     | Lambda (x, _, body) -> to_whnf (substitute body (VarMap.singleton x t2)) env
-    | _ -> failwith "Expected Neu or Lambda when reducing Application with whnf"
+    | _ -> failwith ("Expected Neu or Lambda when reducing Application " ^ term_to_string t1 ^ " with whnf " ^ term_to_string t2)
     end
   | Hole (nm, tp) -> Neu_with_Hole (nm, tp, [])
   (* Ask PPO, potrzebujemy fresh_var? A jak tak to jak to zrobić bo chwilowa implementacja chyba na to nie pozwala *)
@@ -219,8 +219,11 @@ and check_type ((_, termEnv) as env : env) ({pos; data = t} as term: ParserAst.u
     | _ -> failwith (create_error_msg pos "The type of Lambda must be a Product")
     end
   | Lambda (x, Some x_tp, body) ->
+    let _ = print_endline ((uterm_to_string term) ^ " : " ^ term_to_string tp) in
+    (* let _ = print_endline ((uterm_to_string body) ^ " : " ^ term_to_string tp) in *)
     begin match (check_type env {pos = pos; data = (Lambda (x, None, body))} tp) with
     | Lambda (_, _, arg_tp, _) as lambda -> 
+      (* let _ = print_endline (term_to_string lambda) in *)
       let (x_tp, _) = infer_type env x_tp in
       if equiv x_tp arg_tp termEnv then lambda else failwith "Type mismatch"
     | _ -> failwith (create_error_msg pos "Lambda must be lambda lolz")
@@ -242,5 +245,12 @@ and check_type ((_, termEnv) as env : env) ({pos; data = t} as term: ParserAst.u
   (* wypisać środowisko i typ który przypisaliśmy dziurze *)
   (* | Hole nm -> failwith (create_error_msg pos ("Hole " ^ nm ^ " is expected to have type: " ^ term_to_string tp)) *)
   | Hole nm -> Hole (nm, tp)
-  | LemmaDef _ | LetDef _ -> failwith (create_error_msg pos "Can't check the type of a Lemma/Let definition")
+  | LemmaDef (_, t)   | LetDef (_, t) -> 
+    (* let _ = print_endline ((uterm_to_string t) ^ " : " ^ term_to_string tp) in *)
+    check_type env t tp
+    (* let (t, t_tp) = infer_type env t in
+    if equiv tp t_tp termEnv then t else failwith (create_error_msg pos (create_error_msg pos "Type mismatch")) *)
+    (* let (_, t2_tp) = infer_type env t2 in
+    let _ = print_endline (term_to_string t2_tp) in failwith "" *)
+
   

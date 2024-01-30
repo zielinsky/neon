@@ -1,12 +1,21 @@
-let leibnitzEq = 
-    fun A: kind      => 
-    fun x: A         => 
-    fun y: A         => 
-    fun P: A -> type => 
-    pi  p: P(x) => P(y)
+/** Dla kazdego predykatu P podajemy dowod ze zachodzi P(x) P(y) */
+/** Inaczej mówiąc, x i y są równe, jeżeli każda własność x jest także kazdą własnością y */
 
-let pred = fun x : type => x
+let eq = 
+    fun A: type        => 
+    fun x: A           => 
+    fun y: A           => 
+    pi  P: (A -> type) => P(x) -> P(y)
 
-lemma prod_id_eq = leibnitzEq(type)(pi x: type => x)(pi x: type => x)(pred)
 
-let x = prod_id_eq
+let refl_type = 
+    pi A: type         =>
+    pi a: A            =>
+    eq(A)(a)(a)
+
+let refl : refl_type = 
+    fun A:  type         =>
+    fun x:  A            =>
+    fun P:  (A -> type)  =>
+    fun px: type         =>
+    px

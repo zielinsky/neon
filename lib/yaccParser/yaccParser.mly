@@ -46,8 +46,12 @@ expression
 expression_definition
 : LET VAR EQUAL expression IN expression {make (Let ($2, $4, $6)) }
 | LEMMA VAR EQUAL expression IN expression { make (Lemma ($2, $4, $6)) }
+| LET VAR COLON expression EQUAL expression IN expression {make (TermWithTypeAnno(make (Let ($2, $6, $8)), $4)) }
+| LEMMA VAR COLON expression EQUAL expression IN expression {make (TermWithTypeAnno(make (Lemma ($2, $6, $8)), $4)) }
 | LET VAR EQUAL expression {make (LetDef ($2, $4)) }
 | LEMMA VAR EQUAL expression { make (LemmaDef ($2, $4)) }
+| LET VAR COLON expression EQUAL expression {make (TermWithTypeAnno(make (LetDef ($2, $6)), $4)) }
+| LEMMA VAR COLON expression EQUAL expression {make (TermWithTypeAnno(make (LemmaDef ($2, $6)), $4)) }
 ;
 
 /* ========================================================================= */
