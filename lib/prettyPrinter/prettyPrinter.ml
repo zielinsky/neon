@@ -3,9 +3,9 @@ open ParserAst
 
 let rec term_to_string (t : term) : string =
   match t with
-  | Type -> "Type"
-  | Kind -> "Kind"
-  | Var (nm, _) -> nm
+  | Type -> "type"
+  | Kind -> "kind"
+  | Var (nm, var) -> nm ^ "@" ^ Int.to_string var
   | Lambda (nm, _, tp_x, body) ->
       "(λ" ^ nm ^ ":" ^ term_to_string tp_x ^ " => " ^ term_to_string body ^ ")"
   | Product (nm, _, tp_x, body) ->
@@ -17,12 +17,11 @@ let rec term_to_string (t : term) : string =
   | Hole (nm, tp) -> nm ^ ":" ^ term_to_string tp
   | TypeArrow (tp1, tp2) ->
       "(" ^ term_to_string tp1 ^ " -> " ^ term_to_string tp2 ^ ")"
-  | Triangle -> "Idk how u got here"
 
 let rec uterm_to_string ({ pos; data = t } : uTerm) : string =
   match t with
-  | Type -> "Type"
-  | Kind -> "Kind"
+  | Type -> "type"
+  | Kind -> "kind"
   | Var nm -> nm
   | Lambda (nm, tp_x, body) -> (
       match tp_x with
@@ -45,3 +44,24 @@ let rec uterm_to_string ({ pos; data = t } : uTerm) : string =
       "(" ^ uterm_to_string tp1 ^ " -> " ^ uterm_to_string tp2 ^ ")"
   | TermWithTypeAnno (t1, t2) ->
       "(" ^ uterm_to_string t1 ^ " : " ^ uterm_to_string t2 ^ ")"
+
+let rec whnf_to_string (t : whnf) : string =
+  match t with
+  | Type -> "type"
+  | Kind -> "kind"
+  | Neu (var, term_list) ->
+      Int.to_string var
+      ^ List.fold_left
+          (fun acc term -> "(" ^ term_to_string term ^ ")" ^ acc)
+          "" term_list
+  | Neu_with_Hole (nm, tp, term_list) ->
+      "(Hole " ^ nm ^ " : " ^ term_to_string tp ^ ")"
+      ^ List.fold_left
+          (fun acc term -> "(" ^ term_to_string term ^ ")" ^ acc)
+          "" term_list
+  | Lambda (var, tp, body) ->
+      "(λ" ^ Int.to_string var ^ ":" ^ term_to_string tp ^ " => "
+      ^ term_to_string body ^ ")"
+  | Product (var, tp, body) ->
+      "(Π" ^ Int.to_string var ^ ":" ^ term_to_string tp ^ " => "
+      ^ term_to_string body ^ ")"

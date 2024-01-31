@@ -1,6 +1,3 @@
-/** Dla kazdego predykatu P podajemy dowod ze zachodzi P(x) P(y) */
-/** Inaczej mówiąc, x i y są równe, jeżeli każda własność x jest także kazdą własnością y */
-
 let eq = 
     fun A: type        => 
     fun x: A           => 
@@ -13,9 +10,9 @@ let refl_type =
     pi a: A            =>
     eq(A)(a)(a)
 
-let refl = 
+let refl : refl_type = 
     fun A:  type         =>
     fun x:  A            =>
     fun P:  (A -> type)  =>
-    fun px: type         =>
-    px
+    fun px               =>
+    ?hole

@@ -25,6 +25,7 @@ let add_to_env ((uTermEnv, termEnv) : env) (nm : string) (var : env_var) : var =
   y
 
 let add_to_termEnv (termEnv : termEnv) (var : var) (env_var : env_var) : unit =
+  assert (not (TermEnvHashtbl.mem termEnv var));
   TermEnvHashtbl.add termEnv var env_var
 
 let rm_from_env ((uTermEnv, termEnv) : env) (nm : string) : unit =
