@@ -1,4 +1,5 @@
 (library
  (name prettyPrinter)
- (flags (-warn-error -A))
-(libraries ast parserAst))
+ (flags
+  (-warn-error -A))
+ (libraries ast parserAst))

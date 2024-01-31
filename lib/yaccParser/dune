@@ -1,5 +1,5 @@
 (library
-  (name yaccParser)
-  (libraries parserAst))
+ (name yaccParser)
+ (libraries parserAst))
 
 (ocamlyacc yaccParser)
