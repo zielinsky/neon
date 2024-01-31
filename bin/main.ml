@@ -5,7 +5,6 @@ let print (term, tp) =
     (PrettyPrinter.term_to_string term ^ ": " ^ PrettyPrinter.term_to_string tp)
 
 let _ =
-  List.iter (fun x ->  print (TypeChecker.infer_type env x)) (Parser.parse_file "TestFile.neon")
   List.iter
     (fun x -> print (TypeChecker.infer_type env x))
     (Parser.parse_file "TestFile.neon")
