@@ -5,13 +5,14 @@ let eq =
     fun A: type        => 
     fun x: A           => 
     fun y: A           => 
-    pi  P: (A -> type) => P(x) -> P(y)
+    fun  P: (A -> type) => P(x) -> P(y)
 
 
 let refl_type = 
     pi A: type         =>
     pi a: A            =>
-    eq(A)(a)(a)
+    pi P : (A -> type) =>
+    eq(A)(a)(a)(P)
 
 let refl : refl_type = 
     fun A:  type         =>

@@ -68,4 +68,9 @@ let find_opt_in_termEnv (termEnv: termEnv) (var : var) : env_var option =
   match TermEnvHashtbl.find_opt termEnv var with
   | None -> None
   | Some env_var -> Some env_var
-  
+
+let print_env (uTermEnv, termEnv: env) : string =
+  UTermEnvHashtbl.iter (fun key val -> Printf.sprintf ("%s ->" ^^ " %s\n") key val) uTermEnv
+
+  (* "x" -> num -> term*)
+
