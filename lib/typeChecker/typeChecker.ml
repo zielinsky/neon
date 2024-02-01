@@ -5,8 +5,6 @@ module VarMap = Map.Make (Int)
 
 type sub_map = term VarMap.t
 
-(* Jak używamy nazw w termach w postaci wewnętrznej to trzeba sprawdzić czy nie trzeba nazwy odświeżyć *)
-
 let create_infer_type_error (pos : ParserAst.position) (error_msg : string)
     (term : ParserAst.uTerm) (env : env) : 'a =
   let _ =
