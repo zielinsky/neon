@@ -330,7 +330,7 @@ and check_type ((_, termEnv) as env : env)
       let _ =
         print_endline
           ("Hole " ^ nm ^ " was assigned type " ^ term_to_string tp
-         ^ "with environment\n" ^ env_to_string env)
+         ^ "\nThe state of the environment at that moment:\n" ^ env_to_string env)
       in
       Hole (nm, tp)
   | LemmaDef (_, t) | LetDef (_, t) -> check_type env t tp

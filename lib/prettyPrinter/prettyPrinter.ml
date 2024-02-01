@@ -5,7 +5,8 @@ let rec term_to_string (t : term) : string =
   match t with
   | Type -> "type"
   | Kind -> "kind"
-  | Var (nm, var) -> nm ^ "@" ^ Int.to_string var
+  | Var (nm, var) -> nm
+  (* | Var (nm, var) -> nm ^ "@" ^ Int.to_string var *)
   | Lambda (nm, _, tp_x, body) ->
       "(λ" ^ nm ^ ":" ^ term_to_string tp_x ^ " => " ^ term_to_string body ^ ")"
   | Product (nm, _, tp_x, body) ->

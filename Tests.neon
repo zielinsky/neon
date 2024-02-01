@@ -1,0 +1,31 @@
+fun t : type -> 
+    fun f : (pi a : t -> type) -> 
+        fun x : t -> 
+            fun g : (pi b : (f x) -> t) ->
+                fun y : (f x) -> g y  
+
+let x = fun t : type => 
+            fun f : t -> type => 
+                fun x : t => 
+                    fun g : f(x) -> t =>
+                        fun y : f(x) => g(y)
+
+
+let eq = 
+    fun A: type        => 
+    fun x: A           => 
+    fun y: A           => 
+    pi  P: (A -> type) => P(x) -> P(y)
+
+
+let refl_type = 
+    pi A: type         =>
+    pi a: A            =>
+    eq(A)(a)(a)
+
+let refl : refl_type = 
+    fun A:  type         =>
+    fun x:  A            =>
+    fun P:  (A -> type)  =>
+    fun px               =>
+    px
