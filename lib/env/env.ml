@@ -55,7 +55,8 @@ let env_var_to_string (env_var : env_var option) : string =
   | None -> "Not found"
   | Some (Opaque tp) -> ": " ^ PrettyPrinter.term_to_string tp
   | Some (Transparent (term, tp)) ->
-      "|> " ^ PrettyPrinter.term_to_string term
+      "|> "
+      ^ PrettyPrinter.term_to_string term
       ^ " : "
       ^ PrettyPrinter.term_to_string tp
 
