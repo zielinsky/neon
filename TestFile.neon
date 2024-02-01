@@ -1,13 +1,10 @@
-let eq = 
-    fun (A : type) (x : A) (y : A) =>
-    forall P : (A -> type)        =>
-    P(x) -> P(y)
-
+let eq (A : type) (x : A) (y : A) = 
+    forall P : (A -> type) => P(x) -> P(y)
 
 let refl_type = 
-    forall (A: type) (a: A ) =>
-    eq(A)(a)(a)
+    forall (A: type) (a: A) => eq(A, a, a)
 
-let refl : refl_type = fun A x P px => px
+let refl : refl_type = 
+    fun A x P px => px
 
 /** let refl (A : type) (x : A) (P : (A -> type)) (px : P(x)) = px */

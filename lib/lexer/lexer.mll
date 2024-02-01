@@ -20,6 +20,7 @@ rule token = parse
   | ')'  { YaccParser.BR_CLS    }
   | ':'  { YaccParser.COLON     }
   | '='  { YaccParser.EQUAL     }
+  | ','  { YaccParser.COMMA     }
   | "in"  { YaccParser.IN     }
   | "=>" { YaccParser.ARROW     }
   | "->" { YaccParser.TYPE_ARROW }

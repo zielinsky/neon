@@ -1,4 +1,4 @@
-%token TYPE KIND LAMBDA PRODUCT APP TERMWITHYPEANNO LET LEMMA EQUAL IN ARROW TYPE_ARROW
+%token TYPE KIND LAMBDA PRODUCT APP TERMWITHYPEANNO LET LEMMA EQUAL IN ARROW TYPE_ARROW COMMA
 %token<string> VAR HOLE
 %token BR_OPN BR_CLS
 %token ASTERISK COMMA COLON IN EQUAL
@@ -6,7 +6,6 @@
 
 %type<ParserAst.program> program
 %start program
-
 
 %{
 
@@ -24,6 +23,10 @@ let make data =
   ; data = data
   }
 
+let makeApp exp arg_list =
+  match arg_list with 
+  | [] -> failwith "cannot apply without any argument"
+  | arg::arg_list -> List.fold_left (fun acc elem -> make (App (acc, elem))) (make (App (exp, arg))) arg_list
 %}
 
 %%
@@ -61,19 +64,27 @@ multi_arg_product
 | BR_OPN VAR COLON expression BR_CLS ARROW expression {make (Product ($2, $4, $7))}
 ;
 
+application
+: expression BR_OPN application_args BR_CLS { makeApp $1 $3 }
+;
+
+application_args
+: expression { [$1] }
+| expression COMMA application_args { $1 :: $3 } 
+;
+
 expression
 : TYPE { make (Type) }
 | KIND { make (Kind) }
 | VAR  { make (Var $1) }
 | HOLE { make (Hole $1) }
-| LET VAR EQUAL expression IN expression {make (Let ($2, $4, $6)) }
-| LEMMA VAR EQUAL expression IN expression { make (Lemma ($2, $4, $6)) }
 | LAMBDA functions { $2 }
 | PRODUCT products { $2 }
-| expression COLON expression {make (TermWithTypeAnno ($1, $3)) }
+| LET VAR EQUAL expression IN expression {make (Let ($2, $4, $6)) }
+| LEMMA VAR EQUAL expression IN expression { make (Lemma ($2, $4, $6)) }
 | expression TYPE_ARROW expression {make (TypeArrow ($1, $3)) }
+| application { $1 }
 | BR_OPN expression BR_CLS { $2 }
-| expression BR_OPN expression BR_CLS { make (App ($1, $3)) }
 
 let_def
 : VAR EQUAL expression { make (LetDef ($1, $3)) }
@@ -112,7 +123,6 @@ expression_list
 : /* empty */            { [] }
 | expression_definition expression_list { $1 :: $2 }
 ;
-
 
 /* ========================================================================= */
 
