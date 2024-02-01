@@ -27,7 +27,7 @@ let create_check_type_error (pos : ParserAst.position) (error_msg : string)
     print_endline
       ("While checking the type of term: " ^ uterm_to_string term
      ^ "\nwith expected type: " ^ term_to_string tp
-     ^ "\n\nThe following error accured:\n\t" ^ error_msg ^ "\n"
+     ^ "\n\nThe following error accured:\n" ^ error_msg ^ "\n"
      ^ "\nThe state of the environment at that moment:\n" ^ env_to_string env)
   in
   failwith
@@ -79,14 +79,14 @@ let rec substitute (t : term) (sub : sub_map) : term =
 let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
   match t with
   | Type | Kind -> t
-  | Neu (var, term_list) ->
-      Neu (var, List.map (fun t -> substitute t sub) term_list)
+  | Neu (nm, var, term_list) ->
+      Neu (nm, var, List.map (fun t -> substitute t sub) term_list)
   | Neu_with_Hole (nm, tp, term_list) ->
       Neu_with_Hole (nm, tp, List.map (fun t -> substitute t sub) term_list)
-  | Lambda (var, tp, body) ->
-      Lambda (var, substitute tp sub, substitute body sub)
-  | Product (var, tp, body) ->
-      Product (var, substitute tp sub, substitute body sub)
+  | Lambda (nm, var, tp, body) ->
+      Lambda (nm, var, substitute tp sub, substitute body sub)
+  | Product (nm, var, tp, body) ->
+      Product (nm, var, substitute tp sub, substitute body sub)
 
 let rec to_whnf (t : term) (env : termEnv) : whnf =
   match t with
@@ -94,18 +94,18 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
   | Kind -> Kind
   | Var (nm, x) -> (
       match find_opt_in_termEnv env x with
-      | Some (Opaque _) -> Neu (x, [])
+      | Some (Opaque _) -> Neu (nm, x, [])
       | Some (Transparent (body, _)) -> to_whnf body env
       | None ->
           create_whnf_error t env ("Variable " ^ nm ^ " " ^ Int.to_string x))
-  | Lambda (_, x, x_tp, body) -> Lambda (x, x_tp, body)
-  | Product (_, x, x_tp, body) -> Product (x, x_tp, body)
-  | TypeArrow (tp1, tp2) -> Product (-1, tp1, tp2)
+  | Lambda (nm, x, x_tp, body) -> Lambda (nm, x, x_tp, body)
+  | Product (nm, x, x_tp, body) -> Product (nm, x, x_tp, body)
+  | TypeArrow (tp1, tp2) -> Product ("", -1, tp1, tp2)
   | App (t1, t2) -> (
       match to_whnf t1 env with
-      | Neu (x, ts) -> Neu (x, t2 :: ts)
+      | Neu (nm, x, ts) -> Neu (nm, x, t2 :: ts)
       | Neu_with_Hole (x, tp, ts) -> Neu_with_Hole (x, tp, t2 :: ts)
-      | Lambda (x, _, body) ->
+      | Lambda (_, x, _, body) ->
           to_whnf (substitute body (VarMap.singleton x t2)) env
       | _ as whnf_term ->
           create_whnf_error t env
@@ -123,11 +123,11 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
       let _ = rm_from_termEnv env fresh_var in
       t2
 
-let rec equiv (t1 : term) (t2 : term) (env : termEnv) : bool =
-  match (to_whnf t1 env, to_whnf t2 env) with
+let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
+  match (to_whnf t1 termEnv, to_whnf t2 termEnv) with
   | Type, Type -> true
   | Kind, Kind -> true
-  | Neu (x1, ts1), Neu (x2, ts2) ->
+  | Neu (_, x1, ts1), Neu (_, x2, ts2) ->
       x1 = x2
       && List.length ts1 = List.length ts2
       && List.for_all2 (fun x y -> equiv x y env) ts1 ts2
@@ -145,22 +145,26 @@ let rec equiv (t1 : term) (t2 : term) (env : termEnv) : bool =
            ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
            ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
            ^ whnf_to_string whnf_2 ^ "\nEnv at this moment:\n"
-           ^ termEnv_to_string env)
+           ^ termEnv_to_string termEnv)
         in
         true
-  | Lambda (x1, x1_tp, body1), Lambda (x2, x2_tp, body2)
-  | Product (x1, x1_tp, body1), Product (x2, x2_tp, body2) ->
+  | Lambda (nm, x1, x1_tp, body1), Lambda (_, x2, x2_tp, body2)
+  | Product (nm, x1, x1_tp, body1), Product (_, x2, x2_tp, body2) ->
       if equiv x1_tp x2_tp env then
         let fresh_var = fresh_var () in
-        let _ = add_to_termEnv env fresh_var (Opaque x1_tp) in
+        let _ = add_to_termEnv termEnv fresh_var (Opaque x1_tp) in
         let body1' =
-          substitute body1 (VarMap.singleton x1 (Var ("", fresh_var)))
+          substitute body1
+            (VarMap.singleton x1
+               (Var (generate_fresh_var_name env nm, fresh_var)))
         in
         let body2' =
-          substitute body2 (VarMap.singleton x2 (Var ("", fresh_var)))
+          substitute body2
+            (VarMap.singleton x2
+               (Var (generate_fresh_var_name env nm, fresh_var)))
         in
         let res = equiv body1' body2' env in
-        let _ = rm_from_termEnv env fresh_var in
+        let _ = rm_from_termEnv termEnv fresh_var in
         res
       else false
   | (Neu_with_Hole (_, _, _) as whnf_1), (_ as whnf_2)
@@ -171,7 +175,7 @@ let rec equiv (t1 : term) (t2 : term) (env : termEnv) : bool =
          ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
          ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
          ^ whnf_to_string whnf_2 ^ "\n Env at this moment:\n"
-         ^ termEnv_to_string env)
+         ^ termEnv_to_string termEnv)
       in
       true
   | _ -> false
@@ -236,7 +240,7 @@ let rec infer_type ((_, termEnv) as env : env)
   | App (t1, t2) -> (
       let t1, t1_tp = infer_type env t1 in
       match to_whnf t1_tp termEnv with
-      | Product (x, x_tp, tp_body) ->
+      | Product (_, x, x_tp, tp_body) ->
           let t2 = check_type env t2 x_tp in
           (App (t1, t2), substitute tp_body (VarMap.singleton x t2))
       | _ ->
@@ -282,14 +286,14 @@ and check_type ((_, termEnv) as env : env)
   match t with
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ ->
       let t, t_tp = infer_type env term in
-      if equiv tp t_tp termEnv then t
+      if equiv tp t_tp env then t
       else
         create_check_type_error pos
-          ("The expected type was: " ^ term_to_string t_tp)
+          ("Instead got:\n" ^ term_to_string t_tp)
           term tp env
   | Lambda (x, None, body) -> (
       match to_whnf tp termEnv with
-      | Product (y, y_tp, body_tp) ->
+      | Product (_, y, y_tp, body_tp) ->
           let fresh_var = add_to_env env x (Opaque y_tp) in
           let body' =
             check_type env body
@@ -304,10 +308,10 @@ and check_type ((_, termEnv) as env : env)
       match check_type env { pos; data = Lambda (x, None, body) } tp with
       | Lambda (_, _, arg_tp, _) as lambda ->
           let x_tp, _ = infer_type env x_tp in
-          if equiv x_tp arg_tp termEnv then lambda
+          if equiv x_tp arg_tp env then lambda
           else
             create_check_type_error pos
-              ("Got: " ^ term_to_string x_tp
+              ("Got:\n" ^ term_to_string x_tp
              ^ "\nThe expected type of lambda argument was: "
              ^ term_to_string arg_tp)
               term tp env

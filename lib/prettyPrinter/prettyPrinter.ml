@@ -4,7 +4,9 @@ open SmartPrint
 
 let rec pp_term (e : term) : SmartPrint.t =
   let parens_if_app (t : term) =
-    match t with App (_, _) -> parens (pp_term t) | _ -> pp_term t
+    match t with
+    | App _ | Hole (_, (Product _ | TypeArrow _)) -> parens (pp_term t)
+    | _ -> pp_term t
   in
   match e with
   | Type -> !^"type"
@@ -69,28 +71,31 @@ let rec pp_whnf (e : whnf) : SmartPrint.t =
   match e with
   | Type -> !^"type"
   | Kind -> !^"kind"
-  | Lambda (var, tp_x, body) ->
-      nest
-        (!^"λ"
-        ^-^ !^(Int.to_string var)
-        ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
-  | Product (var, tp_x, body) ->
-      nest
-        (!^"Π"
-        ^-^ !^(Int.to_string var)
-        ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
-  | Neu (var, term_list) ->
-      !^(Int.to_string var)
-      ^^ !^(List.fold_left
-              (fun acc term -> "(" ^ term_to_string term ^ ")" ^ acc)
-              "" term_list)
+  | Lambda (nm, var, tp_x, body) ->
+      nest (!^"λ" ^-^ !^nm ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
+  | Product (nm, var, tp_x, body) ->
+      nest (!^"Π" ^-^ !^nm ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
+  | Neu (nm, var, term_list) ->
+      !^nm
+      ^^ List.fold_left
+           (fun acc term -> parens (pp_term term) ^^ acc)
+           !^"" term_list
   | Neu_with_Hole (nm, tp, term_list) ->
       nest
-        (parens
-           (!^"Hole " ^^ !^nm ^^ !^" : "
-           ^^ !^(term_to_string tp)
-           ^^ !^(List.fold_left
-                   (fun acc term -> "(" ^ term_to_string term ^ ")" ^ acc)
-                   "" term_list)))
+        (parens (!^"Hole" ^^ !^nm ^^ !^":" ^^ pp_term tp)
+        ^^ List.fold_left
+             (fun acc term -> parens (pp_term term) ^^ acc)
+             !^"" term_list)
 
 let rec whnf_to_string (t : whnf) : string = to_string 40 2 (pp_whnf t)
+
+let print_def ({ pos; data } : uTerm) : unit =
+  match data with
+  | LetDef (nm, _)
+  | LemmaDef (nm, _)
+  | TermWithTypeAnno
+      ( ( { pos = _; data = LetDef (nm, _) }
+        | { pos = _; data = LemmaDef (nm, _) } ),
+        _ ) ->
+      print_endline ("\x1b[1m" ^ nm ^ "\x1b[0m")
+  | _ -> failwith "Expected definition at top level"

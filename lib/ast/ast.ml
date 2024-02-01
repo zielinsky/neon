@@ -18,7 +18,7 @@ and tp = term
 type whnf =
   | Type
   | Kind
-  | Neu of var * term list
+  | Neu of string * var * term list
   | Neu_with_Hole of string * tp * term list
-  | Lambda of var * tp * term
-  | Product of var * tp * tp
+  | Lambda of string * var * tp * term
+  | Product of string * var * tp * tp

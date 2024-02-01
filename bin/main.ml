@@ -2,7 +2,9 @@ let env = Env.create_env ()
 
 let _ =
   List.iter
-    (fun x -> PrettyPrinter.print (TypeChecker.infer_type env x))
+    (fun x ->
+      PrettyPrinter.print_def x;
+      PrettyPrinter.print (TypeChecker.infer_type env x))
     (Parser.parse_file "TestFile.neon")
 
 (* let term, tp = TypeChecker.infer_type env (List.hd (Parser.parse_file "TestFile.neon"))
