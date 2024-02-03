@@ -1,0 +1,39 @@
+{
+	"name": "Neon",
+	"scopeName": "source.neon",
+	"patterns": [
+		{ "include": "#comments" },
+		{ "include": "#entities" },
+		{ "include": "#keywords" }
+	],
+	"repository": {
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.block.neon",
+					"begin": "/\\**",
+					"end": "\\*/"
+				}
+			]
+		},
+		"entities": {
+			"patterns": []
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"name": "storage.modifier.neon",
+					"match": "\\b(=>|=|->)\\b"
+				},
+				{
+					"name": "entity.name.type.neon",
+					"match": "\\b(kind|type)\\b"
+				},
+				{
+					"name": "support.function.neon",
+					"match": "\\b(forall|let|fun|lemma)\\b"
+				}
+			]
+		}
+	}
+}

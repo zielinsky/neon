@@ -1,0 +1,25 @@
+{
+  "name": "neon",
+  "displayName": "Neon",
+  "description": "Neon Calcus of Construction Programming Language ",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.86.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "neon",
+      "aliases": ["Neon", "neon"],
+      "extensions": [".neon"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "neon",
+      "scopeName": "source.neon",
+      "path": "./syntaxes/neon.tmLanguage.json"
+    }]
+  }
+}
