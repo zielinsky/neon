@@ -11,7 +11,7 @@ let symm_type =
     forall (A: type) (x: A) (y: A) => eq(A,x,y) -> eq(A,y,x)
 
 lemma symm : symm_type = 
-    fun A x y xy P py => xy((fun z => P(z) -> P(x)), ?hole, py)
+    fun A x y xy P py => xy((fun z => P(z) -> P(x)), (fun px => px), py)
 
 let trans_type = 
     forall (A: type) (x: A) (y: A) (z: A) => eq(A,x,y) -> eq(A,y,z) -> eq(A,x,z)
@@ -24,5 +24,6 @@ let subst_type =
 
 lemma subst : subst_type = 
     fun A P x y xy => xy(P)
+
 
 /** let refl (A : type) (x : A) (P : (A -> type)) (px : P(x)) = px */
