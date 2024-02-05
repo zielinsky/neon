@@ -5,7 +5,7 @@ open SmartPrint
 let rec pp_term (e : term) : SmartPrint.t =
   let parens_if_app (t : term) =
     match t with
-    | App _ | Hole (_, (Product _ | TypeArrow _)) -> parens (pp_term t)
+    | Lambda _ | App _ | Hole (_, (Product _ | TypeArrow _)) -> parens (pp_term t)
     | _ -> pp_term t
   in
   match e with
@@ -22,7 +22,7 @@ let rec pp_term (e : term) : SmartPrint.t =
         (!^"let" ^^ !^nm ^^ !^"=" ^^ pp_term t1 ^-^ !^":" ^^ pp_term tp_t1
        ^^ !^"in"
         ^^ nest (pp_term t2))
-  | Hole (nm, tp) -> !^nm ^^ !^":" ^^ pp_term tp
+  | Hole (nm, tp) -> !^nm ^-^ !^":" ^^ pp_term tp
   | TypeArrow (tp1, tp2) -> pp_term tp1 ^^ !^"->" ^^ pp_term tp2
 
 let rec term_to_string (t : term) : string = to_string 40 2 (pp_term t)

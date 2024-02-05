@@ -53,12 +53,12 @@ let find_opt_in_termEnv (termEnv : termEnv) (var : var) : env_var option =
 let env_var_to_string (env_var : env_var option) : string =
   match env_var with
   | None -> "Not found"
-  | Some (Opaque tp) -> ": " ^ PrettyPrinter.term_to_string tp
+  | Some (Opaque tp) -> ": \x1b[1m" ^ PrettyPrinter.term_to_string tp ^ "\x1b[0m"
   | Some (Transparent (term, tp)) ->
       "|> "
       ^ PrettyPrinter.term_to_string term
-      ^ " : "
-      ^ PrettyPrinter.term_to_string tp
+      ^ " : \x1b[1m"
+      ^ PrettyPrinter.term_to_string tp^ "\x1b[0m"
 
 let env_to_string ((uTermEnv, termEnv) : env) : string =
   UTermEnvHashtbl.fold
