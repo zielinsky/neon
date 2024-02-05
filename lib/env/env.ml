@@ -64,7 +64,7 @@ let env_to_string ((uTermEnv, termEnv) : env) : string =
   UTermEnvHashtbl.fold
     (fun key v acc ->
       acc
-      ^ Printf.sprintf "%s@%d %s\n" key v
+      ^ Printf.sprintf "%s %s\n" key
           (env_var_to_string (TermEnvHashtbl.find_opt termEnv v)))
     uTermEnv "\n"
   ^ "\n"
