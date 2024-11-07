@@ -5,12 +5,20 @@ module VarMap = Map.Make (Int)
 
 type sub_map = term VarMap.t
 
+(** [create_infer_type_error pos error_msg term env] raises a failure exception with an error message when an error occurs during type inference of [term]. It prints detailed information about the term, the error, and the environment.
+
+    @param pos The position in the source code where the error occurred.
+    @param error_msg A message describing the error.
+    @param term The term whose type was being inferred when the error occurred.
+    @param env The environment at the time of the error.
+    @raise Failure Always raises a [Failure] exception with an error message including the line and column number.
+*)
 let create_infer_type_error (pos : ParserAst.position) (error_msg : string)
     (term : ParserAst.uTerm) (env : env) : 'a =
   let _ =
     print_endline
-      ("While infering the type of term: " ^ uterm_to_string term
-     ^ "\n\n The following error accured:\n\t" ^ error_msg ^ "\n"
+      ("While inferring the type of term: " ^ uterm_to_string term
+     ^ "\n\n The following error occurred:\n\t" ^ error_msg ^ "\n"
      ^ "\nThe state of the environment at that moment:\n" ^ env_to_string env)
   in
   failwith
@@ -19,13 +27,22 @@ let create_infer_type_error (pos : ParserAst.position) (error_msg : string)
     ^ ":"
     ^ Int.to_string (pos.start.pos_cnum - pos.start.pos_bol))
 
+(** [create_check_type_error pos error_msg term tp env] raises a failure exception with an error message when an error occurs during type checking of [term] against the expected type [tp]. It prints detailed information about the term, the expected type, the error, and the environment.
+
+    @param pos The position in the source code where the error occurred.
+    @param error_msg A message describing the error.
+    @param term The term that was being type-checked when the error occurred.
+    @param tp The expected type of the term.
+    @param env The environment at the time of the error.
+    @raise Failure Always raises a [Failure] exception with an error message including the line and column number.
+*)
 let create_check_type_error (pos : ParserAst.position) (error_msg : string)
     (term : ParserAst.uTerm) (tp : tp) (env : env) : 'a =
   let _ =
     print_endline
       ("While checking the type of term: " ^ uterm_to_string term
      ^ "\nwith expected type: " ^ term_to_string tp
-     ^ "\n\nThe following error accured:\n" ^ error_msg ^ "\n"
+     ^ "\n\nThe following error occurred:\n" ^ error_msg ^ "\n"
      ^ "\nThe state of the environment at that moment:\n" ^ env_to_string env)
   in
   failwith
@@ -34,16 +51,29 @@ let create_check_type_error (pos : ParserAst.position) (error_msg : string)
     ^ ":"
     ^ Int.to_string (pos.start.pos_cnum - pos.start.pos_bol))
 
+(** [create_whnf_error term env error_msg] raises a failure exception with an error message when an error occurs during the conversion of [term] to its weak head normal form (WHNF). It prints detailed information about the term, the error, and the environment.
+
+    @param term The term that was being converted to WHNF when the error occurred.
+    @param env The term environment at the time of the error.
+    @param error_msg A message describing the error.
+    @raise Failure Always raises a [Failure] exception with an error message.
+*)
 let create_whnf_error (term : term) (env : termEnv) (error_msg : string) : 'a =
   let _ =
     print_endline
-      ("While converting term " ^ term_to_string term ^ "\nto whnf"
-     ^ "\n\nThe following error accured:\n\t" ^ error_msg ^ "\n"
+      ("While converting term " ^ term_to_string term ^ "\nto WHNF"
+     ^ "\n\nThe following error occurred:\n\t" ^ error_msg ^ "\n"
      ^ "\nThe state of the environment at that moment:\n"
      ^ termEnv_to_string env)
   in
-  failwith "Error when converting to whnf"
+  failwith "Error when converting to WHNF"
 
+(** [substitute t sub] performs capture-avoiding substitution on term [t] using the substitution map [sub]. It replaces variables in [t] according to [sub], ensuring that bound variables are correctly handled to prevent variable capture.
+
+    @param t The term in which to perform substitution.
+    @param sub The substitution map, mapping variable identifiers to terms.
+    @return A new term where variables have been substituted according to [sub].
+*)
 let rec substitute (t : term) (sub : sub_map) : term =
   match t with
   | Var (nm, x) -> (
@@ -74,6 +104,12 @@ let rec substitute (t : term) (sub : sub_map) : term =
           substitute body (VarMap.add x (Var (nm, y)) sub) )
   | Type | Kind | Hole _ -> t
 
+(** [substitute_whnf t sub] performs substitution on a term in weak head normal form (WHNF) [t] using the substitution map [sub].
+
+    @param t The WHNF term in which to perform substitution.
+    @param sub The substitution map.
+    @return A new WHNF term with substitutions applied.
+*)
 let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
   match t with
   | Type | Kind -> t
@@ -86,6 +122,13 @@ let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
   | Product (nm, var, tp, body) ->
       Product (nm, var, substitute tp sub, substitute body sub)
 
+(** [to_whnf t env] converts a term [t] to its weak head normal form (WHNF) in the context of environment [env].
+
+    @param t The term to convert to WHNF.
+    @param env The term environment.
+    @return The WHNF form of [t].
+    @raise Failure If an error occurs during conversion, raises a failure with an appropriate error message.
+*)
 let rec to_whnf (t : term) (env : termEnv) : whnf =
   match t with
   | Type -> Type
@@ -113,7 +156,6 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
   | Let (nm, var, t1, tp_t1, t2) ->
       let fresh_var = fresh_var () in
       let _ = add_to_termEnv env fresh_var (Transparent (t1, tp_t1)) in
-      (* zrobić funkcję subst dla whnf i tu podstawić po sprowadzeniu do whnf *)
       let t2 =
         to_whnf (substitute t2 (VarMap.singleton var (Var (nm, fresh_var)))) env
       in
@@ -121,6 +163,13 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
       let _ = rm_from_termEnv env fresh_var in
       t2
 
+(** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the environment [env].
+
+    @param t1 The first term.
+    @param t2 The second term.
+    @param env The environment containing variable and term bindings.
+    @return [true] if [t1] and [t2] are equivalent; [false] otherwise.
+*)
 let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
   match (to_whnf t1 termEnv, to_whnf t2 termEnv) with
   | Type, Type -> true
@@ -178,7 +227,14 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
       true
   | _ -> false
 
-let rec infer_type ((_, termEnv) as env : env)
+(** [infer_type env term] infers the type of the given term [term] in the context of environment [env].
+
+    @param env The environment containing variable and term bindings.
+    @param term The term for which to infer the type.
+    @return A pair [(t, tp)] where [t] is the term with variables resolved, and [tp] is the inferred type of [t].
+    @raise Failure If type inference fails, raises an exception with an appropriate error message.
+*)
+and infer_type ((_, termEnv) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) : term * term =
   match t with
   | Type -> (Type, Kind)
@@ -279,6 +335,14 @@ let rec infer_type ((_, termEnv) as env : env)
         ("Trying to infer the type of a Hole " ^ x)
         term env
 
+(** [check_type env term tp] checks whether the term [term] has the expected type [tp] in the context of environment [env].
+
+    @param env The environment containing variable and term bindings.
+    @param term The term to check.
+    @param tp The expected type of the term.
+    @return The term [term] with variables resolved and type-checked.
+    @raise Failure If type checking fails, raises an exception with an appropriate error message.
+*)
 and check_type ((_, termEnv) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
   match t with
@@ -314,7 +378,7 @@ and check_type ((_, termEnv) as env : env)
              ^ term_to_string arg_tp)
               term tp env
       | _ ->
-          create_check_type_error pos "Lambda must be lambda lolz" term tp env)
+          create_check_type_error pos "Lambda must be lambda" term tp env)
   | Kind -> create_check_type_error pos "Kind doesn't have a type" term tp env
   | Let (x, t1, t2) ->
       let t1, tp_t1 = infer_type env t1 in
