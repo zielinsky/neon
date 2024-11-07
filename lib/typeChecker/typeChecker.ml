@@ -131,37 +131,71 @@ let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
 *)
 let rec to_whnf (t : term) (env : termEnv) : whnf =
   match t with
-  | Type -> Type
-  | Kind -> Kind
+  | Type ->
+      (* 'Type' is already in WHNF *)
+      Type
+  | Kind ->
+      (* 'Kind' is already in WHNF *)
+      Kind
   | Var (nm, x) -> (
+      (* Variable 'x' with name 'nm' *)
       match find_opt_in_termEnv env x with
-      | Some (Opaque _) -> Neu (nm, x, [])
-      | Some (Transparent (body, _)) -> to_whnf body env
+      | Some (Opaque _) ->
+          (* Variable is opaque (e.g., a constant or parameter); cannot reduce further *)
+          Neu (nm, x, [])
+      | Some (Transparent (body, _)) ->
+          (* Variable is transparent (e.g., a let-bound variable); expand its definition *)
+          to_whnf body env
       | None ->
+          (* Variable not found in the environment; report an error *)
           create_whnf_error t env ("Variable " ^ nm ^ " " ^ Int.to_string x))
-  | Lambda (nm, x, x_tp, body) -> Lambda (nm, x, x_tp, body)
-  | Product (nm, x, x_tp, body) -> Product (nm, x, x_tp, body)
-  | TypeArrow (tp1, tp2) -> Product ("", -1, tp1, tp2)
+  | Lambda (nm, x, x_tp, body) ->
+      (* Lambda abstraction is already in WHNF *)
+      Lambda (nm, x, x_tp, body)
+  | Product (nm, x, x_tp, body) ->
+      (* Product type is already in WHNF *)
+      Product (nm, x, x_tp, body)
+  | TypeArrow (tp1, tp2) ->
+      (* Type arrow is syntactic sugar for a product type without a parameter name *)
+      Product ("", -1, tp1, tp2)
   | App (t1, t2) -> (
+      (* Application of function 't1' to argument 't2' *)
       match to_whnf t1 env with
-      | Neu (nm, x, ts) -> Neu (nm, x, t2 :: ts)
-      | Neu_with_Hole (x, tp, ts) -> Neu_with_Hole (x, tp, t2 :: ts)
+      | Neu (nm, x, ts) ->
+          (* 't1' is a neutral term; build a new neutral term by adding 't2' to its arguments *)
+          Neu (nm, x, t2 :: ts)
+      | Neu_with_Hole (nm, tp, ts) ->
+          (* 't1' is a neutral term with a hole; apply 't2' *)
+          Neu_with_Hole (nm, tp, t2 :: ts)
       | Lambda (_, x, _, body) ->
+          (* 't1' is a lambda abstraction; perform beta reduction by substituting 't2' for 'x' in 'body' *)
           to_whnf (substitute body (VarMap.singleton x t2)) env
-      | _ as whnf_term ->
+      | whnf_term ->
+          (* 't1' is not a function; cannot apply 't2'; report an error *)
           create_whnf_error t env
             ("When reducing Application expected Neu or Lambda\n" ^ "Got "
-           ^ whnf_to_string whnf_term ^ " instead"))
-  | Hole (nm, tp) -> Neu_with_Hole (nm, tp, [])
+            ^ whnf_to_string whnf_term ^ " instead"))
+  | Hole (nm, tp) ->
+      (* A hole is treated as a neutral term with a hole *)
+      Neu_with_Hole (nm, tp, [])
   | Let (nm, var, t1, tp_t1, t2) ->
+      (* Let-binding 'let nm = t1 in t2' *)
+      (* Introduce a fresh variable to avoid capture *)
       let fresh_var = fresh_var () in
+      (* Add the definition of 't1' to the environment as transparent *)
       let _ = add_to_termEnv env fresh_var (Transparent (t1, tp_t1)) in
-      let t2 =
+      (* Substitute 'var' with the fresh variable in 't2' and reduce *)
+      let t2_whnf =
         to_whnf (substitute t2 (VarMap.singleton var (Var (nm, fresh_var)))) env
       in
-      let t2 = substitute_whnf t2 (VarMap.singleton fresh_var t1) in
+      (* Substitute the fresh variable with 't1' in the result *)
+      let t2_whnf_substituted =
+        substitute_whnf t2_whnf (VarMap.singleton fresh_var t1)
+      in
+      (* Remove the fresh variable from the environment *)
       let _ = rm_from_termEnv env fresh_var in
-      t2
+      (* Return the reduced term *)
+      t2_whnf_substituted
 
 (** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the environment [env].
 
@@ -172,60 +206,78 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
 *)
 let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
   match (to_whnf t1 termEnv, to_whnf t2 termEnv) with
-  | Type, Type -> true
-  | Kind, Kind -> true
+  | Type, Type ->
+      (* Both terms are 'Type'; they are equivalent *)
+      true
+  | Kind, Kind ->
+      (* Both terms are 'Kind'; they are equivalent *)
+      true
   | Neu (_, x1, ts1), Neu (_, x2, ts2) ->
+      (* Both terms are neutral terms *)
+      (* They are equivalent if the variable identifiers are the same and their argument lists are equivalent *)
       x1 = x2
       && List.length ts1 = List.length ts2
       && List.for_all2 (fun x y -> equiv x y env) ts1 ts2
   | ( (Neu_with_Hole (_, tp1, ts1) as whnf_1),
       (Neu_with_Hole (_, tp2, ts2) as whnf_2) ) ->
+      (* Both terms are neutral terms with holes *)
       if
+        (* They are considered equivalent if their types are equivalent and their argument lists are equivalent *)
         equiv tp1 tp2 env
         && List.length ts1 = List.length ts2
         && List.for_all2 (fun x y -> equiv x y env) ts1 ts2
       then true
       else
+        (* Types or arguments do not match; print debugging information *)
         let _ =
           print_endline
             ("Term_1 " ^ term_to_string t1 ^ "\n" ^ "Whnf_1 "
-           ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
-           ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
-           ^ whnf_to_string whnf_2 ^ "\nEnv at this moment:\n"
-           ^ termEnv_to_string termEnv)
+            ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
+            ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
+            ^ whnf_to_string whnf_2 ^ "\nEnv at this moment:\n"
+            ^ termEnv_to_string termEnv)
         in
-        true
-  | Lambda (nm, x1, x1_tp, body1), Lambda (_, x2, x2_tp, body2)
-  | Product (nm, x1, x1_tp, body1), Product (_, x2, x2_tp, body2) ->
+        true (* Returning true here might be specific to handling holes *)
+  | Lambda (nm1, x1, x1_tp, body1), Lambda (nm2, x2, x2_tp, body2)
+  | Product (nm1, x1, x1_tp, body1), Product (nm2, x2, x2_tp, body2) ->
+      (* Both terms are lambdas or products *)
       if equiv x1_tp x2_tp env then
+        (* If the parameter types are equivalent *)
         let fresh_var = fresh_var () in
+        (* Introduce a fresh variable to avoid variable capture *)
         let _ = add_to_termEnv termEnv fresh_var (Opaque x1_tp) in
+        (* Substitute both bodies with the fresh variable *)
         let body1' =
           substitute body1
-            (VarMap.singleton x1
-               (Var (generate_fresh_var_name env nm, fresh_var)))
+            (VarMap.singleton x1 (Var (generate_fresh_var_name env nm1, fresh_var)))
         in
         let body2' =
           substitute body2
-            (VarMap.singleton x2
-               (Var (generate_fresh_var_name env nm, fresh_var)))
+            (VarMap.singleton x2 (Var (generate_fresh_var_name env nm2, fresh_var)))
         in
+        (* Check if the bodies are equivalent *)
         let res = equiv body1' body2' env in
+        (* Remove the fresh variable from the environment *)
         let _ = rm_from_termEnv termEnv fresh_var in
         res
-      else false
+      else
+        (* Parameter types are not equivalent *)
+        false
   | (Neu_with_Hole (_, _, _) as whnf_1), (_ as whnf_2)
   | (_ as whnf_1), (Neu_with_Hole (_, _, _) as whnf_2) ->
+      (* One of the terms is a hole; consider them equivalent for now *)
       let _ =
         print_endline
           ("Term_1 " ^ term_to_string t1 ^ "\n" ^ "Whnf_1 "
-         ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
-         ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
-         ^ whnf_to_string whnf_2 ^ "\n Env at this moment:\n"
-         ^ termEnv_to_string termEnv)
+          ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
+          ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
+          ^ whnf_to_string whnf_2 ^ "\n Env at this moment:\n"
+          ^ termEnv_to_string termEnv)
       in
       true
-  | _ -> false
+  | _ ->
+      (* Terms are not equivalent *)
+      false
 
 (** [infer_type env term] infers the type of the given term [term] in the context of environment [env].
 
@@ -237,100 +289,168 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
 and infer_type ((_, termEnv) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) : term * term =
   match t with
-  | Type -> (Type, Kind)
-  | Kind -> create_infer_type_error pos "Can't infer the type of Kind" term env
+  | Type ->
+      (* The type of 'Type' is 'Kind' *)
+      (Type, Kind)
+  | Kind ->
+      (* Cannot infer the type of 'Kind' *)
+      create_infer_type_error pos "Can't infer the type of Kind" term env
   | Var x -> (
+      (* If the term is a variable, look up its type in the environment *)
       match find_opt_in_env env x with
-      | Some (y, (Opaque tp | Transparent (_, tp))) -> (Var (x, y), tp)
+      | Some (y, (Opaque tp | Transparent (_, tp))) ->
+          (* Variable 'x' is found with identifier 'y' and type 'tp' *)
+          (Var (x, y), tp)
       | None ->
+          (* Variable not found in the environment *)
           create_infer_type_error pos ("Variable " ^ x ^ " not found") term env)
   | Lambda (_, None, _) ->
+      (* Lambda expression with omitted argument type *)
+      (* Cannot infer the type of a lambda without knowing the type of its argument *)
       create_infer_type_error pos
         "Can't infer the type of lambda with omitted argument type" term env
   | Lambda (x, Some tp, t) -> (
+      (* Lambda with argument name 'x', argument type 'tp', and body 't' *)
+      (* First, infer the type of the argument type 'tp' *)
       let tp, tp_of_tp = infer_type env tp in
       match tp_of_tp with
       | Type | Kind ->
+          (* The type of the argument type 'tp' must be 'Type' or 'Kind' *)
+          (* Add 'x' to the environment with type 'tp' *)
           let fresh_var = add_to_env env x (Opaque tp) in
+          (* Infer the type of the body 't' *)
           let body, body_tp = infer_type env t in
+          (* Remove 'x' from the environment after processing the body *)
           let _ = rm_from_env env x in
+          (* The type of the lambda is a dependent function type 'Product' *)
           (Lambda (x, fresh_var, tp, body), Product (x, fresh_var, tp, body_tp))
       | _ ->
+          (* The argument type 'tp' must be of type 'Type' or 'Kind' *)
           create_infer_type_error pos
             "The type of Lambda argument type must be either Type or Kind" term
             env)
   | Product (x, tp, t) -> (
+      (* Product type with parameter 'x', parameter type 'tp', and body 't' *)
+      (* First, infer the type of the parameter type 'tp' *)
       let tp, tp_of_tp = infer_type env tp in
       match tp_of_tp with
       | Type | Kind -> (
+          (* The type of 'tp' must be 'Type' or 'Kind' *)
+          (* Add 'x' to the environment with type 'tp' *)
           let fresh_var = add_to_env env x (Opaque tp) in
+          (* Infer the type of the body 't' *)
           let body, body_tp = infer_type env t in
+          (* Remove 'x' from the environment after processing the body *)
           let _ = rm_from_env env x in
           match body_tp with
-          | Type | Kind -> (Product (x, fresh_var, tp, body), body_tp)
+          | Type | Kind ->
+              (* The type of the body 't' must be 'Type' or 'Kind' *)
+              (Product (x, fresh_var, tp, body), body_tp)
           | _ ->
+              (* The body type is not 'Type' or 'Kind' *)
               create_infer_type_error pos
                 "The type of Product body type must be either Type or Kind" term
                 env)
       | _ ->
+          (* The parameter type 'tp' must be 'Type' or 'Kind' *)
           create_infer_type_error pos
             "The type of Product argument type must be either Type or Kind" term
             env)
   | TypeArrow (tp1, tp2) -> (
+      (* Function type arrow from 'tp1' to 'tp2' *)
+      (* First, infer the type of the domain type 'tp1' *)
       let tp1, tp_of_tp1 = infer_type env tp1 in
       match tp_of_tp1 with
       | Type | Kind -> (
+          (* The type of 'tp1' must be 'Type' or 'Kind' *)
+          (* Infer the type of the codomain type 'tp2' *)
           let tp2, tp_of_tp2 = infer_type env tp2 in
           match tp_of_tp2 with
-          | Type | Kind -> (TypeArrow (tp1, tp2), tp_of_tp2)
+          | Type | Kind ->
+              (* The type of 'tp2' must be 'Type' or 'Kind' *)
+              (TypeArrow (tp1, tp2), tp_of_tp2)
           | _ ->
+              (* The codomain type is not 'Type' or 'Kind' *)
               create_infer_type_error pos
                 "The type of Type Arrow body type must be either Type or Kind"
                 term env)
       | _ ->
+          (* The domain type 'tp1' must be 'Type' or 'Kind' *)
           create_infer_type_error pos
             "The type of Type Arrow argument type must be either Type or Kind"
             term env)
   | App (t1, t2) -> (
+      (* Application of function 't1' to argument 't2' *)
+      (* Infer the type of 't1' *)
       let t1, t1_tp = infer_type env t1 in
+      (* Reduce 't1_tp' to weak head normal form *)
       match to_whnf t1_tp termEnv with
       | Product (_, x, x_tp, tp_body) ->
+          (* The type of 't1' is a function type with parameter 'x' of type 'x_tp' *)
+          (* Check that 't2' has type 'x_tp' *)
           let t2 = check_type env t2 x_tp in
+          (* The result type is 'tp_body' with 'x' substituted by 't2' *)
           (App (t1, t2), substitute tp_body (VarMap.singleton x t2))
       | _ ->
+          (* The type of 't1' is not a function type *)
           create_infer_type_error pos
             "The type of Application's first argument must be a Product" term
             env)
   | TermWithTypeAnno (t, tp) -> (
+      (* Term 't' with type annotation 'tp' *)
+      (* Infer the type of the type annotation 'tp' *)
       let tp, tp_of_tp = infer_type env tp in
       match tp_of_tp with
-      | Type | Kind -> (check_type env t tp, tp)
+      | Type | Kind ->
+          (* The type annotation 'tp' must be of type 'Type' or 'Kind' *)
+          (* Check that 't' has type 'tp' *)
+          (check_type env t tp, tp)
       | _ ->
+          (* The type annotation 'tp' is not of type 'Type' or 'Kind' *)
           create_infer_type_error pos "Type annotation must be a Type or Kind"
             term env)
   | Let (x, t1, t2) ->
+      (* Let-binding 'let x = t1 in t2' *)
+      (* Infer the type of 't1' *)
       let t1, tp_t1 = infer_type env t1 in
+      (* Add 'x' to the environment with value 't1' and type 'tp_t1' *)
       let fresh_var = add_to_env env x (Transparent (t1, tp_t1)) in
+      (* Infer the type of 't2' *)
       let t2, tp_t2 = infer_type env t2 in
+      (* Remove 'x' from the environment *)
       let _ = rm_from_env env x in
+      (* The type of the let-binding is 'tp_t2' with 'x' substituted by 't1' *)
       ( Let (x, fresh_var, t1, tp_t1, t2),
         substitute tp_t2 (VarMap.singleton fresh_var t1) )
   | LetDef (x, t1) ->
+      (* Let-definition 'let x = t1' *)
+      (* Infer the type of 't1' *)
       let t1, tp_t1 = infer_type env t1 in
+      (* Add 'x' to the environment with value 't1' and type 'tp_t1' *)
       let _ = add_to_env env x (Transparent (t1, tp_t1)) in
       (t1, tp_t1)
   | Lemma (x, t1, t2) ->
+      (* Lemma 'lemma x = t1 in t2' *)
+      (* Infer the type of the proof 't1' *)
       let t1, tp_t1 = infer_type env t1 in
+      (* Add 'x' to the environment as an opaque binding with type 'tp_t1' *)
       let fresh_var = add_to_env env x (Opaque tp_t1) in
+      (* Infer the type of 't2' *)
       let t2, tp_t2 = infer_type env t2 in
+      (* Remove 'x' from the environment *)
       let _ = rm_from_env env x in
+      (* Apply the lemma by constructing 'App (Lambda (x, tp_t1, t2), t1)' *)
       ( App (Lambda (x, fresh_var, tp_t1, t2), t1),
         substitute tp_t2 (VarMap.singleton fresh_var t1) )
   | LemmaDef (x, t1) ->
+      (* Lemma definition 'lemma x = t1' *)
+      (* Infer the type of the proof 't1' *)
       let t1, tp_t1 = infer_type env t1 in
+      (* Add 'x' to the environment as an opaque binding with type 'tp_t1' *)
       let _ = add_to_env env x (Opaque tp_t1) in
       (t1, tp_t1)
   | Hole x ->
+      (* Cannot infer the type of a hole *)
       create_infer_type_error pos
         ("Trying to infer the type of a Hole " ^ x)
         term env
@@ -347,57 +467,92 @@ and check_type ((_, termEnv) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
   match t with
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ ->
+      (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
       if equiv tp t_tp env then t
       else
+        (* Types are not equivalent; report an error *)
         create_check_type_error pos
           ("Instead got:\n" ^ term_to_string t_tp)
           term tp env
   | Lambda (x, None, body) -> (
+      (* Lambda with omitted argument type *)
+      (* Reduce the expected type 'tp' to WHNF to check if it's a function type *)
       match to_whnf tp termEnv with
       | Product (_, y, y_tp, body_tp) ->
+          (* The expected type is a function type with parameter 'y' of type 'y_tp' *)
+          (* Add 'x' to the environment with type 'y_tp' *)
           let fresh_var = add_to_env env x (Opaque y_tp) in
+          (* Check the body against the expected body type with 'y' substituted by 'x' *)
           let body' =
             check_type env body
               (substitute body_tp (VarMap.singleton y (Var (x, fresh_var))))
           in
+          (* Remove 'x' from the environment *)
           let _ = rm_from_env env x in
+          (* Return the lambda term with the inferred argument type *)
           Lambda (x, fresh_var, y_tp, body')
       | _ ->
+          (* The expected type is not a function type *)
           create_check_type_error pos "The type of Lambda must be a Product"
             term tp env)
   | Lambda (x, Some x_tp, body) -> (
+      (* Lambda with argument type annotation 'x_tp' *)
+      (* First, check the lambda without the argument type against the expected type *)
       match check_type env { pos; data = Lambda (x, None, body) } tp with
       | Lambda (_, _, arg_tp, _) as lambda ->
+          (* Infer the type of the provided argument type 'x_tp' *)
           let x_tp, _ = infer_type env x_tp in
-          if equiv x_tp arg_tp env then lambda
+          if equiv x_tp arg_tp env then
+            (* The provided argument type matches the expected argument type *)
+            lambda
           else
+            (* Argument types do not match; report an error *)
             create_check_type_error pos
               ("Got:\n" ^ term_to_string x_tp
              ^ "\nThe expected type of lambda argument was: "
              ^ term_to_string arg_tp)
               term tp env
       | _ ->
+          (* Not a lambda term; report an error *)
           create_check_type_error pos "Lambda must be lambda" term tp env)
-  | Kind -> create_check_type_error pos "Kind doesn't have a type" term tp env
+  | Kind ->
+      (* 'Kind' does not have a type; report an error *)
+      create_check_type_error pos "Kind doesn't have a type" term tp env
   | Let (x, t1, t2) ->
+      (* Let-binding 'let x = t1 in t2' *)
+      (* Infer the type of 't1' *)
       let t1, tp_t1 = infer_type env t1 in
+      (* Add 'x' to the environment with value 't1' and type 'tp_t1' *)
       let fresh_var = add_to_env env x (Transparent (t1, tp_t1)) in
+      (* Check that 't2' has the expected type 'tp' *)
       let t2 = check_type env t2 tp in
+      (* Remove 'x' from the environment *)
       let _ = rm_from_env env x in
+      (* Return the let-binding term *)
       Let (x, fresh_var, t1, tp_t1, t2)
   | Lemma (x, t1, t2) ->
+      (* Lemma 'lemma x = t1 in t2' *)
+      (* Infer the type of the proof 't1' *)
       let t1, tp_t1 = infer_type env t1 in
+      (* Add 'x' to the environment as an opaque binding with type 'tp_t1' *)
       let fresh_var = add_to_env env x (Opaque tp_t1) in
+      (* Check that 't2' has the expected type 'tp' *)
       let t2 = check_type env t2 tp in
+      (* Remove 'x' from the environment *)
       let _ = rm_from_env env x in
+      (* Apply the lemma by constructing 'App (Lambda (x, tp_t1, t2), t1)' *)
       App (Lambda (x, fresh_var, tp_t1, t2), t1)
   | Hole nm ->
+      (* Record that the hole 'nm' has been assigned type 'tp' *)
       let _ =
         print_endline
           ("Hole " ^ nm ^ " was assigned type " ^ term_to_string tp
          ^ "\nThe state of the environment at that moment:\n"
          ^ env_to_string env)
       in
+      (* Return the hole with its type *)
       Hole (nm, tp)
-  | LemmaDef (_, t) | LetDef (_, t) -> check_type env t tp
+  | LemmaDef (_, t) | LetDef (_, t) ->
+      (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
+      check_type env t tp
