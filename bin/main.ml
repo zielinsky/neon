@@ -42,16 +42,16 @@ let rec repl env =
 
         (* Infer the type (this returns (term, type)) *)
         let (inferred_term, inferred_ty) = TypeChecker.infer_type env x in
-
-        (* Evaluate to normal form *)
-        let nf = TypeChecker.eval inferred_term (snd env) in
-
         if !verbose_mode then begin
           print_endline "----- INFERRED TYPE -----";
           PrettyPrinter.print (inferred_term, inferred_ty);
+          print_endline "-------------------";
+        end;
+        (* let nf = TypeChecker.eval inferred_term (snd env) in
+        if !verbose_mode then begin
           print_endline "----- NORMAL FORM -----";
           Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf);
-        end
+        end *)
       ) parsed
     end;
 
@@ -80,14 +80,16 @@ let main () =
 
       
       let (inferred_term, inferred_ty) = TypeChecker.infer_type env x in
-      let nf = TypeChecker.eval inferred_term (snd env) in
-
       if !verbose_mode then begin
         print_endline "----- INFERRED TYPE -----";
         PrettyPrinter.print (inferred_term, inferred_ty);
+        print_endline "-------------------";
+      end;
+      (* let nf = TypeChecker.eval inferred_term (snd env) in
+      if !verbose_mode then begin
         print_endline "----- NORMAL FORM -----";
         Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf);
-      end
+      end *)
     ) parsed
   end
 

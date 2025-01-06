@@ -115,10 +115,7 @@ let rec substitute (t : term) (sub : sub_map) : term =
 *)
 let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
   match t with
-  | Type | Kind | IntType 
-  | StringType | BoolType | IntLit _ 
-  | StringLit _ | BoolLit _ -> 
-    t
+  | Type | Kind | IntType  | StringType | BoolType | IntLit _  | StringLit _ | BoolLit _ -> t
   | Neu (nm, var, term_list) ->
       Neu (nm, var, List.map (fun t -> substitute t sub) term_list)
   | Neu_with_Hole (nm, tp, term_list) ->
@@ -508,9 +505,7 @@ and infer_type ((_, termEnv) as env : env)
 and check_type ((_, termEnv) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
   match t with
-  | Type | Var _ | App _ | Product _ 
-  | TermWithTypeAnno _ | TypeArrow _ | IntType 
-  | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ ->
+  | Type | Var _ | App _ | Product _  | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
       if equiv tp t_tp env then t
@@ -605,8 +600,7 @@ and check_type ((_, termEnv) as env : env)
 producing a [term] in normal form. *)
 let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
   match w with
-  | IntType | StringType | BoolType
-  | IntLit _ | StringLit _ | BoolLit _ ->
+  | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ ->
       (match w with
        | IntType -> IntType
        | StringType -> StringType
