@@ -7,21 +7,30 @@ open BuiltIn
 producing a [term] in normal form. *)
 let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
   match w with
-  | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ ->
-      (match w with
-       | IntType -> IntType
-       | StringType -> StringType
-       | BoolType -> BoolType
-       | IntLit n -> IntLit n
-       | StringLit s -> StringLit s
-       | BoolLit b -> BoolLit b
-       | _ -> failwith "Unexpected case")
   | Type ->
       (* Already a normal form. *)
       Type
   | Kind ->
       (* Already a normal form (although 'Kind' doesn't usually appear at runtime). *)
       Kind
+  | IntType ->
+      (* Already a normal form. *)
+      IntType
+  | StringType ->
+      (* Already a normal form. *)
+      StringType
+  | BoolType ->
+      (* Already a normal form. *)
+      BoolType
+  | IntLit n ->
+      (* Already a normal form. *)
+      IntLit n
+  | StringLit s ->
+      (* Already a normal form. *)
+      StringLit s
+  | BoolLit b ->
+      (* Already a normal form. *)
+      BoolLit b
   | Neu (nm, x, rev_args) ->
       (* Neutral term applied to [rev_args]. Recall that rev_args is stored in reverse. *)
       let nf_args =
@@ -42,7 +51,6 @@ let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
       in
       let hole = Hole (nm, nf_tp) in
       List.fold_left (fun acc arg -> App (acc, arg)) hole nf_args
-  
   | Lambda (nm, x, tp, body) ->
     (* Generate a fresh variable identifier *)
     let fresh_var = fresh_var () in
@@ -55,7 +63,6 @@ let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
     rm_from_termEnv env fresh_var;
     (* Return the normalized lambda *)
     Lambda (nm, fresh_var, nf_tp, nf_body)
-
   | Product (nm, x, tp, body) ->
     (* Generate a fresh variable identifier *)
     let fresh_var = fresh_var () in

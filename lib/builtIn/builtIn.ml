@@ -53,6 +53,25 @@ let int_div (w: whnf) : term option =
        | _ -> None)
   | _ -> None
 
+let io_read_int (w: whnf) : term option =
+  match w with
+  | Neu (_, _, rev_args) ->
+    if length rev_args <> 0 then None
+    else
+      Some (IntLit (read_int ()))
+  | _ -> None
+
+let io_print_int (w: whnf) : term option =
+  match w with
+  | Neu (_, _, rev_args) ->
+    if length rev_args <> 1 then None
+    else
+      let arg = hd rev_args in
+      (match arg with
+       | IntLit n -> print_int n; print_newline (); Some (IntLit n)
+       | _ -> None)
+  | _ -> None
+
 let builtIn_functions : (name, builtInFunction) Hashtbl.t = Hashtbl.create 10
 
 let () =
