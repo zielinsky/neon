@@ -112,7 +112,7 @@ let main () =
   let env = Env.create_env () in
 
   (* Load built-in functions into the environment *)
-  load_builtins env;
+  let _ = load_builtins env in
 
   (* Load the prelude *)
   if !load_prelude_mode then begin
