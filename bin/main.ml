@@ -28,7 +28,7 @@ let process_parsed_def env x =
     print_endline "-------------------";
   end;
 
-  let nf = TypeChecker.eval inferred_term (snd env) in
+  let nf = Evaluator.eval inferred_term (snd env) in
   if !verbose_mode then begin
     print_endline "----- NORMAL FORM -----";
     Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf);
