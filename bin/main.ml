@@ -38,6 +38,7 @@ let rec repl env =
         if !verbose_mode then begin
           print_endline "----- PARSED -----";
           PrettyPrinter.print_def x;
+          print_endline "-------------------";
         end;
 
         (* Infer the type (this returns (term, type)) *)
@@ -47,11 +48,12 @@ let rec repl env =
           PrettyPrinter.print (inferred_term, inferred_ty);
           print_endline "-------------------";
         end;
-        (* let nf = TypeChecker.eval inferred_term (snd env) in
+        let nf = TypeChecker.eval inferred_term (snd env) in
         if !verbose_mode then begin
           print_endline "----- NORMAL FORM -----";
           Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf);
-        end *)
+          print_endline "-------------------";   
+        end
       ) parsed
     end;
 

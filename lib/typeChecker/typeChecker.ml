@@ -634,10 +634,10 @@ let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
       List.fold_left (fun acc arg -> App (acc, arg)) hole nf_args
   
   | Lambda (nm, x, tp, body) ->
-      (* Even though a lambda is already WHNF, to produce a full NF we also
-         normalize the body and the type annotation. *)
+      add_to_termEnv env x (Opaque tp);
       let nf_tp   = eval tp   env in
       let nf_body = eval body env in
+      rm_from_termEnv env x;
       Lambda (nm, x, nf_tp, nf_body)
   
   | Product (nm, x, tp, body) ->
@@ -647,4 +647,5 @@ let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
       let nf_body = eval body env in
       Product (nm, x, nf_tp, nf_body)
 and eval (t : term) (env : termEnv) : term =
-	let w = to_whnf t env in whnf_to_nf w env
+  let w = to_whnf t env in
+  whnf_to_nf w env
