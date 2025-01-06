@@ -39,7 +39,9 @@ let process_parsed_def env x =
   if !verbose_mode then begin
     print_endline "----- NORMAL FORM -----";
     Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf);
-  end else Printf.printf "%s\n%s\n\n" (PrettyPrinter.term_to_string nf) (PrettyPrinter.term_to_string inferred_ty)
+  end 
+  else if not (String.starts_with ~prefix:"_builtin_" (PrettyPrinter.term_to_string nf)) then
+    Printf.printf "%s\n%s\n\n" (PrettyPrinter.term_to_string nf) (PrettyPrinter.term_to_string inferred_ty)
 
 (** Recursively lists all .neon files in the given directory. *)
 let list_neon_files dir =
