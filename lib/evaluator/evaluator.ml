@@ -23,16 +23,16 @@ let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
       (* Already a normal form (although 'Kind' doesn't usually appear at runtime). *)
       Kind
   | Neu (nm, x, rev_args) ->
-      let try_eval_builtin = eval_builtin nm w in
+      (* Neutral term applied to [rev_args]. Recall that rev_args is stored in reverse. *)
+      let nf_args =
+        List.map (fun arg -> eval arg env) (List.rev rev_args)
+      in
+      let try_eval_builtin = eval_builtin nm (Neu(nm, x, nf_args)) in
       (match try_eval_builtin with
-       | Some nf -> nf
-       | None ->
-          (* Neutral term applied to [rev_args]. Recall that rev_args is stored in reverse. *)
-          let nf_args =
-            List.map (fun arg -> eval arg env) (List.rev rev_args)
-          in
-          (* Rebuild as a normal form: Var(...) applied to each argument in the correct order. *)
-          List.fold_left (fun acc arg -> App (acc, arg)) (Var (nm, x)) nf_args) 
+      | Some nf -> nf
+      | None ->
+        (* Rebuild as a normal form: Var(...) applied to each argument in the correct order. *)
+        List.fold_left (fun acc arg -> App (acc, arg)) (Var (nm, x)) nf_args) 
   | Neu_with_Hole (nm, hole_tp, rev_args) ->
       (* A hole can still appear in normal forms, but we recursively evaluate
          the hole type and arguments, to produce a normal form. *)
