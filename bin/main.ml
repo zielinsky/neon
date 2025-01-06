@@ -1,4 +1,6 @@
 open Arg
+open Sys
+open Filename
 
 (* A reference to store the file name provided by the user *)
 let file = ref ""
@@ -34,6 +36,42 @@ let process_parsed_def env x =
     Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf);
   end
 
+(** Recursively lists all .neon files in the given directory. *)
+let list_neon_files dir =
+  let rec aux acc dirs =
+    match dirs with
+    | [] -> acc
+    | d :: ds ->
+        if file_exists d && is_directory d then
+          let entries =
+            try readdir d |> Array.to_list
+            with Sys_error msg ->
+              prerr_endline ("Error reading directory " ^ d ^ ": " ^ msg);
+              []
+          in
+          let paths = List.map (fun entry -> concat d entry) entries in
+          let files, dirs' = List.partition (fun p -> not (is_directory p)) paths in
+          let neon_files = List.filter (fun p -> check_suffix p ".neon") files in
+          aux (neon_files @ acc) (dirs' @ ds)
+        else
+          aux acc ds
+  in
+  aux [] [dir]
+
+(** Loads all .neon files from the prelude directory into the environment. *)
+let load_prelude env prelude_dir =
+  if not (file_exists prelude_dir && is_directory prelude_dir) then
+    failwith ("Prelude directory not found: " ^ prelude_dir)
+  else
+    let neon_files = list_neon_files prelude_dir in
+    List.iter (fun file ->
+        if !verbose_mode then begin
+          Printf.printf "Loading prelude file: %s\n%!" file;
+        end;
+        let parsed = Parser.parse_file file in
+        List.iter (fun x -> process_parsed_def env x) parsed
+    ) neon_files
+
 (* The REPL loop. Reads lines, parses them, infers their type, and prints (if verbose). *)
 let rec repl env =
   print_string "> ";
@@ -62,21 +100,25 @@ let rec repl env =
       repl env
 
 let main () =
-(* Parse the command line arguments *)
-Arg.parse speclist (fun s -> file := s) usage_msg;
+  (* Parse the command line arguments *)
+  Arg.parse speclist (fun s -> file := s) usage_msg;
 
-(* Create an empty environment *)
-let env = Env.create_env () in
+  (* Create an empty environment *)
+  let env = Env.create_env () in
 
-(* If a file is NOT provided, enter REPL mode. *)
-if !file = "" then begin
-  print_endline "No file specified. Starting REPL mode (type \"exit\" to quit).";
-  repl env
-end else begin
-  (* Otherwise, process the file in batch mode *)
-  let parsed = Parser.parse_file !file in
-  List.iter (fun x -> process_parsed_def env x) parsed
-end
+  (* Load the prelude *)
+  let prelude_dir = "stdlib/prelude" in
+  load_prelude env prelude_dir;
+
+  (* If a file is NOT provided, enter REPL mode. *)
+  if !file = "" then begin
+    print_endline "No file specified. Starting REPL mode (type \"exit\" to quit).";
+    repl env
+  end else begin
+    (* Otherwise, process the file in batch mode *)
+    let parsed = Parser.parse_file !file in
+    List.iter (fun x -> process_parsed_def env x) parsed
+  end
 
 (* Entry point *)
 let () = main ()
