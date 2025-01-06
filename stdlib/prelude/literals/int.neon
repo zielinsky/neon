@@ -1,4 +1,4 @@
-let add : Int -> Int -> Int = _builtin_add
-let sub : Int -> Int -> Int = _builtin_sub
-let mul : Int -> Int -> Int = _builtin_mul
-let div : Int -> Int -> Int = _builtin_div
+let add = _builtin_add
+let sub = _builtin_sub
+let mul = _builtin_mul
+let div = _builtin_div

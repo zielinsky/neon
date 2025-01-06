@@ -1,38 +1,80 @@
 open Ast
 open Env
 open List
+
 type name = string
-type builtInFunction = name * tp * term
+type builtInFunction = tp * (whnf -> term)
 
-let int_add (x: term) (y: term) : term = 
-  match x, y with
-  | IntLit x, IntLit y -> IntLit (x + y)
-  | _ -> raise (Failure "Type error in int_add")
+let int_add (w: whnf) : term =
+  match w with
+  | Neu (_, _, rev_args) ->
+    if length rev_args <> 2 then failwith "Expected 2 arguments to int_add"
+    else
+      let arg1 = hd rev_args in
+      let arg2 = hd (tl rev_args) in
+      (match arg1, arg2 with
+       | IntLit n1, IntLit n2 -> IntLit (n1 + n2)
+       | _ -> failwith "Expected two integer literals")
+  | _ -> failwith "Unexpected case"
 
-let int_sub (x: term) (y: term) : term =
-  match x, y with
-  | IntLit x, IntLit y -> IntLit (x - y)
-  | _ -> raise (Failure "Type error in int_sub")
+let int_sub (w: whnf) : term =
+  match w with
+  | Neu (_, _, rev_args) ->
+    if length rev_args <> 2 then failwith "Expected 2 arguments to int_sub"
+    else
+      let arg1 = hd rev_args in
+      let arg2 = hd (tl rev_args) in
+      (match arg1, arg2 with
+       | IntLit n1, IntLit n2 -> IntLit (n1 - n2)
+       | _ -> failwith "Expected two integer literals")
+  | _ -> failwith "Unexpected case"
 
-let int_mul (x: term) (y: term) : term =
-  match x, y with
-  | IntLit x, IntLit y -> IntLit (x * y)
-  | _ -> raise (Failure "Type error in int_mul")
+let int_mul (w: whnf) : term =
+  match w with
+  | Neu (_, _, rev_args) ->
+    if length rev_args <> 2 then failwith "Expected 2 arguments to int_mul"
+    else
+      let arg1 = hd rev_args in
+      let arg2 = hd (tl rev_args) in
+      (match arg1, arg2 with
+       | IntLit n1, IntLit n2 -> IntLit (n1 * n2)
+       | _ -> failwith "Expected two integer literals")
+  | _ -> failwith "Unexpected case"
 
-let int_div (x: term) (y: term) : term =
-  match x, y with
-  | IntLit x, IntLit y -> IntLit (x / y)
-  | _ -> raise (Failure "Type error in int_div")
+let int_div (w: whnf) : term =
+  match w with
+  | Neu (_, _, rev_args) ->
+    if length rev_args <> 2 then failwith "Expected 2 arguments to int_div"
+    else
+      let arg1 = hd rev_args in
+      let arg2 = hd (tl rev_args) in
+      (match arg1, arg2 with
+       | IntLit n1, IntLit n2 -> IntLit (n1 / n2)
+       | _ -> failwith "Expected two integer literals")
+  | _ -> failwith "Unexpected case"
+
+let builtIn_functions : (name, builtInFunction) Hashtbl.t = Hashtbl.create 10
+
+let () =
+  Hashtbl.add builtIn_functions "_builtin_add" (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_add);
+  Hashtbl.add builtIn_functions "_builtin_sub" (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_sub);
+  Hashtbl.add builtIn_functions "_builtin_mul" (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_mul);
+  Hashtbl.add builtIn_functions "_builtin_div" (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_div)
 
 let load_builtins env =
-  let add_builtin name ty =
+  let add_builtin name (ty, _) env =
     let _ = Env.add_to_env env name (Opaque ty) in ()
   in
-  let builtinFunctions = [
-      "_builtin_add", TypeArrow (IntType, TypeArrow (IntType, IntType)), int_add;
-      "_builtin_sub", TypeArrow (IntType, TypeArrow (IntType, IntType)), int_sub;
-      "_builtin_mul", TypeArrow (IntType, TypeArrow (IntType, IntType)), int_mul;
-      "_builtin_div", TypeArrow (IntType, TypeArrow (IntType, IntType)), int_div;
-  ] in 
-  fold_left (fun env (name, ty, _) -> add_builtin name ty; env) env builtinFunctions
+  Hashtbl.iter (fun name ty_func -> add_builtin name ty_func env) builtIn_functions;
+  env
+;;
+
+let eval_builtin (name : name) (w: whnf) : term option =
+  let f = Hashtbl.find_opt builtIn_functions name in 
+  match f with
+  | Some (_, f) -> begin
+      try Some (f w)
+      with _ -> None
+    end
+  | None -> None
 ;;
