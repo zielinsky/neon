@@ -8,10 +8,14 @@ let file = ref ""
 
 (* A reference to track whether we should print definitions verbosely *)
 let verbose_mode = ref false
+  
+(* A reference to track whether we should load the prelude *)
+let load_prelude_mode = ref true
 
 (* A specification list for possible command line options *)
 let speclist = [
   ("-verbose", Set verbose_mode, "Enable verbose printing of definitions");
+  ("-no-prelude", Clear load_prelude_mode, "Do not load the prelude");
 ]
 
 (* Usage message that will be displayed if the user does not provide valid arguments *)
@@ -35,7 +39,7 @@ let process_parsed_def env x =
   if !verbose_mode then begin
     print_endline "----- NORMAL FORM -----";
     Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf);
-  end
+  end else Printf.printf "%s\n%s\n\n" (PrettyPrinter.term_to_string nf) (PrettyPrinter.term_to_string inferred_ty)
 
 (** Recursively lists all .neon files in the given directory. *)
 let list_neon_files dir =
@@ -111,8 +115,10 @@ let main () =
   load_builtins env;
 
   (* Load the prelude *)
-  let prelude_dir = "stdlib/prelude" in
-  load_prelude env prelude_dir;
+  if !load_prelude_mode then begin
+    let prelude_dir = "stdlib/prelude" in
+    load_prelude env prelude_dir
+  end;
 
   (* If a file is NOT provided, enter REPL mode. *)
   if !file = "" then begin
