@@ -91,8 +91,13 @@ let rec repl env =
   | line ->
       if String.trim line = "exit" then (
           print_endline "Goodbye!";
-          exit 0
-      ) else (
+          exit 0)
+      else if String.trim line = "env" then
+          print_endline (Env.env_to_string env)
+      else if String.trim line = "clear" then (
+          Sys.command "clear" |> ignore
+      )
+      else (
           try
               let parsed = Parser.parse_string line in
               List.iter (fun x -> process_parsed_def env x) parsed
