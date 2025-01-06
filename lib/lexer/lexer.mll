@@ -24,8 +24,8 @@ rule token = parse
   | "in"  { YaccParser.IN     }
   | "=>" { YaccParser.ARROW     }
   | "->" { YaccParser.TYPE_ARROW }
-  | "type" { YaccParser.TYPE }
-  | "kind" { YaccParser.KIND }
+  | "Type" { YaccParser.TYPE }
+  | "Kind" { YaccParser.KIND }
   | "fun" { YaccParser.LAMBDA }
   | "forall" { YaccParser.PRODUCT }
   | "let" { YaccParser.LET }
