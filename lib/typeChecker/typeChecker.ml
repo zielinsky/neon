@@ -103,10 +103,7 @@ let rec substitute (t : term) (sub : sub_map) : term =
           substitute t sub,
           substitute tp_t sub,
           substitute body (VarMap.add x (Var (nm, y)) sub) )
-  | Type | Kind | Hole _ 
-  | IntType | StringType | BoolType 
-  | IntLit _ | StringLit _ | BoolLit _ -> 
-    t
+  | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ -> t
 
 (** [substitute_whnf t sub] performs substitution on a term in weak head normal form (WHNF) [t] using the substitution map [sub].
 

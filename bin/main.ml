@@ -1,6 +1,7 @@
 open Arg
 open Sys
 open Filename
+open BuiltIn
 
 (* A reference to store the file name provided by the user *)
 let file = ref ""
@@ -105,6 +106,9 @@ let main () =
 
   (* Create an empty environment *)
   let env = Env.create_env () in
+
+  (* Load built-in functions into the environment *)
+  load_builtins env;
 
   (* Load the prelude *)
   let prelude_dir = "stdlib/prelude" in
