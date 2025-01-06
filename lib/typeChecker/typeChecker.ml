@@ -634,18 +634,30 @@ let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
       List.fold_left (fun acc arg -> App (acc, arg)) hole nf_args
   
   | Lambda (nm, x, tp, body) ->
-      add_to_termEnv env x (Opaque tp);
-      let nf_tp   = eval tp   env in
-      let nf_body = eval body env in
-      rm_from_termEnv env x;
-      Lambda (nm, x, nf_tp, nf_body)
-  
+    (* Generate a fresh variable identifier *)
+    let fresh_var = fresh_var () in
+    (* Add the definition of 'tp' to the environment with the fresh variable *)
+    add_to_termEnv env fresh_var (Opaque tp);
+    (* Evaluate type and body *)
+    let nf_tp   = eval (substitute tp (VarMap.singleton x (Var (nm, fresh_var)))) env in
+    let nf_body = eval (substitute body (VarMap.singleton x (Var (nm, fresh_var)))) env in
+    (* Remove the fresh variable from the environment *)
+    rm_from_termEnv env fresh_var;
+    (* Return the normalized lambda *)
+    Lambda (nm, fresh_var, nf_tp, nf_body)
+
   | Product (nm, x, tp, body) ->
-      (* Similarly, a product in WHNF form is structurally normal, but we still
-         need to normalize its sub-terms. *)
-      let nf_tp   = eval tp   env in
-      let nf_body = eval body env in
-      Product (nm, x, nf_tp, nf_body)
+    (* Generate a fresh variable identifier *)
+    let fresh_var = fresh_var () in
+    (* Add the definition of 'tp' to the environment with the fresh variable *)
+    add_to_termEnv env fresh_var (Opaque tp);
+    (* Evaluate type and body *)
+    let nf_tp   = eval (substitute tp (VarMap.singleton x (Var (nm, fresh_var)))) env in
+    let nf_body = eval (substitute body (VarMap.singleton x (Var (nm, fresh_var)))) env in
+    (* Remove the fresh variable from the environment *)
+    rm_from_termEnv env fresh_var;
+    (* Return the normalized product *)
+    Product (nm, fresh_var, nf_tp, nf_body)
 and eval (t : term) (env : termEnv) : term =
   let w = to_whnf t env in
   whnf_to_nf w env
