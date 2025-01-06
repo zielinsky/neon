@@ -102,7 +102,10 @@ let rec substitute (t : term) (sub : sub_map) : term =
           substitute t sub,
           substitute tp_t sub,
           substitute body (VarMap.add x (Var (nm, y)) sub) )
-  | Type | Kind | Hole _ -> t
+  | Type | Kind | Hole _ 
+  | IntType | StringType | BoolType 
+  | IntLit _ | StringLit _ | BoolLit _ -> 
+    t
 
 (** [substitute_whnf t sub] performs substitution on a term in weak head normal form (WHNF) [t] using the substitution map [sub].
 
@@ -112,7 +115,10 @@ let rec substitute (t : term) (sub : sub_map) : term =
 *)
 let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
   match t with
-  | Type | Kind -> t
+  | Type | Kind | IntType 
+  | StringType | BoolType | IntLit _ 
+  | StringLit _ | BoolLit _ -> 
+    t
   | Neu (nm, var, term_list) ->
       Neu (nm, var, List.map (fun t -> substitute t sub) term_list)
   | Neu_with_Hole (nm, tp, term_list) ->
@@ -132,11 +138,29 @@ let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
 let rec to_whnf (t : term) (env : termEnv) : whnf =
   match t with
   | Type ->
-      (* 'Type' is already in WHNF *)
-      Type
+		(* 'Type' is already in WHNF *)
+		Type
   | Kind ->
-      (* 'Kind' is already in WHNF *)
-      Kind
+		(* 'Kind' is already in WHNF *)
+		Kind
+	| IntType ->
+		(* 'IntType' is already in WHNF *)
+		IntType
+	| StringType ->
+		(* 'StringType' is already in WHNF *)
+		StringType
+	| BoolType ->
+		(* 'BoolType' is already in WHNF *)
+		BoolType
+  | IntLit n ->
+    (* Integer literal is already in WHNF *)
+		IntLit n
+	| StringLit s ->
+		(* String literal is already in WHNF *)
+		StringLit s
+	| BoolLit s ->
+		(* Boolean literal is already in WHNF *)
+		BoolLit s
   | Var (nm, x) -> (
       (* Variable 'x' with name 'nm' *)
       match find_opt_in_termEnv env x with
@@ -212,6 +236,12 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
   | Kind, Kind ->
       (* Both terms are 'Kind'; they are equivalent *)
       true
+	| IntType, IntType -> true
+	| StringType, StringType -> true
+	| BoolType, BoolType -> true
+	| IntLit n1, IntLit n2 -> n1 = n2
+	| StringLit s1, StringLit s2 -> s1 = s2
+	| BoolLit b1, BoolLit b2 -> b1 = b2
   | Neu (_, x1, ts1), Neu (_, x2, ts2) ->
       (* Both terms are neutral terms *)
       (* They are equivalent if the variable identifiers are the same and their argument lists are equivalent *)
@@ -295,6 +325,18 @@ and infer_type ((_, termEnv) as env : env)
   | Kind ->
       (* Cannot infer the type of 'Kind' *)
       create_infer_type_error pos "Can't infer the type of Kind" term env
+	| IntType ->
+		(IntType, Type)
+	| StringType ->
+        (StringType, Type)
+	| BoolType ->
+        (BoolType, Type)
+	| IntLit n ->
+        (IntLit n, IntType)
+	| StringLit s ->
+        (StringLit s, StringType)
+	| BoolLit b ->
+        (BoolLit b, BoolType)
   | Var x -> (
       (* If the term is a variable, look up its type in the environment *)
       match find_opt_in_env env x with
@@ -466,7 +508,9 @@ and infer_type ((_, termEnv) as env : env)
 and check_type ((_, termEnv) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
   match t with
-  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ ->
+  | Type | Var _ | App _ | Product _ 
+  | TermWithTypeAnno _ | TypeArrow _ | IntType 
+  | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
       if equiv tp t_tp env then t
@@ -556,3 +600,57 @@ and check_type ((_, termEnv) as env : env)
   | LemmaDef (_, t) | LetDef (_, t) ->
       (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
       check_type env t tp
+
+(** [whnf_to_nf w env] fully normalizes a [whnf] node [w] in context [env],
+producing a [term] in normal form. *)
+let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
+  match w with
+  | IntType | StringType | BoolType
+  | IntLit _ | StringLit _ | BoolLit _ ->
+      (match w with
+       | IntType -> IntType
+       | StringType -> StringType
+       | BoolType -> BoolType
+       | IntLit n -> IntLit n
+       | StringLit s -> StringLit s
+       | BoolLit b -> BoolLit b
+       | _ -> failwith "Unexpected case")
+  | Type ->
+      (* Already a normal form. *)
+      Type
+  | Kind ->
+      (* Already a normal form (although 'Kind' doesn't usually appear at runtime). *)
+      Kind
+  | Neu (nm, x, rev_args) ->
+      (* Neutral term applied to [rev_args]. Recall that rev_args is stored in reverse. *)
+      let nf_args =
+        List.map (fun arg -> eval arg env) (List.rev rev_args)
+      in
+      (* Rebuild as a normal form: Var(...) applied to each argument in the correct order. *)
+      List.fold_left (fun acc arg -> App (acc, arg)) (Var (nm, x)) nf_args
+  
+  | Neu_with_Hole (nm, hole_tp, rev_args) ->
+      (* A hole can still appear in normal forms, but we recursively evaluate
+         the hole type and arguments, to produce a normal form. *)
+      let nf_tp = eval hole_tp env in
+      let nf_args =
+        List.map (fun arg -> eval arg env) (List.rev rev_args)
+      in
+      let hole = Hole (nm, nf_tp) in
+      List.fold_left (fun acc arg -> App (acc, arg)) hole nf_args
+  
+  | Lambda (nm, x, tp, body) ->
+      (* Even though a lambda is already WHNF, to produce a full NF we also
+         normalize the body and the type annotation. *)
+      let nf_tp   = eval tp   env in
+      let nf_body = eval body env in
+      Lambda (nm, x, nf_tp, nf_body)
+  
+  | Product (nm, x, tp, body) ->
+      (* Similarly, a product in WHNF form is structurally normal, but we still
+         need to normalize its sub-terms. *)
+      let nf_tp   = eval tp   env in
+      let nf_body = eval body env in
+      Product (nm, x, nf_tp, nf_body)
+and eval (t : term) (env : termEnv) : term =
+	let w = to_whnf t env in whnf_to_nf w env

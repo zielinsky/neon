@@ -9,6 +9,13 @@ let rec pp_term (e : term) : SmartPrint.t =
     | _ -> pp_term t
   in
   match e with
+  | IntType -> !^"Int"
+  | StringType -> !^"String"
+  | BoolType -> !^"Bool"
+  | IntLit n -> !^(string_of_int n)
+  | StringLit s -> !^"\"" ^-^ !^s ^-^ !^"\""
+  | BoolLit true -> !^"true"
+  | BoolLit false -> !^"false"
   | Type -> !^"type"
   | Kind -> !^"kind"
   | Var (nm, var) -> !^nm
@@ -38,6 +45,13 @@ let rec pp_uterm ({ data = e; pos } : uTerm) : SmartPrint.t =
     match data with App (_, _) -> parens (pp_uterm t) | _ -> pp_uterm t
   in
   match e with
+  | IntType -> !^"Int"
+  | StringType -> !^"String"
+  | BoolType -> !^"Bool"
+  | IntLit n -> !^(string_of_int n)
+  | StringLit s -> !^"\"" ^-^ !^s ^-^ !^"\""
+  | BoolLit true -> !^"true"
+  | BoolLit false -> !^"false"
   | Type -> !^"type"
   | Kind -> !^"kind"
   | Var nm -> !^nm
@@ -69,6 +83,13 @@ let rec uterm_to_string (t : uTerm) : string = to_string 40 2 (pp_uterm t)
 
 let rec pp_whnf (e : whnf) : SmartPrint.t =
   match e with
+  | IntType -> !^"Int"
+  | StringType -> !^"String"
+  | BoolType -> !^"Bool"
+  | IntLit n -> !^(string_of_int n)
+  | StringLit s -> !^"\"" ^-^ !^s ^-^ !^"\""
+  | BoolLit true -> !^"true"
+  | BoolLit false -> !^"false"
   | Type -> !^"type"
   | Kind -> !^"kind"
   | Lambda (nm, var, tp_x, body) ->

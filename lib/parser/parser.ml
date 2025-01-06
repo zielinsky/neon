@@ -1,4 +1,5 @@
 type fname = string
+type input = string
 
 let run_parser parse (lexbuf : Lexing.lexbuf) =
   try parse Lexer.token lexbuf
@@ -28,3 +29,8 @@ let parse_file fname =
           raise exn)
   | exception Sys_error message ->
       raise (Errors.Cannot_open_file { fname; message })
+
+let parse_string input =
+  let lexbuf = Lexing.from_string input in
+  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = "<repl>" };
+  run_parser YaccParser.program lexbuf
