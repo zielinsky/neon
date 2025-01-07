@@ -6,6 +6,12 @@ type uTerm = term_data node
 and term_data =
   | Type
   | Kind
+  | IntType
+  | StringType
+  | BoolType
+  | IntLit of int               
+  | StringLit of string          
+  | BoolLit of bool 
   | Var of string
   | Lambda of string * uTerm option * uTerm
   | Product of string * uTerm * uTerm

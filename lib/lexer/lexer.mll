@@ -24,14 +24,31 @@ rule token = parse
   | "in"  { YaccParser.IN     }
   | "=>" { YaccParser.ARROW     }
   | "->" { YaccParser.TYPE_ARROW }
-  | "type" { YaccParser.TYPE }
-  | "kind" { YaccParser.KIND }
+  | "Type" { YaccParser.TYPE }
+  | "Kind" { YaccParser.KIND }
   | "fun" { YaccParser.LAMBDA }
   | "forall" { YaccParser.PRODUCT }
   | "let" { YaccParser.LET }
   | "lemma" { YaccParser.LEMMA }
   | "?" var_char* as x { YaccParser.HOLE x }
+  | "Int"             { YaccParser.INT_TYPE }
+  | "String"          { YaccParser.STRING_TYPE }
+  | "Bool"            { YaccParser.BOOL_TYPE }
+  | "true"            { YaccParser.BOOL_LIT true }
+  | "false"           { YaccParser.BOOL_LIT false }
   | var_char* as x { YaccParser.VAR x }
+  (* Integer literals *)
+  | ['0'-'9']+ as digits {
+      let n = int_of_string digits in
+      YaccParser.INT_LIT n
+    }
+  (* String literals *)
+  | '"' [^'"']* '"' as strlit {
+      let content_len = String.length strlit - 2 in
+      let content     = String.sub strlit 1 content_len in
+      YaccParser.STRING_LIT content
+    }
+
   | eof    { YaccParser.EOF }
   | _ as x {
       raise_error lexbuf (InvalidChar x)

@@ -1,4 +1,4 @@
 (executable
  (public_name neon)
  (name main)
- (libraries ast env parser typeChecker prettyPrinter smart-print))
+ (libraries ast env parser typeChecker prettyPrinter smart-print unix errors evaluator builtIn))

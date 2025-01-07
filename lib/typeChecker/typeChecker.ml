@@ -1,6 +1,7 @@
 open Ast
 open PrettyPrinter
 open Env
+
 module VarMap = Map.Make (Int)
 
 type sub_map = term VarMap.t
@@ -102,7 +103,7 @@ let rec substitute (t : term) (sub : sub_map) : term =
           substitute t sub,
           substitute tp_t sub,
           substitute body (VarMap.add x (Var (nm, y)) sub) )
-  | Type | Kind | Hole _ -> t
+  | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ -> t
 
 (** [substitute_whnf t sub] performs substitution on a term in weak head normal form (WHNF) [t] using the substitution map [sub].
 
@@ -112,7 +113,7 @@ let rec substitute (t : term) (sub : sub_map) : term =
 *)
 let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
   match t with
-  | Type | Kind -> t
+  | Type | Kind | IntType  | StringType | BoolType | IntLit _  | StringLit _ | BoolLit _ -> t
   | Neu (nm, var, term_list) ->
       Neu (nm, var, List.map (fun t -> substitute t sub) term_list)
   | Neu_with_Hole (nm, tp, term_list) ->
@@ -132,11 +133,29 @@ let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
 let rec to_whnf (t : term) (env : termEnv) : whnf =
   match t with
   | Type ->
-      (* 'Type' is already in WHNF *)
-      Type
+		(* 'Type' is already in WHNF *)
+		Type
   | Kind ->
-      (* 'Kind' is already in WHNF *)
-      Kind
+		(* 'Kind' is already in WHNF *)
+		Kind
+	| IntType ->
+		(* 'IntType' is already in WHNF *)
+		IntType
+	| StringType ->
+		(* 'StringType' is already in WHNF *)
+		StringType
+	| BoolType ->
+		(* 'BoolType' is already in WHNF *)
+		BoolType
+  | IntLit n ->
+    (* Integer literal is already in WHNF *)
+		IntLit n
+	| StringLit s ->
+		(* String literal is already in WHNF *)
+		StringLit s
+	| BoolLit s ->
+		(* Boolean literal is already in WHNF *)
+		BoolLit s
   | Var (nm, x) -> (
       (* Variable 'x' with name 'nm' *)
       match find_opt_in_termEnv env x with
@@ -212,6 +231,12 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
   | Kind, Kind ->
       (* Both terms are 'Kind'; they are equivalent *)
       true
+	| IntType, IntType -> true
+	| StringType, StringType -> true
+	| BoolType, BoolType -> true
+	| IntLit n1, IntLit n2 -> n1 = n2
+	| StringLit s1, StringLit s2 -> s1 = s2
+	| BoolLit b1, BoolLit b2 -> b1 = b2
   | Neu (_, x1, ts1), Neu (_, x2, ts2) ->
       (* Both terms are neutral terms *)
       (* They are equivalent if the variable identifiers are the same and their argument lists are equivalent *)
@@ -295,6 +320,18 @@ and infer_type ((_, termEnv) as env : env)
   | Kind ->
       (* Cannot infer the type of 'Kind' *)
       create_infer_type_error pos "Can't infer the type of Kind" term env
+	| IntType ->
+		(IntType, Type)
+	| StringType ->
+        (StringType, Type)
+	| BoolType ->
+        (BoolType, Type)
+	| IntLit n ->
+        (IntLit n, IntType)
+	| StringLit s ->
+        (StringLit s, StringType)
+	| BoolLit b ->
+        (BoolLit b, BoolType)
   | Var x -> (
       (* If the term is a variable, look up its type in the environment *)
       match find_opt_in_env env x with
@@ -466,7 +503,7 @@ and infer_type ((_, termEnv) as env : env)
 and check_type ((_, termEnv) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
   match t with
-  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ ->
+  | Type | Var _ | App _ | Product _  | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
       if equiv tp t_tp env then t

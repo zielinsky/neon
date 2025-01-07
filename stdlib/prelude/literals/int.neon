@@ -1,0 +1,4 @@
+let add = _builtin_add
+let sub = _builtin_sub
+let mul = _builtin_mul
+let div = _builtin_div

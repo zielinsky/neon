@@ -1,4 +1,8 @@
 %token TYPE KIND LAMBDA PRODUCT APP TERMWITHYPEANNO LET LEMMA EQUAL IN ARROW TYPE_ARROW COMMA
+%token INT_TYPE STRING_TYPE BOOL_TYPE
+%token <int> INT_LIT
+%token <string> STRING_LIT
+%token <bool> BOOL_LIT
 %token<string> VAR HOLE
 %token BR_OPN BR_CLS
 %token ASTERISK COMMA COLON IN EQUAL
@@ -76,6 +80,12 @@ application_args
 expression
 : TYPE { make (Type) }
 | KIND { make (Kind) }
+| INT_TYPE       { make IntType }
+| STRING_TYPE    { make StringType }
+| BOOL_TYPE      { make BoolType }
+| INT_LIT        { make (IntLit $1) }
+| STRING_LIT     { make (StringLit $1) }
+| BOOL_LIT       { make (BoolLit $1) }
 | VAR  { make (Var $1) }
 | HOLE { make (Hole $1) }
 | LAMBDA functions { $2 }

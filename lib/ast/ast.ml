@@ -1,10 +1,15 @@
-(* TERMS *)
 type var = int
 
 type term =
   | Type
   | Kind
   | Var of string * var
+  | IntType
+  | StringType
+  | BoolType
+  | IntLit of int
+  | StringLit of string
+  | BoolLit of bool
   | Lambda of string * var * tp * term
   | Product of string * var * tp * tp
   | App of term * term
@@ -14,11 +19,17 @@ type term =
 
 and tp = term
 
-(* The term list in Neu constructor is kept in reverse order *)
+(* The term list in Neu is stored in reverse order. *)
 type whnf =
   | Type
   | Kind
   | Neu of string * var * term list
   | Neu_with_Hole of string * tp * term list
+  | IntType
+  | StringType
+  | BoolType
+  | IntLit of int
+  | StringLit of string
+  | BoolLit of bool
   | Lambda of string * var * tp * term
   | Product of string * var * tp * tp
