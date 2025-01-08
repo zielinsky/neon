@@ -491,7 +491,8 @@ and infer_type ((_, termEnv) as env : env)
       create_infer_type_error pos
         ("Trying to infer the type of a Hole " ^ x)
         term env
-
+  | ADTSig _ | ADTDecl _ | Case _ | DataCon _ | TypeCon _ ->
+    infer_data_type env term
 (** [check_type env term tp] checks whether the term [term] has the expected type [tp] in the context of environment [env].
 
     @param env The environment containing variable and term bindings.
@@ -593,3 +594,28 @@ and check_type ((_, termEnv) as env : env)
   | LemmaDef (_, t) | LetDef (_, t) ->
       (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
       check_type env t tp
+  | ADTSig _ | ADTDecl _ | Case _ | DataCon _ | TypeCon _ ->
+    check_data_type env term tp
+
+and infer_data_type ((_, termEnv) as env : env)
+({ pos; data = t } as term : ParserAst.uTerm) : term * term =
+    let rec telescope_infer_type (env : env) (telescope : ParserAst.telescope) : Ast.telescope =
+        match telescope with
+        | Empty -> Empty
+        | Cons (nm, t, tp, ts) -> 
+            let tp', _ = infer_type env tp in
+            let t' = check_type env t tp' in
+            Cons (nm, t', tp', telescope_infer_type env ts)
+    in
+    match t with
+    | ADTSig (nm, ts) -> 
+        let _ = add_to_env env nm (Opaque Kind) in
+        let ts' = telescope_infer_type env ts in
+        (ADTSig (nm, ts'), Kind)
+    
+    | _ -> failwith "ADTDecl not implemented"
+and check_data_type ((_, termEnv) as env : env)
+  ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
+      match t with
+      | ADTDecl _ -> failwith "ADTDecl not implemented"
+      | _ -> create_check_type_error pos "Expected ADT declaration" term tp env

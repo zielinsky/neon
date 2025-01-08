@@ -39,7 +39,7 @@ and constructorDef = {
 
 and telescope =
   | Empty
-  | Cons of string * uTerm * telescope
+  | Cons of string * uTerm * uTerm * telescope
 
 and matchPat = 
   | Match of pattern * uTerm
