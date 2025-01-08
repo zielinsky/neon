@@ -26,15 +26,26 @@ and term_data =
   | LemmaDef of string * uTerm
   | Hole of string
   | TypeArrow of uTerm * uTerm
-  | TCon of typeCName * uTerm list
-  | DCon of dataCName * uTerm list
-  | Case of uTerm
+  | TypeCon of typeCName * uTerm list
+  | DataCon of dataCName * uTerm list
+  | ADTSig of typeCName * telescope
+  | ADTDecl of typeCName * telescope * constructorDef list
+  | Case of uTerm * matchPat list
 
+and constructorDef = {
+  cname : string;
+  telescope : telescope;
+}
 
-type matchPat = 
-  | Match of pattern * term_data
+and telescope =
+  | Empty
+  | Cons of string * uTerm * telescope
 
-type pattern = 
-  | 
+and matchPat = 
+  | Match of pattern * uTerm
+
+and pattern = 
+  | PatVar of string * uTerm
+  | PatCon of dataCName * pattern list
 
 type program = uTerm list

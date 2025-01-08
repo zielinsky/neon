@@ -1,5 +1,8 @@
 type var = int
 
+type typeCName = string
+type dataCName = string
+
 type term =
   | Type
   | Kind
@@ -16,6 +19,27 @@ type term =
   | Hole of string * tp
   | Let of string * var * term * tp * term
   | TypeArrow of tp * tp
+  | TypeCon of typeCName * term list
+  | DataCon of dataCName * term list
+  | ADTSig of typeCName * telescope
+  | ADTDecl of typeCName * telescope * constructorDef list
+  | Case of term * matchPat list
+
+and constructorDef = {
+  cname : string;
+  telescope : telescope;
+}
+
+and telescope =
+  | Empty
+  | Cons of string * term * telescope
+
+and matchPat = 
+  | Match of pattern * term
+
+and pattern = 
+  | PatVar of string * var * term
+  | PatCon of dataCName * pattern list
 
 and tp = term
 
@@ -33,3 +57,6 @@ type whnf =
   | BoolLit of bool
   | Lambda of string * var * tp * term
   | Product of string * var * tp * tp
+  | TypeCon of typeCName * term list
+  | DataCon of dataCName * term list
+  | Case of term * matchPat list
