@@ -338,6 +338,21 @@ and infer_type ((_, termEnv) as env : env)
       | Some (y, (Opaque tp | Transparent (_, tp))) ->
           (* Variable 'x' is found with identifier 'y' and type 'tp' *)
           (Var (x, y), tp)
+      | Some (y, ADTConst (nm, ts)) ->
+          (* Variable 'x' is found with identifier 'y' and ADT declaration 'nm' *)
+          (_, _)
+          (* 
+          
+          Just 5
+          App (Var 'Just', IntLit 5)
+          
+          
+          *)
+      | Some (_, ADTSig _) ->
+          (* Variable 'x' is found with an ADT signature; cannot infer the type *)
+          create_infer_type_error pos
+            ("Can't infer the type of ADT signature " ^ x)
+            term env
       | None ->
           (* Variable not found in the environment *)
           create_infer_type_error pos ("Variable " ^ x ^ " not found") term env)
@@ -609,26 +624,59 @@ and infer_data_type ((_, termEnv) as env : env)
             let _ = rm_from_env env nm in
             res
     in
+    let rec check_args_against_telescope (env : env) (args : ParserAst.uTerm list) (telescope : Ast.telescope) : term list =
+        match (args, telescope) with
+        | [], Empty -> []
+        | [], _ -> failwith ""
+        | _, Empty -> failwith ""
+        | arg :: args, Cons (_, _, tp, ts) -> 
+            let arg' = check_type env arg tp in
+            arg' :: check_args_against_telescope env args ts
+    in
     match t with
     | ADTSig (nm, ts) -> 
         let ts' = telescope_check_type env ts in
-        let _ = add_to_env env nm (ADTSig ts') in
-        (ADTSig(nm, ts'), Kind)
+        let nmVar = add_to_env env nm (ADTTCon ts') in
+        (ADTSig((nm, nmVar), ts'), Kind)
     | ADTDecl (nm, ts, cs) -> 
         let ts' = telescope_check_type env ts in
-        let _ = add_to_env env nm (ADTSig ts') in
+        let nmVar = add_to_env env nm (ADTTCon ts') in
         let cs' = List.map (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } -> (
             let tsCon' = telescope_check_type env tsCon in
-            let _ = add_to_env env nmCon (ADTConst(nm, tsCon')) in
-            { cname = nmCon; telescope = tsCon' }
+            let nmConVar = add_to_env env nmCon (ADTDCon(nmVar, tsCon')) in
+            { cname = (nmCon, nmConVar); telescope = tsCon' }
         )) cs in
-        (ADTDecl(nm, ts', cs'), Kind)
+        (ADTDecl((nm, nmVar), ts', cs'), Kind)
+    | ADTConst  (nm, args) -> 
+        let var = find_opt_in_env env nm in
+        begin
+            match var with
+            | Some (y, ADTTCon ts) -> 
+                let args' = check_args_against_telescope env args ts in
+                (TypeCon((nm, y), args'), Kind)
+            | Some (y, ADTDCon (typeNm, ts)) -> 
+                let args' = check_args_against_telescope env args ts in
+                let typeNm' = find_opt_in_termEnv termEnv typeNm in
+                begin
+                    match typeNm' with
+                    | Some (ADTTCon typeTs) -> (DataCon((nm, typeNm), args'), TypeCon((_, typeNm), ts))
+                    | _ -> failwith ""
+                end
+                
+            (* 
+                Maybe (a: Kind)
+                Maybe Int
+                Just 5
+            
+            *)
+            | _ -> failwith ""
+        end
     | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
         create_infer_type_error pos "Expected ADT declaration" term env
 and check_data_type ((_, termEnv) as env : env)
   ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
       match t with
-      | ADTDecl _ | ADTSig _ -> 
+      | ADTDecl _ | ADTSig _ | ADTConst _ -> 
           let t', tp' = infer_data_type env term in
           if equiv tp tp' env then t'
           else

@@ -1,7 +1,7 @@
 type var = int
 
-type typeCName = string
-type dataCName = string
+type typeCName = (string * var)
+type dataCName = (string * var)
 
 type term =
   | Type
@@ -26,7 +26,7 @@ type term =
   (* | Case of term * matchPat list *)
 
 and constructorDef = {
-  cname : string;
+  cname : string * var;
   telescope : telescope;
 }
 
