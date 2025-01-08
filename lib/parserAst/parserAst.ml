@@ -26,12 +26,9 @@ and term_data =
   | LemmaDef of string * uTerm
   | Hole of string
   | TypeArrow of uTerm * uTerm
-  | TypeCon of typeCName * uTerm list
-  | DataCon of dataCName * uTerm list
   | ADTSig of typeCName * telescope
   | ADTDecl of typeCName * telescope * constructorDef list
-  | Case of uTerm * matchPat list
-
+  (* | Case of uTerm * matchPat list *)
 and constructorDef = {
   cname : string;
   telescope : telescope;

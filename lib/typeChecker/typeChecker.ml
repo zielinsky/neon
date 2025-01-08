@@ -491,7 +491,7 @@ and infer_type ((_, termEnv) as env : env)
       create_infer_type_error pos
         ("Trying to infer the type of a Hole " ^ x)
         term env
-  | ADTSig _ | ADTDecl _ | Case _ | DataCon _ | TypeCon _ ->
+  | ADTSig _ | ADTDecl _ ->
     infer_data_type env term
 (** [check_type env term tp] checks whether the term [term] has the expected type [tp] in the context of environment [env].
 
@@ -594,7 +594,7 @@ and check_type ((_, termEnv) as env : env)
   | LemmaDef (_, t) | LetDef (_, t) ->
       (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
       check_type env t tp
-  | ADTSig _ | ADTDecl _ | Case _ | DataCon _ | TypeCon _ ->
+  | ADTSig _ | ADTDecl _ ->
     check_data_type env term tp
 
 and infer_data_type ((_, termEnv) as env : env)
@@ -617,20 +617,23 @@ and infer_data_type ((_, termEnv) as env : env)
     | ADTDecl (nm, ts, cs) -> 
         let ts' = telescope_check_type env ts in
         let _ = add_to_env env nm (ADTSig ts') in
-        let cs' = List.map (fun (nmCon, tsCon) -> (
+        let cs' = List.map (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } -> (
             let tsCon' = telescope_check_type env tsCon in
-            let _ = add_to_env env nmCon (ADTDecl(nm, tsCon')) in
-            (nmCon, tsCon')
+            let _ = add_to_env env nmCon (ADTConst(nm, tsCon')) in
+            { cname = nmCon; telescope = tsCon' }
         )) cs in
         (ADTDecl(nm, ts', cs'), Kind)
-    | _ -> failwith "ADTDecl not implemented"
+    | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
+        create_infer_type_error pos "Expected ADT declaration" term env
 and check_data_type ((_, termEnv) as env : env)
   ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
       match t with
-      | ADTDecl _ -> failwith "ADTDecl not implemented"
-      | _ -> create_check_type_error pos "Expected ADT declaration" term tp env
-
-
-      (* 
-        let id = Just 10
-      *)
+      | ADTDecl _ | ADTSig _ -> 
+          let t', tp' = infer_data_type env term in
+          if equiv tp tp' env then t'
+          else
+            create_check_type_error pos
+              ("Instead got:\n" ^ term_to_string tp')
+              term tp env
+      | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
+          create_infer_type_error pos "Expected ADT declaration" term env

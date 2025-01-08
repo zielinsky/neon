@@ -23,7 +23,7 @@ type term =
   | DataCon of dataCName * term list
   | ADTSig of typeCName * telescope
   | ADTDecl of typeCName * telescope * constructorDef list
-  | Case of term * matchPat list
+  (* | Case of term * matchPat list *)
 
 and constructorDef = {
   cname : string;
