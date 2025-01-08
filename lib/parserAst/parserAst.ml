@@ -1,6 +1,9 @@
 type position = { start : Lexing.position; length : int }
 type 'a node = { pos : position; data : 'a }
 
+type typeCName = string
+type dataCName = string
+
 type uTerm = term_data node
 
 and term_data =
@@ -23,5 +26,15 @@ and term_data =
   | LemmaDef of string * uTerm
   | Hole of string
   | TypeArrow of uTerm * uTerm
+  | TCon of typeCName * uTerm list
+  | DCon of dataCName * uTerm list
+  | Case of uTerm
+
+
+type matchPat = 
+  | Match of pattern * term_data
+
+type pattern = 
+  | 
 
 type program = uTerm list
