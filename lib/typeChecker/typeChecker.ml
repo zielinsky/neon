@@ -599,23 +599,38 @@ and check_type ((_, termEnv) as env : env)
 
 and infer_data_type ((_, termEnv) as env : env)
 ({ pos; data = t } as term : ParserAst.uTerm) : term * term =
-    let rec telescope_infer_type (env : env) (telescope : ParserAst.telescope) : Ast.telescope =
+    let rec telescope_check_type (env : env) (telescope : ParserAst.telescope) : Ast.telescope =
         match telescope with
         | Empty -> Empty
-        | Cons (nm, t, tp, ts) -> 
+        | Cons (nm, tp, ts) -> 
             let tp', _ = infer_type env tp in
-            let t' = check_type env t tp' in
-            Cons (nm, t', tp', telescope_infer_type env ts)
+            let fresh_var = add_to_env env nm (Opaque tp') in
+            let res = Cons (nm, fresh_var, tp', telescope_check_type env ts) in
+            let _ = rm_from_env env nm in
+            res
     in
     match t with
     | ADTSig (nm, ts) -> 
-        let _ = add_to_env env nm (Opaque Kind) in
-        let ts' = telescope_infer_type env ts in
-        (ADTSig (nm, ts'), Kind)
-    
+        let ts' = telescope_check_type env ts in
+        let _ = add_to_env env nm (ADTSig ts') in
+        (ADTSig(nm, ts'), Kind)
+    | ADTDecl (nm, ts, cs) -> 
+        let ts' = telescope_check_type env ts in
+        let _ = add_to_env env nm (ADTSig ts') in
+        let cs' = List.map (fun (nmCon, tsCon) -> (
+            let tsCon' = telescope_check_type env tsCon in
+            let _ = add_to_env env nmCon (ADTDecl(nm, tsCon')) in
+            (nmCon, tsCon')
+        )) cs in
+        (ADTDecl(nm, ts', cs'), Kind)
     | _ -> failwith "ADTDecl not implemented"
 and check_data_type ((_, termEnv) as env : env)
   ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
       match t with
       | ADTDecl _ -> failwith "ADTDecl not implemented"
       | _ -> create_check_type_error pos "Expected ADT declaration" term tp env
+
+
+      (* 
+        let id = Just 10
+      *)

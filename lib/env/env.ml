@@ -4,7 +4,11 @@ open Ast
 module UTermEnvHashtbl = Hashtbl.Make (String)
 module TermEnvHashtbl = Hashtbl.Make (Int)
 
-type env_var = Opaque of tp | Transparent of term * tp
+type env_var = 
+  | Opaque of tp 
+  | Transparent of term * tp 
+  | ADTSig of telescope 
+  | ADTConst of typeCName * telescope
 type uTermEnv = var UTermEnvHashtbl.t
 type termEnv = env_var TermEnvHashtbl.t
 type env = uTermEnv * termEnv
