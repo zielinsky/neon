@@ -1,17 +1,21 @@
 open Ast
 
 (* ENV *)
-module UTermEnvHashtbl = Hashtbl.Make (String)
-module TermEnvHashtbl = Hashtbl.Make (Int)
+module StringHashtbl = Hashtbl.Make (String)
+module IntHashtbl = Hashtbl.Make (Int)
 
 type env_var = 
   | Opaque of tp 
   | Transparent of term * tp 
-  | ADTTCon of telescope 
-  | ADTDCon of var * telescope
-type uTermEnv = var UTermEnvHashtbl.t
-type termEnv = env_var TermEnvHashtbl.t
-type env = uTermEnv * termEnv
+
+type adt_var = 
+| ADTTCon of telescope 
+| ADTDCon of typeCName * telescope
+
+type uTermEnv = var StringHashtbl.t
+type termEnv = env_var IntHashtbl.t
+type adtEnv = adt_var StringHashtbl.t
+type env = uTermEnv * termEnv * adtEnv
 
 let counter = ref 0
 
@@ -20,39 +24,62 @@ let fresh_var () : int =
   let _ = counter := !counter + 1 in
   fresh_var
 
-let create_env () : env = (UTermEnvHashtbl.create 10, TermEnvHashtbl.create 10)
+let create_env () : env = (StringHashtbl.create 10, IntHashtbl.create 10, StringHashtbl.create 10)
 
-let add_to_env ((uTermEnv, termEnv) : env) (nm : string) (var : env_var) : var =
+let add_to_env ((uTermEnv, termEnv, _) : env) (nm : string) (var : env_var) : var =
   let y = fresh_var () in
-  let _ = UTermEnvHashtbl.add uTermEnv nm y in
-  let _ = TermEnvHashtbl.add termEnv y var in
+  let _ = StringHashtbl.add uTermEnv nm y in
+  let _ = IntHashtbl.add termEnv y var in
   y
 
 let add_to_termEnv (termEnv : termEnv) (var : var) (env_var : env_var) : unit =
-  assert (not (TermEnvHashtbl.mem termEnv var));
-  TermEnvHashtbl.add termEnv var env_var
+  assert (not (IntHashtbl.mem termEnv var));
+  IntHashtbl.add termEnv var env_var
 
-let rm_from_env ((uTermEnv, termEnv) : env) (nm : string) : unit =
-  let y = UTermEnvHashtbl.find uTermEnv nm in
-  let _ = UTermEnvHashtbl.remove uTermEnv nm in
-  TermEnvHashtbl.remove termEnv y
+let add_to_adtEnv (adtEnv : adtEnv) (nm : string) (adt_var : adt_var) : unit =
+  if (StringHashtbl.mem adtEnv nm)
+  then failwith "ADT already exists in Env"
+  else StringHashtbl.add adtEnv nm adt_var 
+
+let rec add_telescope_to_env  (env : env) (ts : telescope) : unit =
+  match ts with
+    | Empty -> ()
+    | Cons (nm, tp, ts) -> 
+      let _ = add_to_env env nm (Opaque tp) in
+      add_telescope_to_env env ts
+
+let rm_from_env ((uTermEnv, termEnv, _) : env) (nm : string) : unit =
+  let y = StringHashtbl.find uTermEnv nm in
+  let _ = StringHashtbl.remove uTermEnv nm in
+  IntHashtbl.remove termEnv y
+
+let rec rm_telescope_from_env  (env : env) (ts : telescope) : unit =
+match ts with
+  | Empty -> ()
+  | Cons (nm, _, ts) -> 
+    let _ = rm_from_env env nm in
+    rm_telescope_from_env env ts
 
 let rm_from_termEnv (termEnv : termEnv) (var : var) : unit =
-  TermEnvHashtbl.remove termEnv var
+  IntHashtbl.remove termEnv var
 
-let find_opt_in_env ((uTermEnv, termEnv) : env) (nm : string) :
+  let rm_from_adtEnv (adtEnv : adtEnv) (nm : string) : unit =
+    StringHashtbl.remove adtEnv nm
+
+let find_opt_in_env ((uTermEnv, termEnv, _) : env) (nm : string) :
     (var * env_var) option =
-  match UTermEnvHashtbl.find_opt uTermEnv nm with
+  match StringHashtbl.find_opt uTermEnv nm with
   | None -> None
   | Some var -> (
-      match TermEnvHashtbl.find_opt termEnv var with
+      match IntHashtbl.find_opt termEnv var with
       | None -> None
       | Some env_var -> Some (var, env_var))
 
 let find_opt_in_termEnv (termEnv : termEnv) (var : var) : env_var option =
-  match TermEnvHashtbl.find_opt termEnv var with
-  | None -> None
-  | Some env_var -> Some env_var
+  IntHashtbl.find_opt termEnv var
+
+let find_opt_in_adtEnv (adtEnv : adtEnv) (nm : string) :adt_var option =
+  StringHashtbl.find_opt adtEnv nm
 
 let env_var_to_string (env_var : env_var option) : string =
   match env_var with
@@ -64,26 +91,26 @@ let env_var_to_string (env_var : env_var option) : string =
       ^ " : \x1b[1m"
       ^ PrettyPrinter.term_to_string tp^ "\x1b[0m"
 
-let env_to_string ((uTermEnv, termEnv) : env) : string =
-  UTermEnvHashtbl.fold
+let env_to_string ((uTermEnv, termEnv, _) : env) : string =
+  StringHashtbl.fold
     (fun key v acc ->
       acc
       ^ Printf.sprintf "%s %s\n" key
-          (env_var_to_string (TermEnvHashtbl.find_opt termEnv v)))
+          (env_var_to_string (IntHashtbl.find_opt termEnv v)))
     uTermEnv "\n"
   ^ "\n"
 
 let termEnv_to_string (termEnv : termEnv) : string =
-  TermEnvHashtbl.fold
+  IntHashtbl.fold
     (fun key v acc ->
       acc ^ Printf.sprintf "%d %s\n" key (env_var_to_string (Some v)))
     termEnv "\n"
   ^ "\n"
 
 let generate_fresh_var_name (env : env) (nm : string) : string =
-  let rec helper ((uTermEnv, _) : env) (nm : string) (cnt : int) : string =
+  let rec helper ((uTermEnv, _, _) : env) (nm : string) (cnt : int) : string =
     let new_nm = nm ^ "_" ^ Int.to_string cnt in
-    if UTermEnvHashtbl.mem uTermEnv new_nm then helper env nm (cnt + 1)
+    if StringHashtbl.mem uTermEnv new_nm then helper env nm (cnt + 1)
     else new_nm
   in
   helper env nm 0
