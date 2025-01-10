@@ -104,7 +104,6 @@ let rec substitute (t : term) (sub : sub_map) : term =
           substitute tp_t sub,
           substitute body (VarMap.add x (Var (nm, y)) sub) )
   | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ -> t
-  | _ -> failwith "TODO"
 
 (** [substitute_whnf t sub] performs substitution on a term in weak head normal form (WHNF) [t] using the substitution map [sub].
 
@@ -123,7 +122,6 @@ let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
       Lambda (nm, var, substitute tp sub, substitute body sub)
   | Product (nm, var, tp, body) ->
       Product (nm, var, substitute tp sub, substitute body sub)
-  | _ -> failwith "TODO"
 
 (** [to_whnf t env] converts a term [t] to its weak head normal form (WHNF) in the context of environment [env].
 
@@ -217,7 +215,6 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
       let _ = rm_from_termEnv env fresh_var in
       (* Return the reduced term *)
       t2_whnf_substituted
-  | _ -> failwith "TODO"
 
 (** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the environment [env].
 
@@ -315,7 +312,7 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv, _) as env : env) : bool =
     @return A pair [(t, tp)] where [t] is the term with variables resolved, and [tp] is the inferred type of [t].
     @raise Failure If type inference fails, raises an exception with an appropriate error message.
 *)
-and infer_type ((_, termEnv, _) as env : env)
+and infer_type ((_, termEnv, adtEnv) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) : term * term =
   match t with
   | Type ->
@@ -336,15 +333,19 @@ and infer_type ((_, termEnv, _) as env : env)
         (StringLit s, StringType)
 	| BoolLit b ->
         (BoolLit b, BoolType)
-  | Var x -> (
+  | Var x -> 
       (* If the term is a variable, look up its type in the environment *)
-      match find_opt_in_env env x with
+      begin match find_opt_in_env env x with
       | Some (y, (Opaque tp | Transparent (_, tp))) ->
           (* Variable 'x' is found with identifier 'y' and type 'tp' *)
           (Var (x, y), tp)
-      | None ->
-          (* Variable not found in the environment *)
-          create_infer_type_error pos ("Variable " ^ x ^ " not found") term env)
+      | None -> 
+        begin match find_opt_in_adtEnv adtEnv x with
+        | Some (ADTTSig ts) -> (build_adt_sig ts env, Type)
+        | Some (ADTDSig (nm, ts)) -> _ 
+        | None -> create_infer_type_error pos ("Variable " ^ x ^ " not found") term env
+        end
+      end
   | Lambda (_, None, _) ->
       (* Lambda expression with omitted argument type *)
       (* Cannot infer the type of a lambda without knowing the type of its argument *)
@@ -495,7 +496,7 @@ and infer_type ((_, termEnv, _) as env : env)
       create_infer_type_error pos
         ("Trying to infer the type of a Hole " ^ x)
         term env
-  | ADTSig _ | ADTDecl _ | ADTConst _ ->
+  | ADTSig _ | ADTDecl _ ->
     infer_data_type env term
 
 
@@ -600,49 +601,26 @@ and check_type ((_, termEnv, _) as env : env)
   | LemmaDef (_, t) | LetDef (_, t) ->
       (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
       check_type env t tp
-  | ADTSig _ | ADTDecl _ | ADTConst _->
+  | ADTSig _ | ADTDecl _ ->
     check_data_type env term tp
 and infer_data_type ((_, _, adtEnv) as env : env)
 ({ pos; data = t } as term : ParserAst.uTerm) : term * term =
-
-(* 
-  Maybe (A : Type) (B : Pi x: A => x + x)
-  Maybe (Int) (Pi x : Int => )
-
-*)
     match t with
     | ADTSig (nm, ts) -> 
         let ts' = telescope_check_type env ts in
-        let _ = add_to_adtEnv adtEnv nm (ADTTCon ts') in
-        (ADTSig(nm, ts'), Type) (* TODO: ASK PPO *)
+        let _ = add_to_adtEnv adtEnv nm (ADTTSig ts') in
+        (Type, Type) (* TODO *)
     | ADTDecl (nm, ts, cs) -> 
         let ts' = telescope_check_type env ts in
-        let _ = add_to_adtEnv adtEnv nm (ADTTCon ts') in
-        let cs' = List.map (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } -> (
+        let _ = add_to_adtEnv adtEnv nm (ADTTSig ts') in
+        let _ = add_telescope_to_env env ts' in
+        let _ = List.map (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } -> (
             let tsCon' = telescope_check_type env tsCon in
-            let _ = add_to_adtEnv adtEnv nmCon (ADTDCon(nm, tsCon')) in
+            let _ = add_to_adtEnv adtEnv nmCon (ADTDSig(nm, tsCon')) in
             { cname = nmCon; telescope = tsCon' }
         )) cs in
-        (ADTDecl(nm, ts', cs'), Type) (* TODO: ASK PPO *)
-    | ADTConst  (nm, args) -> 
-      begin match find_opt_in_adtEnv adtEnv nm with
-        | Some (ADTTCon ts) -> 
-            let args' = check_args_against_telescope env args ts in
-            (TypeCon(nm, args'), Type)
-        | Some (ADTDCon (typeNm, tsDCon)) -> 
-            begin match find_opt_in_adtEnv adtEnv typeNm with
-            | Some (ADTTCon tsTCon) -> 
-              begin match tsTCon with
-                | Empty -> 
-                  let args' = check_args_against_telescope env args tsDCon in
-                  (DataCon (nm, args'), TypeCon (typeNm, []))
-                | Cons _ -> failwith "TODO ERROR"
-              end
-            | Some (ADTDCon _) -> failwith "TODO ERROR"
-            | None -> failwith "TODO ERROR"
-            end
-        | None -> failwith "TODO ERROR"
-      end 
+        let _ = rm_telescope_from_env env ts' in
+        (Type, Type) (* TODO *)
     | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
         create_infer_type_error pos "Expected ADT declaration" term env
 
@@ -658,27 +636,6 @@ and check_data_type ((_, _, adtEnv) as env : env)
               term tp env
       | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
           create_infer_type_error pos "Expected ADT declaration" term env
-      | ADTConst (nm, args) -> 
-        begin match find_opt_in_adtEnv adtEnv nm with
-          | Some (ADTTCon _) -> 
-            let t', tp' = infer_data_type env term in
-            if equiv tp tp' env then t'
-            else
-              create_check_type_error pos
-                ("Instead got:\n" ^ term_to_string tp')
-                term tp env
-          | Some (ADTDCon (typeNm, tsDCon)) -> 
-            begin match find_opt_in_adtEnv adtEnv typeNm with
-            | Some (ADTTCon tsTCon) -> 
-              let _ = add_telescope_to_env env tsTCon in
-              let args' = check_args_against_telescope env args tsDCon in
-              let _ = rm_telescope_from_env env tsTCon in
-              DataCon (nm, args')
-            | Some (ADTDCon _) -> failwith "TODO ERROR"
-            | None -> failwith "TODO ERROR"
-            end
-          | None -> failwith "TODO ERROR"
-        end
 
 (* Potentially use subst function on the telescope as we map through it*)
 and telescope_check_type (env : env) (telescope : ParserAst.telescope) : Ast.telescope =
@@ -686,19 +643,24 @@ and telescope_check_type (env : env) (telescope : ParserAst.telescope) : Ast.tel
   | Empty -> Empty
   | Cons (nm, tp, ts) -> 
       let tp', _ = infer_type env tp in
-      let _ = add_to_env env nm (Opaque tp') in
-      let res = Cons (nm, tp', telescope_check_type env ts) in
+      let x = add_to_env env nm (Opaque tp') in
+      let res = Cons (nm, x, tp', telescope_check_type env ts) in
       let _ = rm_from_env env nm in
       res
-and check_args_against_telescope (env : env) (args : ParserAst.uTerm list) (telescope : Ast.telescope) : term list =
-  match (args, telescope) with
-  | [], Empty -> []
-  | [], _ -> failwith ""
-  | _, Empty -> failwith ""
-  | arg :: args, Cons (nm, tp, ts) -> 
-      let arg' = check_type env arg tp in
-      let _ = add_to_env env nm (Transparent(arg', tp)) in
-      let res = arg' :: check_args_against_telescope env args ts in
-      let _ = rm_from_env env nm in
-      res
+and build_adt_sig (ts: telescope): term = 
+match ts with
+| Empty -> Type
+| Cons (nm, var, tp, ts) -> Product (nm, var, tp, (build_sig_body ts))
+and build_adt_data (tsType: telescope) (tsData: telescope) (acc: term list): term =
+  match tsType with
+  | Empty -> 
+    begin match tsData with
+    | Empty -> 
 
+    end
+  | Cons (nm, var, tp, ts) -> Product (nm, var, tp, (build_adt_data ts))
+
+  (* 
+  data Maybe A B = 
+  | Just : forall A. forall B. A -> Maybe A B
+  *)

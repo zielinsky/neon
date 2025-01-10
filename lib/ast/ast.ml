@@ -19,10 +19,6 @@ type term =
   | Hole of string * tp
   | Let of string * var * term * tp * term
   | TypeArrow of tp * tp
-  | TypeCon of typeCName * term list
-  | DataCon of dataCName * term list
-  | ADTSig of typeCName * telescope
-  | ADTDecl of typeCName * telescope * constructorDef list
   (* | Case of term * matchPat list *)
 
 and constructorDef = {
@@ -32,7 +28,7 @@ and constructorDef = {
 
 and telescope =
   | Empty
-  | Cons of string * tp * telescope
+  | Cons of string * var * tp * telescope
 
 and matchPat = 
   | Match of pattern * term
@@ -57,6 +53,4 @@ type whnf =
   | BoolLit of bool
   | Lambda of string * var * tp * term
   | Product of string * var * tp * tp
-  | TypeCon of typeCName * term list
-  | DataCon of dataCName * term list
-  | Case of term * matchPat list
+  (* | Case of term * matchPat list *)

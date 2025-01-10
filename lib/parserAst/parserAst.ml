@@ -27,7 +27,6 @@ and term_data =
   | LemmaDef of string * uTerm
   | Hole of string
   | TypeArrow of uTerm * uTerm
-  | ADTConst of adtCName * uTerm list
   | ADTSig of typeCName * telescope
   | ADTDecl of typeCName * telescope * constructorDef list
   (* | Case of uTerm * matchPat list *)

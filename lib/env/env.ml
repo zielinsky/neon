@@ -9,8 +9,8 @@ type env_var =
   | Transparent of term * tp 
 
 type adt_var = 
-| ADTTCon of telescope 
-| ADTDCon of typeCName * telescope
+| ADTTSig of telescope 
+| ADTDSig of typeCName * telescope
 
 type uTermEnv = var StringHashtbl.t
 type termEnv = env_var IntHashtbl.t
@@ -41,30 +41,30 @@ let add_to_adtEnv (adtEnv : adtEnv) (nm : string) (adt_var : adt_var) : unit =
   then failwith "ADT already exists in Env"
   else StringHashtbl.add adtEnv nm adt_var 
 
-let rec add_telescope_to_env  (env : env) (ts : telescope) : unit =
+let rec add_telescope_to_termEnv  (termEnv : termEnv) (ts : telescope) : unit =
   match ts with
     | Empty -> ()
-    | Cons (nm, tp, ts) -> 
-      let _ = add_to_env env nm (Opaque tp) in
-      add_telescope_to_env env ts
+    | Cons (_, var, tp, ts) -> 
+      let _ = add_to_termEnv termEnv var (Opaque tp) in
+      add_telescope_to_termEnv termEnv ts
 
 let rm_from_env ((uTermEnv, termEnv, _) : env) (nm : string) : unit =
   let y = StringHashtbl.find uTermEnv nm in
   let _ = StringHashtbl.remove uTermEnv nm in
   IntHashtbl.remove termEnv y
 
-let rec rm_telescope_from_env  (env : env) (ts : telescope) : unit =
-match ts with
-  | Empty -> ()
-  | Cons (nm, _, ts) -> 
-    let _ = rm_from_env env nm in
-    rm_telescope_from_env env ts
-
 let rm_from_termEnv (termEnv : termEnv) (var : var) : unit =
   IntHashtbl.remove termEnv var
+  
+let rec rm_telescope_from_termEnv  (termEnv : termEnv) (ts : telescope) : unit =
+match ts with
+  | Empty -> ()
+  | Cons (_, var, _, ts) -> 
+    let _ = rm_from_termEnv termEnv var in
+    rm_telescope_from_termEnv termEnv ts
 
-  let rm_from_adtEnv (adtEnv : adtEnv) (nm : string) : unit =
-    StringHashtbl.remove adtEnv nm
+let rm_from_adtEnv (adtEnv : adtEnv) (nm : string) : unit =
+  StringHashtbl.remove adtEnv nm
 
 let find_opt_in_env ((uTermEnv, termEnv, _) : env) (nm : string) :
     (var * env_var) option =
