@@ -659,7 +659,9 @@ match ts with
 | Empty -> Type
 | Cons (nm, tp, ts) -> 
   let fresh_var = add_to_env env nm (Opaque tp) in
-  Product (nm, fresh_var, tp, (build_adt_sig env ts))
+  let res: term = Product (nm, fresh_var, tp, (build_adt_sig env ts)) in
+  let _ = rm_from_env env nm in
+  res
 and build_adt_data (env: env) (tsType: telescope) (tsData: telescope) (var_list: (string * var) list) : term =
   match tsType with
   | Empty -> 
