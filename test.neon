@@ -1,0 +1,5 @@
+data List (A : Type) =
+| Nil
+| Cons (x : A) (xs : List(A))
+
+let id (A: Type) (xs: List(A)) = xs

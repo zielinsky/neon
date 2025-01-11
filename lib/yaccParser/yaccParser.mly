@@ -7,6 +7,8 @@
 %token BR_OPN BR_CLS
 %token ASTERISK COMMA COLON IN EQUAL
 %token EOF
+%token ADTDEF
+%token BAR
 
 %type<ParserAst.program> program
 %start program
@@ -77,6 +79,25 @@ application_args
 | expression COMMA application_args { $1 :: $3 } 
 ;
 
+telescopes
+:                                               { Empty }
+| BR_OPN VAR COLON expression BR_CLS telescopes { Cons ($2, $4, $6) }
+;
+
+constructor_def
+: VAR telescopes { {cname = $1; telescope = $2;} }
+;
+
+constructor_def_list
+: BAR constructor_def constructor_def_list { $2 :: $3 }
+| BAR constructor_def { [$2] }
+;
+
+adt_def
+: ADTDEF VAR telescopes EQUAL constructor_def_list{ make (ADTDecl ($2, $3, $5)) }
+| ADTDEF VAR telescopes { make (ADTSig ($2, $3)) }
+;
+
 expression
 : TYPE { make (Type) }
 | KIND { make (Kind) }
@@ -125,6 +146,7 @@ lemma_args
 expression_definition
 : LET let_def { $2 }
 | LEMMA lemma_def { $2 }
+| adt_def        { $1 }
 ;
 
 /* ========================================================================= */
