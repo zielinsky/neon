@@ -621,11 +621,11 @@ and infer_data_type ((_, _, adtEnv) as env : env)
         let con_list = List.map (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } -> (
             let tsCon' = telescope_check_type env tsCon in
             let _ = add_to_adtEnv adtEnv nmCon (AdtDSig(nm, tsCon')) in
-
             { cname = nmCon; telescope = tsCon' }
         )) cs in
         let _ = rm_telescope_from_env env ts' in
-        let _ = List.map (fun data_con -> build_adt_data env ts' data_con.telescope ((nm, fresh_var) :: [])) con_list in
+        let cs = List.map (fun data_con -> build_adt_data env ts' data_con.telescope ((nm, fresh_var) :: [])) con_list in
+        let _ = List.map (fun (nmCon, tpCon) -> add_to_env env nmCon (Opaque tpCon)) (List.combine (List.map (fun data_con -> data_con.cname) con_list) cs) in
 
         ((Var (nm, fresh_var)), adt_sig_tp) (* TODO *)
     | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 

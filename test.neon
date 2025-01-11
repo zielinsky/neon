@@ -2,4 +2,10 @@ data List (A : Type) =
 | Nil
 | Cons (x : A) (xs : List(A))
 
+data ListSig (A : Type)
+
 let id (A: Type) (xs: List(A)) = xs
+
+let x = id(Int, Nil(Int))
+
+let y = Cons(Int, 5, Nil(Int))

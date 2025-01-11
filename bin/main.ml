@@ -19,7 +19,7 @@ let speclist = [
 ]
 
 (* Usage message that will be displayed if the user does not provide valid arguments *)
-let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " [-verbose] <file>"
+let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " [params] <file>"
 
 let process_parsed_def env x =
   if !verbose_mode then begin
