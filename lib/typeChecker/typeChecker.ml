@@ -312,7 +312,7 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv, _) as env : env) : bool =
     @return A pair [(t, tp)] where [t] is the term with variables resolved, and [tp] is the inferred type of [t].
     @raise Failure If type inference fails, raises an exception with an appropriate error message.
 *)
-and infer_type ((_, termEnv, adtEnv) as env : env)
+and infer_type ((_, termEnv, _) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) : term * term =
   match t with
   | Type ->
@@ -339,12 +339,12 @@ and infer_type ((_, termEnv, adtEnv) as env : env)
       | Some (y, (Opaque tp | Transparent (_, tp))) ->
           (* Variable 'x' is found with identifier 'y' and type 'tp' *)
           (Var (x, y), tp)
-      | None -> 
-        begin match find_opt_in_adtEnv adtEnv x with
-        | Some (ADTTSig ts) -> (build_adt_sig ts env, Type)
-        | Some (ADTDSig (nm, ts)) -> _ 
+      | None -> create_infer_type_error pos ("Variable " ^ x ^ " not found") term env
+        (* begin match find_opt_in_adtEnv adtEnv x with
+        | Some (AdtTSig ts) -> ((Var x ), build_adt_sig env ts)
+        | Some (AdtDSig (nm, ts)) -> failwith "TODO"
         | None -> create_infer_type_error pos ("Variable " ^ x ^ " not found") term env
-        end
+        end *)
       end
   | Lambda (_, None, _) ->
       (* Lambda expression with omitted argument type *)
@@ -608,23 +608,30 @@ and infer_data_type ((_, _, adtEnv) as env : env)
     match t with
     | ADTSig (nm, ts) -> 
         let ts' = telescope_check_type env ts in
-        let _ = add_to_adtEnv adtEnv nm (ADTTSig ts') in
-        (Type, Type) (* TODO *)
+        let _ = add_to_adtEnv adtEnv nm (AdtTSig ts') in
+        let adt_sig_tp = build_adt_sig env ts' in
+        let fresh_var = add_to_env env nm (Opaque adt_sig_tp) in
+        ((Var (nm, fresh_var)), adt_sig_tp)
     | ADTDecl (nm, ts, cs) -> 
         let ts' = telescope_check_type env ts in
-        let _ = add_to_adtEnv adtEnv nm (ADTTSig ts') in
+        let _ = add_to_adtEnv adtEnv nm (AdtTSig ts') in
+        let adt_sig_tp = build_adt_sig env ts' in
+        let fresh_var = add_to_env env nm (Opaque adt_sig_tp) in
         let _ = add_telescope_to_env env ts' in
-        let _ = List.map (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } -> (
+        let con_list = List.map (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } -> (
             let tsCon' = telescope_check_type env tsCon in
-            let _ = add_to_adtEnv adtEnv nmCon (ADTDSig(nm, tsCon')) in
+            let _ = add_to_adtEnv adtEnv nmCon (AdtDSig(nm, tsCon')) in
+
             { cname = nmCon; telescope = tsCon' }
         )) cs in
         let _ = rm_telescope_from_env env ts' in
-        (Type, Type) (* TODO *)
+        let _ = List.map (fun data_con -> build_adt_data env ts' data_con.telescope ((nm, fresh_var) :: [])) con_list in
+
+        ((Var (nm, fresh_var)), adt_sig_tp) (* TODO *)
     | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
         create_infer_type_error pos "Expected ADT declaration" term env
 
-and check_data_type ((_, _, adtEnv) as env : env)
+and check_data_type ((_, _, _) as env : env)
   ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
       match t with
       | ADTDecl _ | ADTSig _  -> 
@@ -643,24 +650,52 @@ and telescope_check_type (env : env) (telescope : ParserAst.telescope) : Ast.tel
   | Empty -> Empty
   | Cons (nm, tp, ts) -> 
       let tp', _ = infer_type env tp in
-      let x = add_to_env env nm (Opaque tp') in
-      let res = Cons (nm, x, tp', telescope_check_type env ts) in
+      let _ = add_to_env env nm (Opaque tp') in
+      let res = Cons (nm, tp', telescope_check_type env ts) in
       let _ = rm_from_env env nm in
       res
-and build_adt_sig (ts: telescope): term = 
+and build_adt_sig (env: env) (ts: telescope) : term = 
 match ts with
 | Empty -> Type
-| Cons (nm, var, tp, ts) -> Product (nm, var, tp, (build_sig_body ts))
-and build_adt_data (tsType: telescope) (tsData: telescope) (acc: term list): term =
+| Cons (nm, tp, ts) -> 
+  let fresh_var = add_to_env env nm (Opaque tp) in
+  Product (nm, fresh_var, tp, (build_adt_sig env ts))
+and build_adt_data (env: env) (tsType: telescope) (tsData: telescope) (var_list: (string * var) list) : term =
   match tsType with
   | Empty -> 
     begin match tsData with
     | Empty -> 
-
+      let (nm, var) = (List.hd var_list) in
+      List.fold_left (fun acc (nm, var) -> App(Var (nm, var), acc)) (Var(nm, var)) (List.tl var_list)
+    | Cons (nm, tp ,ts) -> 
+      let fresh_var = add_to_env env nm (Opaque tp) in
+      let res = TypeArrow (Var(nm, fresh_var), build_adt_data env tsType ts var_list) in
+      let _ = rm_from_env env nm in
+      res 
     end
-  | Cons (nm, var, tp, ts) -> Product (nm, var, tp, (build_adt_data ts))
+  | Cons (nm, tp, ts) ->
+    let fresh_var = add_to_env env nm (Opaque tp) in
+    let res: term = Product (nm, fresh_var, tp, (build_adt_data env ts tsData ((nm, fresh_var) :: var_list))) in
+    let _ = rm_from_env env nm in
+    res 
 
   (* 
-  data Maybe A B = 
-  | Just : forall A. forall B. A -> Maybe A B
+  data Maybe A = 
+  | Just : forall A. A -> Maybe A
+  forall A. A -> Maybe A
+
+  ADT Sig Type (Maybe) = Pi (A: Type) => Type
+  ADT Con Type (Just) = Pi (A: Type) => (x: A) -> App(Maybe, A)
+  ADT Con Type (Just) = Pi (A: Type) => (x: A) -> Type
+  Maybe A
+  Maybe -> forall A. 
+
+
+  data Maybe A = ...
+
+
+  (Just Int 5) -> 
+
+  Maybe A B = App(App(Maybe, A), B)
+  fun foo ... = Just Int 5
   *)

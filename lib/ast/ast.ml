@@ -28,7 +28,7 @@ and constructorDef = {
 
 and telescope =
   | Empty
-  | Cons of string * var * tp * telescope
+  | Cons of string * tp * telescope
 
 and matchPat = 
   | Match of pattern * term

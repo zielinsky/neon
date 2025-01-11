@@ -78,6 +78,7 @@ let rec pp_uterm ({ data = e; pos } : uTerm) : SmartPrint.t =
   | TypeArrow (tp1, tp2) -> pp_uterm tp1 ^^ !^"->" ^^ pp_uterm tp2
   | TermWithTypeAnno (t1, t2) ->
       nest (parens (pp_uterm t1 ^^ !^":" ^^ pp_uterm t2))
+  | _ -> failwith "TODO Not implemented - PrettyPrinter"
 
 let rec uterm_to_string (t : uTerm) : string = to_string 40 2 (pp_uterm t)
 
