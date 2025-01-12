@@ -623,21 +623,28 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
         let cs = List.map (fun data_con -> build_adt_data env ts' data_con.telescope ((nm, fresh_var) :: [])) con_list in
         let _ = List.map (fun (nmCon, tpCon) -> add_to_env env nmCon (Opaque tpCon)) (List.combine (List.map (fun data_con -> data_con.cname) con_list) cs) in
         ((Var (nm, fresh_var)), adt_sig_tp) (* TODO *)
-    | Case (t, ps) ->
-      let t', tp' = infer_type env t in
-      begin match (to_whnf t' termEnv) with 
-      | Neu (nm, _, args) -> 
-        let adt = find_opt_in_adtEnv adtEnv nm in
-        begin match adt with 
-        | Some (AdtDSig (adtTNm, tsType)) -> _
+        | Case (t, ps) ->
+          let t', tp' = infer_type env t in
+          begin match (to_whnf t' termEnv) with 
+          | Neu (nm, _, args) -> 
+            let args = List.rev args in
+            begin match find_opt_in_adtEnv adtEnv nm with 
+            | Some (AdtDSig (adtTNm, tsD)) -> 
+              begin match find_opt_in_adtEnv adtEnv adtTNm with
+              | Some (AdtTSig tsT) -> 
+        let ts = merge_telescopes tsT tsD in
+        _
+            (* Cons (Int, 5, Nil(Int)) *)
+          | _ -> create_infer_type_error pos "Expected ADT declaration" term env
+          end
         | _ -> create_infer_type_error pos "Expected ADT declaration" term env
         end
       | _ -> create_infer_type_error pos "Expected ADT declaration" term env
-      end
+    end
     | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
-        create_infer_type_error pos "Expected ADT declaration" term env
-
-and check_data_type ((_, _, _) as env : env)
+      create_infer_type_error pos "Expected ADT declaration" term env
+      
+      and check_data_type ((_, _, _) as env : env)
   ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
       match t with
       | ADTDecl _ | ADTSig _  -> 
@@ -659,6 +666,10 @@ and telescope_check_type_and_extend_env (env : env) (telescope : ParserAst.teles
       let fresh_var = add_to_env env nm (Opaque tp') in
       let res = Cons (nm, fresh_var, tp', telescope_check_type_and_extend_env env ts) in
       res
+and merge_telescopes (ts1: telescope) (ts2: telescope) : telescope = 
+  match ts1 with
+  | Empty -> ts2
+  | Cons (nm, var, tp, ts) -> Cons (nm, var, tp, merge_telescopes ts ts2)
 and build_adt_sig ((_, _, _) as env : env) (ts: telescope) : term = 
 match ts with
 | Empty -> Type

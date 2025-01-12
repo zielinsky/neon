@@ -6,13 +6,15 @@ type typeCName = string
 type dataCName = string
 
 type uTerm = term_data node
+
 (* 
-let .. (xs: List(A)) = 
-match (Cons(Int, 5, Nil(Int))) with
-| Nil(_) ->  
-| Cons(_, _, x, xs) ->
-| _ -> 
+let id (xs: List(A)) = 
+  match xs with
+  | Nil(_) ->  xs
+  | Cons(_, _, x, xs) ->  xs
+  | _ -> 
 *)
+
 and term_data =
   | Type
   | Kind
