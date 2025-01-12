@@ -18,11 +18,11 @@ let rec pp_term (e : term) : SmartPrint.t =
   | BoolLit false -> !^"false"
   | Type -> !^"type"
   | Kind -> !^"kind"
-  | Var (nm, var) -> !^nm
-  | Lambda (nm, _, tp_x, body) ->
-      nest (!^"λ" ^-^ !^nm ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
-  | Product (nm, _, tp_x, body) ->
-      nest (!^"Π" ^-^ !^nm ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
+  | Var (nm, var) -> !^"(" ^^ !^nm ^-^ !^":" ^^ !^(string_of_int var) ^^ !^")" 
+  | Lambda (nm, var, tp_x, body) ->
+      nest (!^"λ" ^-^ !^"(" ^^ !^nm ^-^ !^":" ^^ !^(string_of_int var) ^^ !^")"  ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
+  | Product (nm, var, tp_x, body) ->
+      nest (!^"Π" ^-^ !^"(" ^^ !^nm ^-^ !^":" ^^ !^(string_of_int var) ^^ !^")"  ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
   | App (t1, t2) -> nest (parens_if_app t1 ^^ parens_if_app t2)
   | Let (nm, _, t1, tp_t1, t2) ->
       nest
@@ -119,5 +119,5 @@ let print_def ({ pos; data } : uTerm) : unit =
       ( ( { pos = _; data = LetDef (nm, _) }
         | { pos = _; data = LemmaDef (nm, _) } ),
         _ ) ->
-      print_endline ("\x1b[1m" ^ nm ^ "\x1b[0m")
+      print_endline ("\x1b[1m" ^ nm ^ "\x1b[0m")  
   | _ -> failwith "Expected definition at top level"

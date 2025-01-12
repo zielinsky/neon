@@ -45,7 +45,7 @@ let add_to_adtEnv (adtEnv : adtEnv) (nm : string) (adt_var : adt_var) : unit =
 let rec add_telescope_to_env (env : env) (ts : telescope) : unit =
 match ts with
   | Empty -> ()
-  | Cons (nm, tp, ts) -> 
+  | Cons (nm, _, tp, ts) -> 
     let _ = add_to_env env nm (Opaque tp) in
     add_telescope_to_env env ts
 
@@ -60,7 +60,7 @@ let rm_from_termEnv (termEnv : termEnv) (var : var) : unit =
 let rec rm_telescope_from_env (env : env) (ts : telescope) : unit =
 match ts with
   | Empty -> ()
-  | Cons (nm, _, ts) -> 
+  | Cons (nm, _, _, ts) -> 
     let _ = rm_from_env env nm in
     rm_telescope_from_env env ts
 
