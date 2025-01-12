@@ -9,7 +9,7 @@ type env_var =
   | Transparent of term * tp 
 
 type adt_var = 
-| AdtTSig of telescope 
+| AdtTSig of telescope * dataCName list
 | AdtDSig of typeCName * telescope
 
 type uTermEnv = var StringHashtbl.t

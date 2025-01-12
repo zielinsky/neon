@@ -48,8 +48,7 @@ and telescope =
   | Empty
   | Cons of string * uTerm * telescope
 
-and matchPat = 
-  | Match of pattern * uTerm
+and matchPat = pattern * uTerm
 
 and pattern = 
   (* | PatVar of string * uTerm *)
