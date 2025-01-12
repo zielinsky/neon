@@ -491,7 +491,7 @@ and infer_type ((_, termEnv, _) as env : env)
       create_infer_type_error pos
         ("Trying to infer the type of a Hole " ^ x)
         term env
-  | ADTSig _ | ADTDecl _ ->
+  | ADTSig _ | ADTDecl _ | Case _ ->
     infer_data_type env term
 
 
@@ -596,9 +596,9 @@ and check_type ((_, termEnv, _) as env : env)
   | LemmaDef (_, t) | LetDef (_, t) ->
       (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
       check_type env t tp
-  | ADTSig _ | ADTDecl _ ->
+  | ADTSig _ | ADTDecl _ | Case _->
     check_data_type env term tp
-and infer_data_type ((_, _, adtEnv) as env : env)
+and infer_data_type ((_, termEnv, adtEnv) as env : env)
 ({ pos; data = t } as term : ParserAst.uTerm) : term * term =
     match t with
     | ADTSig (nm, ts) -> 
@@ -623,6 +623,17 @@ and infer_data_type ((_, _, adtEnv) as env : env)
         let cs = List.map (fun data_con -> build_adt_data env ts' data_con.telescope ((nm, fresh_var) :: [])) con_list in
         let _ = List.map (fun (nmCon, tpCon) -> add_to_env env nmCon (Opaque tpCon)) (List.combine (List.map (fun data_con -> data_con.cname) con_list) cs) in
         ((Var (nm, fresh_var)), adt_sig_tp) (* TODO *)
+    | Case (t, ps) ->
+      let t', tp' = infer_type env t in
+      begin match (to_whnf t' termEnv) with 
+      | Neu (nm, _, args) -> 
+        let adt = find_opt_in_adtEnv adtEnv nm in
+        begin match adt with 
+        | Some (AdtDSig (adtTNm, tsType)) -> _
+        | _ -> create_infer_type_error pos "Expected ADT declaration" term env
+        end
+      | _ -> create_infer_type_error pos "Expected ADT declaration" term env
+      end
     | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
         create_infer_type_error pos "Expected ADT declaration" term env
 

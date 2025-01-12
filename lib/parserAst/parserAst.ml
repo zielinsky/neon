@@ -6,7 +6,13 @@ type typeCName = string
 type dataCName = string
 
 type uTerm = term_data node
-
+(* 
+let .. (xs: List(A)) = 
+match (Cons(Int, 5, Nil(Int))) with
+| Nil(_) ->  
+| Cons(_, _, x, xs) ->
+| _ -> 
+*)
 and term_data =
   | Type
   | Kind
@@ -29,9 +35,10 @@ and term_data =
   | TypeArrow of uTerm * uTerm
   | ADTSig of typeCName * telescope
   | ADTDecl of typeCName * telescope * constructorDef list
-  (* | Case of uTerm * matchPat list *)
+  | Case of uTerm * matchPat list
+
 and constructorDef = {
-  cname : string;
+  cname : dataCName;
   telescope : telescope;
 }
 
@@ -43,7 +50,8 @@ and matchPat =
   | Match of pattern * uTerm
 
 and pattern = 
-  | PatVar of string * uTerm
-  | PatCon of dataCName * pattern list
+  (* | PatVar of string * uTerm *)
+  | PatWild
+  | PatCon of dataCName * string list
 
 type program = uTerm list

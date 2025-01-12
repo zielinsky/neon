@@ -9,6 +9,7 @@
 %token EOF
 %token ADTDEF
 %token BAR
+%token CASE OF WILDCARD
 
 %type<ParserAst.program> program
 %start program
