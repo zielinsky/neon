@@ -123,6 +123,7 @@ let rec substitute (t : term) (sub : sub_map) : term =
           substitute tp_t sub,
           substitute body (VarMap.add x (Var (nm, y)) sub) )
   | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ -> t
+  | Case _ -> failwith "TODO Substitute for Case"
 
 (** [substitute_whnf t sub] performs substitution on a term in weak head normal form (WHNF) [t] using the substitution map [sub].
 
@@ -234,7 +235,8 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
       let _ = rm_from_termEnv env fresh_var in
       (* Return the reduced term *)
       t2_whnf_substituted
-
+  | Case _ -> failwith"TODO to_whnf Case"
+  
 (** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the environment [env].
 
     @param t1 The first term.
@@ -652,9 +654,9 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
         | Some (AdtTSig (tsT, dataCNames)) -> 
           (* TODO ASK PPO If we need to check types here *)
           if (telescope_length tsT) = (List.length args)
-            then begin
-              failwith "TODO"
-            end
+            then 
+              let (patterns, result_type) = check_patterns env ps tsT  dataCNames in
+              (Case (scrut', patterns), result_type)
             else create_infer_type_error pos "TODO ERROR" term env
         | Some (AdtDSig _) -> create_infer_type_error pos "TODO ERROR" term env
         | None -> create_infer_type_error pos "TODO ERROR" term env
@@ -708,8 +710,8 @@ and build_adt_data (env: env) (tsType: telescope) (tsData: telescope) (var_list:
     let res: term = Product (nm, var, tp, (build_adt_data env ts tsData ((nm, var) :: var_list))) in
     res 
 
-and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (dataCNames: dataCName list) : term =
-  let infer_pattern (env: env) (ts: telescope) (args: string list) ({ pos; _ } as term : ParserAst.uTerm) : Ast.term =
+and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (dataCNames: dataCName list) : Ast.matchPat list * tp =
+  let infer_pattern (env: env) (ts: telescope) (args: string list) ({ pos; _ } as term : ParserAst.uTerm) : Ast.term * Ast.tp =
     let rec add_args_to_env (env: env) (ts: telescope) (args: string list) : unit =
       begin match ts with
       | Empty -> ()
@@ -723,21 +725,93 @@ and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (da
     if (telescope_length ts) = (List.length args)
     then
       let _ = add_args_to_env env ts args in
-      let (_, tp') = infer_type env term in
+      let (term, tp') = infer_type env term in
       let _ = List.iter (rm_from_env env) args in
-      tp'
+      term, tp'
     else create_infer_type_error pos "TODO ERROR" term env 
   in 
-  let rec helper (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (dataCNames: dataCName list) : Ast.matchPat list =
+  let rec infer_all_patterns ((_, _, adtEnv) as env : env) (ps: ParserAst.matchPat list) (tsT: telescope) (dataCNames: dataCName list) : (Ast.matchPat * tp) list =
     begin match ps with
-    | (pattern, uTerm) :: ps ->  
+    | (pattern, uTerm) :: (_ :: _) as ps ->  
       begin match pattern with
       | PatCon (dataCName, args) ->
+        if List.mem dataCName dataCNames
+          then 
+            begin match find_opt_in_adtEnv adtEnv dataCName with
+            | Some (AdtDSig (_, tsD)) -> 
+              let mergedTs = merge_telescopes tsT tsD in
+              let (term, tp') = infer_pattern env mergedTs args uTerm in
+              ((Ast.PatCon (dataCName, args), term), tp') :: (infer_all_patterns env ps tsT (List.filter (fun x -> (x != dataCName)) dataCNames))
+            | Some (AdtTSig _) -> failwith "TODO ERROR"
+            | None -> failwith "TODO ERRO"
+            end
+            
+          else failwith "TODO ERROR"
       | PatWild -> failwith "TODO"
       end
-    | [] -> failwith "TODO"
+    | (pattern, uTerm) :: [] -> 
+      begin match pattern with
+      | PatCon (dataCName, args) ->
+        if List.mem dataCName dataCNames
+          then 
+            begin match find_opt_in_adtEnv adtEnv dataCName with
+            | Some (AdtDSig (_, tsD)) -> 
+              let mergedTs = merge_telescopes tsT tsD in
+              let (term, tp') = infer_pattern env mergedTs args uTerm in
+              let dataCNames = List.filter (fun x -> (x != dataCName)) dataCNames in
+              if List.is_empty dataCNames
+                then ((Ast.PatCon (dataCName, args), term), tp') :: []
+                else failwith "TODO ERROR"
+            | Some (AdtTSig _) -> failwith "TODO ERROR"
+            | None -> failwith "TODO ERRO"
+            end
+          else failwith "TODO ERROR"
+      | PatWild -> 
+        let (term, tp') = infer_pattern env Empty [] uTerm in
+        ((Ast.PatWild, term), tp') :: []
+      end
+    | [] -> failwith "TODO ERROR"
     end
   in
+  let check_constructor_names (ps: ParserAst.matchPat list) (dataCNames: dataCName list) : bool =
+    let rec collect_constructor_names (ps: ParserAst.matchPat list) : string list * bool =
+      match ps with
+      | (PatCon (dataCName, _), _) :: ps -> 
+        let (cs, contaisWild) = collect_constructor_names ps in
+        (dataCName :: cs, contaisWild)
+      | (PatWild, _) :: ps ->
+        let (cs, contaisWild) = collect_constructor_names ps in
+        if contaisWild
+          then failwith "TODO ERROR"
+          else (cs, true)
+      | [] -> ([], false)
+    in
+    let (cs, containsWild) = collect_constructor_names ps in
+    if 
+      containsWild 
+      && ((List.compare_lengths cs dataCNames) < 0) 
+      && (List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs)
+      then true
+    else if not containsWild
+      && ((List.compare_lengths cs dataCNames) == 0) 
+      && (List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs)
+      then true
+    else false
+  in
+
+  if check_constructor_names ps dataCNames
+    then
+    let (patterns, types) = List.split (infer_all_patterns env ps tsT dataCNames) in
+    let starting_type = List.hd types in
+    (* Check that all of the patterns have the same type *)
+    let (_, isSameType) = List.fold_left 
+      (fun (prev_tp, cond) tp -> (tp, (cond && equiv prev_tp tp env))) (starting_type, true) (List.tl types) 
+    in
+    if isSameType
+      then patterns, starting_type
+      else failwith "TODO ERROR"
+    else failwith "TODO ERROR"
+
 
 
   (* begin match find_opt_in_adtEnv env dConName with

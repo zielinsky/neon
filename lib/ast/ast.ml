@@ -19,7 +19,7 @@ type term =
   | Hole of string * tp
   | Let of string * var * term * tp * term
   | TypeArrow of tp * tp
-  (* | Case of term * matchPat list *) 
+  | Case of term * matchPat list
 
 and constructorDef = {
   cname : string;
@@ -30,12 +30,12 @@ and telescope =
   | Empty
   | Cons of string * var * tp * telescope
 
-and matchPat = 
-  | Match of pattern * term
+and matchPat = pattern * term
 
 and pattern = 
-  | PatVar of string * var * term
-  | PatCon of dataCName * pattern list
+  (* | PatVar of string * var * term *)
+  | PatWild
+  | PatCon of dataCName * string list
 
 and tp = term
 
