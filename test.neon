@@ -1,11 +1,5 @@
-data List (A : Type) =
-| Nil
-| Cons (x : A) (xs : List(A))
+data Option (A: Type) = | Some (x: A) | None
 
-data ListSig (A : Type)
+let y = Some (Int, 5)
 
-let id (A: Type) (xs: List(A)) = xs
-
-let x = id(Int, Nil(Int))
-
-let y = Cons(Int, 5, Nil(Int))
+let sd = match y with | Some (A, x) -> A | None (A) -> A

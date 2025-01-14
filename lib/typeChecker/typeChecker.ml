@@ -133,7 +133,7 @@ let rec substitute (t : term) (sub : sub_map) : term =
 *)
 let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
   match t with
-  | Type | Kind | IntType  | StringType | BoolType | IntLit _  | StringLit _ | BoolLit _ -> t
+  | Type | Kind | IntType  | StringType | BoolType | IntLit _  | StringLit _ | BoolLit _ | Case _ -> t
   | Neu (nm, var, term_list) ->
       Neu (nm, var, List.map (fun t -> substitute t sub) term_list)
   | Neu_with_Hole (nm, tp, term_list) ->
@@ -657,11 +657,11 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
             then 
               let (patterns, result_type) = check_patterns env ps tsT  dataCNames in
               (Case (scrut', patterns), result_type)
-            else create_infer_type_error pos "TODO ERROR" term env
-        | Some (AdtDSig _) -> create_infer_type_error pos "TODO ERROR" term env
-        | None -> create_infer_type_error pos "TODO ERROR" term env
+            else create_infer_type_error pos "TODO ERROR 1" term env
+        | Some (AdtDSig _) -> create_infer_type_error pos "TODO ERROR 2" term env
+        | None -> create_infer_type_error pos "TODO ERROR 3" term env
         end
-      | _ -> create_infer_type_error pos "TODO ERROR" term env
+      | _ -> create_infer_type_error pos "TODO ERROR 4" term env
       end
     | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
       create_infer_type_error pos "Expected ADT declaration" term env
@@ -728,11 +728,11 @@ and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (da
       let (term, tp') = infer_type env term in
       let _ = List.iter (rm_from_env env) args in
       term, tp'
-    else create_infer_type_error pos "TODO ERROR" term env 
+    else create_infer_type_error pos "TODO ERROR 5" term env 
   in 
   let rec infer_all_patterns ((_, _, adtEnv) as env : env) (ps: ParserAst.matchPat list) (tsT: telescope) (dataCNames: dataCName list) : (Ast.matchPat * tp) list =
     begin match ps with
-    | (pattern, uTerm) :: (_ :: _) as ps ->  
+    | (pattern, uTerm) :: ((_ :: _) as ps) ->  
       begin match pattern with
       | PatCon (dataCName, args) ->
         if List.mem dataCName dataCNames
@@ -741,13 +741,13 @@ and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (da
             | Some (AdtDSig (_, tsD)) -> 
               let mergedTs = merge_telescopes tsT tsD in
               let (term, tp') = infer_pattern env mergedTs args uTerm in
-              ((Ast.PatCon (dataCName, args), term), tp') :: (infer_all_patterns env ps tsT (List.filter (fun x -> (x != dataCName)) dataCNames))
-            | Some (AdtTSig _) -> failwith "TODO ERROR"
-            | None -> failwith "TODO ERRO"
+              ((Ast.PatCon (dataCName, args), term), tp') :: (infer_all_patterns env ps tsT (List.filter (fun x -> not (x = dataCName)) dataCNames))
+            | Some (AdtTSig _) -> failwith "TODO ERROR 6"
+            | None -> failwith "TODO ERROR 7"
             end
             
-          else failwith "TODO ERROR"
-      | PatWild -> failwith "TODO"
+          else failwith "TODO ERROR 8"
+      | PatWild -> failwith "TODO 11"
       end
     | (pattern, uTerm) :: [] -> 
       begin match pattern with
@@ -758,19 +758,19 @@ and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (da
             | Some (AdtDSig (_, tsD)) -> 
               let mergedTs = merge_telescopes tsT tsD in
               let (term, tp') = infer_pattern env mergedTs args uTerm in
-              let dataCNames = List.filter (fun x -> (x != dataCName)) dataCNames in
+              let dataCNames = List.filter (fun x -> not (x = dataCName)) dataCNames in
               if List.is_empty dataCNames
                 then ((Ast.PatCon (dataCName, args), term), tp') :: []
-                else failwith "TODO ERROR"
-            | Some (AdtTSig _) -> failwith "TODO ERROR"
-            | None -> failwith "TODO ERRO"
+                else failwith "TODO ERROR 9"
+            | Some (AdtTSig _) -> failwith "TODO ERROR 10"
+            | None -> failwith "TODO ERROR 12"
             end
-          else failwith "TODO ERROR"
+          else failwith "TODO ERROR 13"
       | PatWild -> 
         let (term, tp') = infer_pattern env Empty [] uTerm in
         ((Ast.PatWild, term), tp') :: []
       end
-    | [] -> failwith "TODO ERROR"
+    | [] -> failwith "TODO ERROR 14"
     end
   in
   let check_constructor_names (ps: ParserAst.matchPat list) (dataCNames: dataCName list) : bool =
@@ -782,7 +782,7 @@ and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (da
       | (PatWild, _) :: ps ->
         let (cs, contaisWild) = collect_constructor_names ps in
         if contaisWild
-          then failwith "TODO ERROR"
+          then failwith "TODO ERROR 15"
           else (cs, true)
       | [] -> ([], false)
     in
@@ -809,8 +809,8 @@ and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (da
     in
     if isSameType
       then patterns, starting_type
-      else failwith "TODO ERROR"
-    else failwith "TODO ERROR"
+      else failwith "TODO ERROR 16"
+    else failwith "TODO ERROR 17"
 
 
 

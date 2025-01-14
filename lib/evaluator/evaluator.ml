@@ -75,6 +75,7 @@ let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
     rm_from_termEnv env fresh_var;
     (* Return the normalized product *)
     Product (nm, fresh_var, nf_tp, nf_body)
+  | Case (_, _) -> failwith "TODO EVAL"
 and eval (t : term) (env : termEnv) : term =
   let w = to_whnf t env in
   whnf_to_nf w env

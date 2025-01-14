@@ -2,6 +2,21 @@ open Ast
 open ParserAst
 open SmartPrint
 
+let separate_map sep f l =
+  let rec aux acc = function
+    | [] -> acc
+    | [x] -> acc ^^ f x
+    | x :: xs -> aux (acc ^^ f x ^^ sep) xs
+  in
+  aux !^"" l
+
+let rec pp_pattern (p : Ast.pattern) : SmartPrint.t =
+  match p with
+  | PatWild -> !^"_"
+  | PatCon (nm, vars) -> !^nm ^^ !^"(" ^^ separate_map (!^",") (fun var -> !^var) vars ^^ !^")"
+
+let pattern_to_string (p : Ast.pattern) : string = to_string 40 2 (pp_pattern p)
+
 let rec pp_term (e : term) : SmartPrint.t =
   let parens_if_app (t : term) =
     match t with
@@ -31,7 +46,14 @@ let rec pp_term (e : term) : SmartPrint.t =
         ^^ nest (pp_term t2))
   | Hole (nm, tp) -> !^nm ^-^ !^":" ^^ pp_term tp
   | TypeArrow (tp1, tp2) -> pp_term tp1 ^^ !^"->" ^^ pp_term tp2
-
+  | Case (t, cases) ->
+      nest
+        (!^"match" ^^ pp_term t ^^ !^"with" ^^ newline
+       ^^ nest
+            (List.fold_left
+               (fun acc ((pattern : Ast.pattern), body) ->
+                 acc ^-^ !^"| " ^-^ (pp_pattern pattern) ^-^ !^"=>" ^^ pp_term body ^-^ newline)
+                 !^"" cases))
 let rec term_to_string (t : term) : string = to_string 40 2 (pp_term t)
 
 let print (term, tp) =
@@ -40,6 +62,7 @@ let print (term, tp) =
        (pp_term term ^-^ newline
        ^-^ nest (!^"\x1b[1mT:" ^^ pp_term tp ^-^ newline ^-^ !^"\x1b[0m")))
 
+  
 let rec pp_uterm ({ data = e; pos } : uTerm) : SmartPrint.t =
   let parens_if_app ({ data; pos } as t : uTerm) =
     match data with App (_, _) -> parens (pp_uterm t) | _ -> pp_uterm t
@@ -120,4 +143,4 @@ let print_def ({ pos; data } : uTerm) : unit =
         | { pos = _; data = LemmaDef (nm, _) } ),
         _ ) ->
       print_endline ("\x1b[1m" ^ nm ^ "\x1b[0m")  
-  | _ -> failwith "Expected definition at top level"
+  | _ -> print_endline "Expected definition at top level"

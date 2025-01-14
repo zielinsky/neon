@@ -10,7 +10,7 @@ let raise_error (lexbuf : Lexing.lexbuf) reason =
 }
 
 let whitespace = ['\011'-'\r' '\t' ' ']
-let var_char  =  ['a'-'z' 'A'-'Z']
+let var_char  =  ['a'-'z' 'A'-'Z' '_']
 
 rule token = parse
     whitespace+ { token lexbuf }  (* Skip whitespace *)
@@ -37,8 +37,8 @@ rule token = parse
   | "true" { YaccParser.BOOL_LIT true }
   | "false" { YaccParser.BOOL_LIT false }
   | "data" { YaccParser.ADTDEF }
-  | "case" { YaccParser.CASE }
-  | "of" { YaccParser.OF }
+  | "match" { YaccParser.MATCH }
+  | "with" { YaccParser.WITH }
   | '|' { YaccParser.BAR }
   | '_' { YaccParser.WILDCARD }
   | var_char* as x { YaccParser.VAR x }
