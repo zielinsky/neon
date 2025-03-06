@@ -235,7 +235,9 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
       let _ = rm_from_termEnv env fresh_var in
       (* Return the reduced term *)
       t2_whnf_substituted
-  | Case _ -> failwith"TODO to_whnf Case"
+  | Case (term, patterns) -> 
+    let term_whnf = to_whnf term env in
+    let patterns_whnf = match patterns with
   
 (** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the environment [env].
 
