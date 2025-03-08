@@ -53,6 +53,9 @@ type whnf =
   | BoolLit of bool
   | Lambda of string * var * tp * term
   | Product of string * var * tp * tp
-  | Case of term * matchPatWhnf list
+  | Case of whnf * matchPatWhnf list
   
   and matchPatWhnf = pattern * whnf
+  and pattern = 
+    | PatWild
+    | PatCon of dataCName * whnf list
