@@ -237,8 +237,8 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
       t2_whnf_substituted
   | Case (term, patterns) ->
     let term_whnf = to_whnf term env in
-    let patterns_whnf = List.map (fun (pattern, term) -> (pattern, (to_whnf term env))) patterns in
-    Case (term_whnf, patterns_whnf)
+    (* let patterns_whnf = List.map (fun (pattern, term) -> (pattern, (to_whnf term env))) patterns in *)
+    Case (term_whnf, patterns)
   
 (** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the environment [env].
 
@@ -839,6 +839,9 @@ and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (da
 
   data Maybe A = ...
 
+  match Some(Int, 5) with
+  | Some(x) -> x + 2
+  | None -> 42
 
   (Just Int 5) -> 
 
