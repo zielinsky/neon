@@ -13,7 +13,7 @@ let separate_map sep f l =
 let rec pp_pattern (p : Ast.pattern) : SmartPrint.t =
   match p with
   | PatWild -> !^"_"
-  | PatCon (nm, vars) -> !^nm ^^ !^"(" ^^ separate_map (!^",") (fun var -> !^var) vars ^^ !^")"
+  | PatCon (nm, vars) -> !^nm ^^ !^"(" ^^ separate_map (!^",") (fun (nm, _) -> !^nm) vars ^^ !^")"
 
 let pattern_to_string (p : Ast.pattern) : string = to_string 40 2 (pp_pattern p)
 

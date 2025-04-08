@@ -35,7 +35,7 @@ and matchPat = pattern * term
 and pattern = 
   (* | PatVar of string * var * term *)
   | PatWild
-  | PatCon of dataCName * string list
+  | PatCon of dataCName * (string * var) list
 
 and tp = term
 

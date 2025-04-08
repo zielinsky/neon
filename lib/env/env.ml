@@ -41,12 +41,13 @@ let add_to_adtEnv (adtEnv : adtEnv) (nm : string) (adt_var : adt_var) : unit =
   then failwith "ADT already exists in Env"
   else StringHashtbl.add adtEnv nm adt_var 
 
-(* TODO Think about the var here *)
-let rec add_telescope_to_env (env : env) (ts : telescope) : unit =
+(* TODO Think about not using fresh var here *)
+let rec add_telescope_to_env ((uTermEnv, termEnv, _) as env: env) (ts : telescope) : unit =
 match ts with
   | Empty -> ()
-  | Cons (nm, _, tp, ts) -> 
-    let _ = add_to_env env nm (Opaque tp) in
+  | Cons (nm, var, tp, ts) -> 
+    let _ = StringHashtbl.add uTermEnv nm var in
+    let _ = IntHashtbl.add termEnv var (Opaque tp) in
     add_telescope_to_env env ts
 
 let rm_from_env ((uTermEnv, termEnv, _) : env) (nm : string) : unit =
@@ -57,7 +58,7 @@ let rm_from_env ((uTermEnv, termEnv, _) : env) (nm : string) : unit =
 let rm_from_termEnv (termEnv : termEnv) (var : var) : unit =
   IntHashtbl.remove termEnv var
   
-let rec rm_telescope_from_env (env : env) (ts : telescope) : unit =
+let rec rm_telescope_from_env (env: env) (ts : telescope) : unit =
 match ts with
   | Empty -> ()
   | Cons (nm, _, _, ts) -> 

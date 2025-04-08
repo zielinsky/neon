@@ -2,4 +2,7 @@ data Option (A: Type) = | Some (x: A) | None
 
 let y = Some (Int, 5)
 
-let sd = match y with | Some (A, x) -> x | None (A) -> 5
+let sd = 
+    match y with 
+    | Some(B, z) -> z
+    | None(B) -> 3

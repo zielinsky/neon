@@ -6,22 +6,23 @@ open BuiltIn
 let find_matching_matchPat (nm: string) (patterns: matchPat list) : matchPat =
   List.find (fun (pattern, _) -> 
     begin match pattern with
-    | PatCon (dataCName, _) -> nm == dataCName
+    | PatCon (dataCName, _) -> 
+      nm = dataCName
     | PatWild-> true
     end)
     patterns
 
-let add_pattern_vars_to_termEnv (names: string list) (values: term list) (env: termEnv) : (string * var) list =
-  let _ = assert ((List.length names) == (List.length values)) in
+let add_pattern_vars_to_termEnv (vars: (string * var) list) (values: term list) (env: termEnv) : (string * var * var) list =
+  let _ = assert ((List.length vars) == (List.length values)) in
   List.fold_left 
-  (fun acc (nm, term) -> 
+  (fun acc ((nm, var), term) -> 
     let fresh_var = fresh_var () in
     let _ = add_to_termEnv env fresh_var (Transparent (term, Type)) in
-    (nm, fresh_var) :: acc)
-    [] (List.combine names values)
+    (nm, var, fresh_var) :: acc)
+    [] (List.combine vars values)
 
-  let rm_pattern_vars_to_termEnv (bindings: (string * var) list) (env: termEnv) : unit =
-    List.iter (fun (_, x) -> rm_from_termEnv env x) bindings
+  let rm_pattern_vars_to_termEnv (bindings: (string * var * var) list) (env: termEnv) : unit =
+    List.iter (fun (_, _, x) -> rm_from_termEnv env x) bindings
 
 (** [whnf_to_nf w env] fully normalizes a [whnf] node [w] in context [env],
 producing a [term] in normal form. *)
@@ -104,7 +105,7 @@ let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
       | PatCon (_, args) -> 
         begin
           let bindings = add_pattern_vars_to_termEnv args (List.rev rev_args) env in
-          let sub_map = List.fold_left (fun acc (nm, x) -> VarMap.add x (Var (nm, x)) acc) VarMap.empty bindings in
+          let sub_map = List.fold_left (fun acc (nm, var, fresh_var) -> VarMap.add var (Var (nm, fresh_var)) acc) VarMap.empty bindings in
           let nf_term = eval (substitute term sub_map) env in
           let _ = rm_pattern_vars_to_termEnv bindings env in
           nf_term
