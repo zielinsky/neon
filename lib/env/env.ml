@@ -68,6 +68,9 @@ match ts with
 let rm_from_adtEnv (adtEnv : adtEnv) (nm : string) : unit =
   StringHashtbl.remove adtEnv nm
 
+let rm_from_uTermEnv (uTermEnv: uTermEnv) (nm: string): unit =
+  StringHashtbl.remove uTermEnv nm
+
 let find_opt_in_env ((uTermEnv, termEnv, _) : env) (nm : string) :
     (var * env_var) option =
   match StringHashtbl.find_opt uTermEnv nm with

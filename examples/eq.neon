@@ -26,3 +26,16 @@ lemma subst : subst_type =
     fun A P x y xy => xy(P)
 
 /** let refl (A : Type) (x : A) (P : (A -> Type)) (px : P(x)) = px */
+
+let y = Some (Int, 5)
+
+let sd = 
+    match y with 
+    | Some(B, z) -> add (z, z)
+    | None(C) -> 42
+
+
+let sd = 
+    match y with 
+    | Some(A, P, x, y) -> x
+    | None(C, P) -> 42

@@ -77,12 +77,12 @@ let telescope_length (ts: telescope) : int =
   in
   tele_len ts 0
 
-let rec merge_telescopes (ts1: telescope) (ts2: telescope) : telescope = 
+(* let rec merge_telescopes (ts1: telescope) (ts2: telescope) : telescope = 
   match ts1 with
   | Empty -> ts2
-  | Cons (nm, var, tp, ts) -> Cons (nm, var, tp, merge_telescopes ts ts2)
+  | Cons (nm, var, tp, ts) -> Cons (nm, var, tp, merge_telescopes ts ts2) *)
 
-let add_args_to_termEnv ((_, termEnv, _): env) (args_and_types: (var * tp) list) : unit =
+(* let add_args_to_termEnv ((_, termEnv, _): env) (args_and_types: (var * tp) list) : unit =
   List.iter (fun (arg, tp) -> add_to_termEnv termEnv arg (Opaque tp)) args_and_types 
 
 let rm_args_from_termEnv ((_, termEnv, _): env) (args_and_types: (var * tp) list) : unit =
@@ -91,7 +91,7 @@ let rm_args_from_termEnv ((_, termEnv, _): env) (args_and_types: (var * tp) list
 let rec drop_n_elems (xs: 'a list) (n: int) : 'a list =
   match xs with
   | _ :: xs' -> if n = 0 then xs else drop_n_elems xs' (n - 1)
-  | [] -> []
+  | [] -> [] *)
 
 let split_pattern_args (tsT_len: int) (args: string list) : string list * string list=
   let rec split_list_at_n (n: int) (xs: 'a list) (acc: 'a list) =
@@ -100,7 +100,7 @@ let split_pattern_args (tsT_len: int) (args: string list) : string list * string
     | x :: xs, _ -> split_list_at_n (n - 1) xs (x :: acc)
     | [], _ -> failwith "Unreachable in split_list_at_n"
   in
-  let _ = assert ((List.length args) > tsT_len) in
+  let _ = assert ((List.length args) >= tsT_len) in
   split_list_at_n tsT_len args []
 
 (* let rec telescope_to_list (ts: telescope) : ((string * var * tp) list) =
@@ -684,8 +684,7 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
           (* TODO ASK PPO If we need to check types here *)
           if (telescope_length tsT) = (List.length tsT_args)
             then 
-              (* let _ = List.iter (fun tp -> (print_endline (PrettyPrinter.term_to_string tp))) tsT_args in *)
-              let (patterns, result_type) = check_patterns env ps tsT tsT_args dataCNames in
+              let (patterns, result_type) = check_pattern_matching_branches env ps tsT tsT_args dataCNames in
               (Case (scrut', patterns), result_type)
             else create_infer_type_error pos "TODO ERROR 1" term env
         | Some (AdtDSig _) -> create_infer_type_error pos "TODO ERROR 2" term env
@@ -740,70 +739,105 @@ and build_adt_data (env: env) (tsType: telescope) (tsData: telescope) (var_list:
     let res: term = Product (nm, var, tp, (build_adt_data env ts tsData ((nm, var) :: var_list))) in
     res 
 
-and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (tsT_args: tp list) (dataCNames: dataCName list) : Ast.matchPat list * tp =
-  let infer_pattern (env: env) (tsT: telescope) (tsT_args: tp list) (tsD: telescope) (args: string list) ({ pos; _ } as term : ParserAst.uTerm) : Ast.term * Ast.tp * (string * var * tp) list =
-    let rec add_args_to_env (env: env) (ts: telescope) (args: string list) : (string * var * tp) list =
-      begin match ts with
+and check_pattern_matching_branches (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (tsT_types: tp list) (dataCNames: dataCName list) : Ast.matchPat list * tp =
+  let infer_branch_and_extend_env ((uTermEnv, _, _) as env: env) (tsT: telescope) (tsT_types: tp list) (tsD: telescope) (args: string list) ({ pos; _ } as term : ParserAst.uTerm) : Ast.term * Ast.tp * (string * var) list =
+
+    let rec add_tsT_to_env (env: env) (tsT: telescope) (tsT_types: tp list) (argsT: string list) : (var * (string * var)) list =
+      begin match tsT with
       | Empty -> []
-      | Cons (nm, var, tp, ts) ->
-        let arg = List.hd args in
-        let tp = (substitute tp (VarMap.singleton var (Var (arg, fresh_var ())))) in
-        let var = add_to_env env arg (Opaque tp) in
-        (arg, var, tp) :: add_args_to_env env ts (List.tl args)
+      | Cons(_, var, tp, tsT) ->
+        let concrete_tp = List.hd tsT_types in
+        let new_nm = List.hd argsT in
+        let fresh_var = add_to_env env new_nm (Transparent(concrete_tp, tp)) in
+        let tsT = substitute_in_telescope tsT (VarMap.singleton var (Var(new_nm, fresh_var))) in
+        (var, (new_nm, fresh_var)) :: add_tsT_to_env env tsT (List.tl tsT_types) (List.tl argsT)
+      end
+    in
+    
+    let rec add_tsD_to_env (env: env) (tsD: telescope) (argsD: string list) : (var * (string * var)) list =
+      begin match tsD with
+      | Empty -> []
+      | Cons (_, var, tp, tsD) ->
+        let new_nm = List.hd argsD in
+        let fresh_var = add_to_env env new_nm (Opaque tp) in
+        let tsD = substitute_in_telescope tsD (VarMap.singleton var (Var(new_nm, fresh_var))) in
+        (var, (new_nm, fresh_var)) :: add_tsD_to_env env tsD (List.tl argsD)
       end
     in
 
-    if (telescope_length ts) = (List.length args)
+    if (telescope_length tsT) + (telescope_length tsD) = (List.length args)
     then
-      let vars = add_args_to_env env tsD args in
+      let (argsT, argsD) = split_pattern_args (telescope_length tsT) args in
+      let tsT_all_vars = add_tsT_to_env env tsT tsT_types argsT in
+      let tsD = substitute_in_telescope tsD (VarMap.of_list (List.map (fun (var, (new_nm, new_var)) -> (var, (Var(new_nm, new_var)))) tsT_all_vars)) in
+      let tsD_all_vars = add_tsD_to_env env tsD argsD in
+      let ts_all_vars = tsT_all_vars @ tsD_all_vars in
       let (term, tp') = infer_type env term in
-      let _ = List.iter (rm_from_env env) args in
-      term, tp', vars
+      let (ts_names, ts_vars) = List.split (snd (List.split ts_all_vars)) in
+      (* We need to remove the names from the env as the branches could over shadow each others variables but
+       we need to keep the internal representation in order to check if all branches have matching types *)
+      let _ = List.iter (fun nm -> Env.rm_from_uTermEnv uTermEnv nm) ts_names in
+      term, tp', (List.combine ts_names ts_vars)
     else create_infer_type_error pos "TODO ERROR 5" term env 
   in 
-  let rec infer_all_patterns ((_, _, adtEnv) as env : env) (ps: ParserAst.matchPat list) (tsT: telescope) (tsT_args: tp list) (dataCNames: dataCName list): ((Ast.matchPat * tp) * (var * tp) list) list =
-    begin match ps with
-    | (pattern, uTerm) :: ((_ :: _) as ps) ->  
-      begin match pattern with
-      | PatCon (dataCName, args) ->
-        if List.mem dataCName dataCNames
-          then 
-            begin match find_opt_in_adtEnv adtEnv dataCName with
-            | Some (AdtDSig (_, tsD)) -> 
-              let (term, tp', pattern_args_info) = infer_pattern env tsD args tsT_args uTerm in
-              let (pattern_args, pattern_args_types) = List.split (List.map (fun (x, y, z) -> ((x, y), (y, z))) pattern_args_info) in
-              (((Ast.PatCon (dataCName, pattern_args), term), tp'), pattern_args_types) :: (infer_all_patterns env ps (List.filter (fun x -> not (x = dataCName)) dataCNames) tsTLength)
-            | Some (AdtTSig _) -> failwith "TODO ERROR 6"
-            | None -> failwith "TODO ERROR 7"
-            end
-            
-          else failwith "TODO ERROR 8"
-      | PatWild -> failwith "TODO 11"
+  let infer_and_check_all_branches ((_, termEnv, _) as env : env) (ps: ParserAst.matchPat list) (tsT: telescope) (tsT_types: tp list) (dataCNames: dataCName list) : (Ast.matchPat * tp) list =
+    let rec loop_over_branches ((_, _, adtEnv) as env : env) (ps: ParserAst.matchPat list) (tsT: telescope) (tsT_types: tp list) (dataCNames: dataCName list) : ((Ast.matchPat * tp) * ((string * var) list)) list =
+      begin match ps with
+      | (pattern, uTerm) :: ((_ :: _) as ps) ->  
+        begin match pattern with
+        | PatCon (dataCName, args) ->
+          if List.mem dataCName dataCNames
+            then 
+              begin match find_opt_in_adtEnv adtEnv dataCName with
+              | Some (AdtDSig (_, tsD)) -> 
+                let (term, tp', ts_names_and_vars) = infer_branch_and_extend_env env tsT tsT_types tsD args uTerm in
+                let dataCNames = List.filter (fun x -> not (x = dataCName)) dataCNames in
+                (((Ast.PatCon (dataCName, ts_names_and_vars), term), tp'), ts_names_and_vars) :: (loop_over_branches env ps tsT tsT_types dataCNames)
+              | Some (AdtTSig _) -> failwith "TODO ERROR 6"
+              | None -> failwith "TODO ERROR 7"
+              end
+              
+            else failwith "TODO ERROR 8"
+        | PatWild -> failwith "TODO 11"
+        end
+      | (pattern, uTerm) :: [] -> 
+        begin match pattern with
+        | PatCon (dataCName, args) ->
+          if List.mem dataCName dataCNames
+            then 
+              begin match find_opt_in_adtEnv adtEnv dataCName with
+              | Some (AdtDSig (_, tsD)) -> 
+                let (term, tp', ts_names_and_vars) = infer_branch_and_extend_env env tsT tsT_types tsD args uTerm in
+                let dataCNames = List.filter (fun x -> not (x = dataCName)) dataCNames in
+                if List.is_empty dataCNames
+                  then (((Ast.PatCon (dataCName, ts_names_and_vars), term), tp'), ts_names_and_vars) :: []
+                  else failwith "TODO ERROR 9"
+              | Some (AdtTSig _) -> failwith "TODO ERROR 10"
+              | None -> failwith "TODO ERROR 12"
+              end
+            else failwith "TODO ERROR 13"
+        | PatWild -> 
+          let (term, tp', ts_names_and_vars) = infer_branch_and_extend_env env Empty [] Empty [] uTerm in
+          if (List.is_empty ts_names_and_vars)
+            then (((Ast.PatWild, term), tp'), ts_names_and_vars) :: []
+            else failwith "TODO ERROR 15"
+        end
+      | [] -> failwith "TODO ERROR 14"
       end
-    | (pattern, uTerm) :: [] -> 
-      begin match pattern with
-      | PatCon (dataCName, args) ->
-        if List.mem dataCName dataCNames
-          then 
-            begin match find_opt_in_adtEnv adtEnv dataCName with
-            | Some (AdtDSig (_, tsD)) -> 
-              let mergedTs = merge_telescopes tsT tsD in
-              let (term, tp', pattern_args_info) = infer_pattern env mergedTs args uTerm in
-              let (pattern_args, pattern_args_types) = List.split (List.map (fun (x, y, z) -> ((x, y), (y, z))) pattern_args_info) in
-              let dataCNames = List.filter (fun x -> not (x = dataCName)) dataCNames in
-              if List.is_empty dataCNames
-                then (((Ast.PatCon (dataCName, pattern_args), term), tp'), pattern_args_types) :: []
-                else failwith "TODO ERROR 9"
-            | Some (AdtTSig _) -> failwith "TODO ERROR 10"
-            | None -> failwith "TODO ERROR 12"
-            end
-          else failwith "TODO ERROR 13"
-      | PatWild -> 
-        let (term, tp', _) = infer_pattern env Empty [] uTerm in
-        (((Ast.PatWild, term), tp'), []) :: []
-      end
-    | [] -> failwith "TODO ERROR 14"
-    end
+    in
+    let check_branch_types (env: env) (branch_types: tp list) : unit =
+      let hd = List.hd branch_types in
+      let (_, isSameType) = List.fold_left 
+        (fun (prev_tp, cond) tp -> (tp, (cond && equiv prev_tp tp env))) (hd, true) (List.tl branch_types)
+      in
+      if isSameType then () else failwith "Pattern matching branches have different types"
+    in
+
+    let (result, tp_names_and_vars) = List.split (loop_over_branches env ps tsT tsT_types dataCNames) in
+    let _ = check_branch_types env (snd (List.split result)) in
+    let all_ts_vars = snd (List.split (List.flatten tp_names_and_vars)) in
+    let _ = List.iter (fun var -> Env.rm_from_termEnv termEnv var) all_ts_vars in
+    result
   in
   let check_constructor_names (ps: ParserAst.matchPat list) (dataCNames: dataCName list) : bool =
     let rec collect_constructor_names (ps: ParserAst.matchPat list) : string list * bool =
@@ -814,7 +848,7 @@ and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (ts
       | (PatWild, _) :: ps ->
         let (cs, contaisWild) = collect_constructor_names ps in
         if contaisWild
-          then failwith "TODO ERROR 15"
+          then failwith "TODO ERROR 16"
           else (cs, true)
       | [] -> ([], false)
     in
@@ -833,32 +867,12 @@ and check_patterns (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (ts
 
   if check_constructor_names ps dataCNames
     then
-    (* let _ = print_endline "BEFORE INFER" in
-    let _ = print_endline (Env.env_to_string env) in
-    let _ = List.iter (fun tp -> print_endline (PrettyPrinter.term_to_string tp)) tsT_args in *)
-    let (patterns_and_types, test) = List.split (infer_all_patterns env ps tsT tsT_args dataCNames) in
-    let (patterns, types) = List.split patterns_and_types in
-    let _ = print_endline "AFTER INFER" in
-    let _ = print_endline (Env.env_to_string env) in
-    let _ = List.iter (fun tp -> print_endline (PrettyPrinter.term_to_string tp)) types in
-    let starting_type = List.hd types in
-    let _ = List.iter (fun x -> add_args_to_termEnv env x) test in
-    let _ = print_endline "AFTER ADDING BACK ARGS" in
-    let _ = print_endline (Env.env_to_string env) in
-    let _ = List.iter (fun (var, tp) -> print_endline (Int.to_string var ^ ":" ^ (PrettyPrinter.term_to_string tp)))(List.flatten test) in
-    let _ = List.iter (fun tp -> prerr_endline (PrettyPrinter.term_to_string tp)) types in
-    (* Check that all of the patterns have the same type *)
-    let (_, isSameType) = List.fold_left 
-      (fun (prev_tp, cond) tp -> (tp, (cond && equiv prev_tp tp env))) (starting_type, true) (List.tl types)
-    (* let isSameType = true *)
-    in
-    let _ = Env.rm_telescope_from_env env tsT in
-    let _ = print_endline "DUPA" in
-    let _ = List.iter (fun x -> rm_args_from_termEnv env x) test in
-    if isSameType
-      then patterns, starting_type
-      else failwith "TODO ERROR 16"
-    else failwith "TODO ERROR 17"
+      let (branches, tps) = List.split (infer_and_check_all_branches env ps tsT tsT_types dataCNames) in
+      if (List.is_empty tps) then failwith "TODO ERROR 17" else
+      branches, (List.hd tps)
+    else
+      failwith "TODO ERROR 18"
+    
 
 
 

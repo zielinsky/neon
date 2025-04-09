@@ -44,3 +44,10 @@ let sd =
         argsD: "z"
 
         add_to_env "z" Opaque(Var("B", n))
+
+
+        "B" -> 10 -> Transparent ...
+
+        10 -> Transparent ...
+
+        
