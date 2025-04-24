@@ -672,6 +672,7 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
         )) cs in
         let _ = rm_telescope_from_env env ts' in
         let cs = List.map (fun data_con -> build_adt_data env ts' data_con.telescope ((nm, fresh_var) :: [])) con_list in
+        let _ = List.iter (fun term -> print_endline (PrettyPrinter.term_to_string term)) cs in
         let _ = List.map (fun (nmCon, tpCon) -> add_to_env env nmCon (Opaque tpCon)) (List.combine (List.map (fun data_con -> data_con.cname) con_list) cs) in
         ((Var (nm, fresh_var)), adt_sig_tp) (* TODO *)
     | Case (scrut, ps) ->
@@ -731,8 +732,8 @@ and build_adt_data (env: env) (tsType: telescope) (tsData: telescope) (var_list:
     | Empty -> 
       let (nm, var) = (List.hd var_list) in
       List.fold_left (fun acc (nm, var) -> App(Var (nm, var), acc)) (Var(nm, var)) (List.tl var_list)
-    | Cons (_, _, tp ,ts) -> 
-      let res: term = TypeArrow (tp, build_adt_data env tsType ts var_list) in
+    | Cons (nm, var, tp ,ts) -> 
+      let res: term = Product (nm, var, tp, build_adt_data env tsType ts var_list) in
       res 
     end
   | Cons (nm, var, tp, ts) ->

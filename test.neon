@@ -2,9 +2,9 @@ data Option (A: Type) (P: (A -> Type)) =
 | Some (x: A) (y: P(x))
 | None
 
-let p = fun (A: Type) (x: A) => A
-let pInt = p(Int)
-let x = 5
-let pIntX = pInt(x)
+let y = fun (A: Type) (P: (A -> Type)) (x: A) (px: P(x)) => Some(A, P, x, px)
 
-let y = fun (A: Type) (P: (A -> Type)) (x: A) (px: P(x)) => Some (A, P, x, px)
+let depType (x: Int) = Int
+let p (n: Int) = depType(n)
+
+let z = Some(Int, p, 10, true)

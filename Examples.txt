@@ -51,3 +51,11 @@ let sd =
         10 -> Transparent ...
 
         
+
+data Option (A: Type) (P: (A -> Type)) =
+| Some (x: A) (y: P(x))
+| None
+
+let y = fun (A: Type) (P: (A -> Type)) (x: A) (px: P(x)) => Some(A, P, x, px)
+
+(A : type) => (x : A) -> App ( [App (Some, A)], x)
