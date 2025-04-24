@@ -6,7 +6,7 @@ let separate_map sep f l =
   let rec aux acc = function
     | [] -> acc
     | [x] -> acc ^^ f x
-    | x :: xs -> aux (acc ^^ f x ^^ sep) xs
+    | x :: xs -> aux (acc ^^ f x ^-^ sep) xs
   in
   aux !^"" l
 
@@ -14,6 +14,11 @@ let rec pp_pattern (p : Ast.pattern) : SmartPrint.t =
   match p with
   | PatWild -> !^"_"
   | PatCon (nm, vars) -> !^nm ^^ !^"(" ^^ separate_map (!^",") (fun (nm, _) -> !^nm) vars ^^ !^")"
+
+let rec pp_uTerm_pattern (p : ParserAst.pattern) : SmartPrint.t = 
+  match p with
+  | PatWild -> !^"_"
+  | PatCon (nm, vars) -> !^nm ^-^ !^"(" ^-^ separate_map (!^",") (fun nm -> !^nm) vars ^^ !^")"
 
 let pattern_to_string (p : Ast.pattern) : string = to_string 40 2 (pp_pattern p)
 
@@ -52,9 +57,9 @@ let rec pp_term (e : term) : SmartPrint.t =
        ^^ nest
             (List.fold_left
                (fun acc ((pattern : Ast.pattern), body) ->
-                 acc ^-^ !^"| " ^-^ (pp_pattern pattern) ^-^ !^"=>" ^^ pp_term body ^-^ newline)
+                 acc ^-^ !^"|" ^^ (pp_pattern pattern) ^^ !^"=>" ^^ pp_term body ^-^ newline)
                  !^"" cases))
-let rec term_to_string (t : term) : string = to_string 40 2 (pp_term t)
+let term_to_string (t : term) : string = to_string 40 2 (pp_term t)
 
 let print (term, tp) =
   print_endline
@@ -62,6 +67,14 @@ let print (term, tp) =
        (pp_term term ^-^ newline
        ^-^ nest (!^"\x1b[1mT:" ^^ pp_term tp ^-^ newline ^-^ !^"\x1b[0m")))
 
+let pp_telescope (ts: Ast.telescope) : SmartPrint.t =
+  let rec aux acc = function
+    | Ast.Cons(nm, var, tp, ts) -> aux (acc ^-^ newline ^-^ !^nm ^^ !^(string_of_int var) ^^ (pp_term tp)) ts
+    | Ast.Empty -> acc
+  in
+aux !^"" ts 
+
+let telescope_to_string (ts: Ast.telescope) : string = to_string 40 2 (pp_telescope ts)
   
 let rec pp_uterm ({ data = e; pos } : uTerm) : SmartPrint.t =
   let parens_if_app ({ data; pos } as t : uTerm) =
@@ -101,6 +114,14 @@ let rec pp_uterm ({ data = e; pos } : uTerm) : SmartPrint.t =
   | TypeArrow (tp1, tp2) -> pp_uterm tp1 ^^ !^"->" ^^ pp_uterm tp2
   | TermWithTypeAnno (t1, t2) ->
       nest (parens (pp_uterm t1 ^^ !^":" ^^ pp_uterm t2))
+  | Case (t, cases) ->
+    nest
+      (!^"match" ^^ pp_uterm t ^^ !^"with" ^^ newline
+      ^^ nest
+          (List.fold_left
+              (fun acc ((pattern : ParserAst.pattern), body) ->
+                acc ^-^ !^"|" ^^ (pp_uTerm_pattern pattern) ^^ !^"=>" ^^ pp_uterm body ^-^ newline)
+                !^"" cases))
   | _ -> failwith "TODO Not implemented - PrettyPrinter"
 
 let rec uterm_to_string (t : uTerm) : string = to_string 40 2 (pp_uterm t)
@@ -131,6 +152,14 @@ let rec pp_whnf (e : whnf) : SmartPrint.t =
         ^^ List.fold_left
              (fun acc term -> parens (pp_term term) ^^ acc)
              !^"" term_list)
+  | Case (t, cases) ->
+  nest
+    (!^"match" ^^ pp_whnf t ^^ !^"with" ^^ newline
+    ^^ nest
+        (List.fold_left
+            (fun acc ((pattern : Ast.pattern), body) ->
+              acc ^-^ !^"|" ^^ (pp_pattern pattern) ^^ !^"=>" ^^ pp_term body ^-^ newline)
+              !^"" cases))
 
 let rec whnf_to_string (t : whnf) : string = to_string 40 2 (pp_whnf t)
 

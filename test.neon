@@ -2,9 +2,20 @@ data Option (A: Type) (P: (A -> Type)) =
 | Some (x: A) (y: P(x))
 | None
 
-let y = fun (A: Type) (P: (A -> Type)) (x: A) (px: P(x)) => Some(A, P, x, px)
-
 let depType (x: Int) = Int
 let p (n: Int) = depType(n)
 
-let z = Some(Int, p, 10, true)
+let s = Some(Int, p, 10, 20)
+let n = None(Int, p)
+
+let some_test = match s with
+| Some(A, P, x, px) -> x
+| None(B, D) -> 42
+
+let none_test = match n with
+| Some(A, P, x, px) -> x
+| None(B, D) -> 42
+
+let wild_card_test = match n with
+| Some(A, P, x, px) -> x
+| _ -> 69

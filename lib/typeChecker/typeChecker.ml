@@ -671,8 +671,7 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
             { cname = nmCon; telescope = tsCon' }
         )) cs in
         let _ = rm_telescope_from_env env ts' in
-        let cs = List.map (fun data_con -> build_adt_data env ts' data_con.telescope ((nm, fresh_var) :: [])) con_list in
-        let _ = List.iter (fun term -> print_endline (PrettyPrinter.term_to_string term)) cs in
+        let cs = List.map (fun data_con -> build_adt_data env ts' data_con.telescope [] ((nm, fresh_var))) con_list in
         let _ = List.map (fun (nmCon, tpCon) -> add_to_env env nmCon (Opaque tpCon)) (List.combine (List.map (fun data_con -> data_con.cname) con_list) cs) in
         ((Var (nm, fresh_var)), adt_sig_tp) (* TODO *)
     | Case (scrut, ps) ->
@@ -725,19 +724,19 @@ match ts with
   let res: term = Product (nm, var, tp, (build_adt_sig env ts)) in
   res
 
-and build_adt_data (env: env) (tsType: telescope) (tsData: telescope) (var_list: (string * var) list) : term =
+and build_adt_data (env: env) (tsType: telescope) (tsData: telescope) (var_list: (string * var) list) (adt_sig_var: (string * var)) : term =
   match tsType with
   | Empty -> 
     begin match tsData with
     | Empty -> 
-      let (nm, var) = (List.hd var_list) in
-      List.fold_left (fun acc (nm, var) -> App(Var (nm, var), acc)) (Var(nm, var)) (List.tl var_list)
+      let (adt_nm, adt_var) = adt_sig_var in
+      List.fold_left (fun acc (nm, var) -> App(acc, Var (nm, var))) (Var(adt_nm, adt_var)) (List.rev var_list)
     | Cons (nm, var, tp ,ts) -> 
-      let res: term = Product (nm, var, tp, build_adt_data env tsType ts var_list) in
+      let res: term = Product (nm, var, tp, build_adt_data env tsType ts var_list adt_sig_var) in
       res 
     end
   | Cons (nm, var, tp, ts) ->
-    let res: term = Product (nm, var, tp, (build_adt_data env ts tsData ((nm, var) :: var_list))) in
+    let res: term = Product (nm, var, tp, (build_adt_data env ts tsData ((nm, var) :: var_list) adt_sig_var)) in
     res 
 
 and check_pattern_matching_branches (env: env) (ps: ParserAst.matchPat list) (tsT: telescope) (tsT_types: tp list) (dataCNames: dataCName list) : Ast.matchPat list * tp =
@@ -873,44 +872,3 @@ and check_pattern_matching_branches (env: env) (ps: ParserAst.matchPat list) (ts
       branches, (List.hd tps)
     else
       failwith "TODO ERROR 18"
-    
-
-
-
-  (* begin match find_opt_in_adtEnv env dConName with
-    | Some (AdtDSig (_, tsD)) -> 
-      let mergedTs = merge_telescopes tsT tsD in
-      if (telescope_length mergedTs) = pat.
-    | Some (AdtTSig _) -> create_infer_type_error pos "TODO ERROR" term env
-    | None -> create_infer_type_error pos "TODO ERROR" term env
-    end  *)
-
-  (* 
-  data Maybe A = 
-  | Just : forall A. A -> Maybe A
-  forall A. A -> Maybe A
-
-  ADT Sig Type (Maybe) = Pi (A: Type) => Type
-  ADT Con Type (Just) = Pi (A: Type) => (x: A) -> App(Maybe, A)
-  ADT Con Type (Just) = Pi (A: Type) => (x: A) -> Type
-  Maybe A
-  Maybe -> forall A. 
-
-  data Option A =
-  | Some x : A
-  | None
-
-  Some (A, x)
-  None (A)
-
-  data Maybe A = ...
-
-  match Some(Int, 5) with
-  | Some(B, x) -> x + 2 (B)
-  | None -> 42
-
-  (Just Int 5) -> 
-
-  Maybe A B = App(App(Maybe, A), B)
-  fun foo ... = Just Int 5
-  *)

@@ -117,20 +117,3 @@ let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
 and eval (t : term) (env : termEnv) : term =
   let w = to_whnf t env in
   whnf_to_nf w env
-
-
-
-
-(*
-  Case(whnf , patterns)
-
-        whnf
-  match Some(5) with
-    pattern     whnf  
-  | Some(x) -> x + 2      <- paterns
-  | None -> 42            <- paterns
-
-  match Some (17) with
-  | Some ("x") -> (Neu("x", var, []) => Var("x", var)) + 5
-  | _ -> 42
-*)  
