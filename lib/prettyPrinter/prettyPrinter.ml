@@ -116,13 +116,30 @@ let rec pp_uterm ({ data = e; pos } : uTerm) : SmartPrint.t =
       nest (parens (pp_uterm t1 ^^ !^":" ^^ pp_uterm t2))
   | Case (t, cases) ->
     nest
-      (!^"match" ^^ pp_uterm t ^^ !^"with" ^^ newline
-      ^^ nest
+      (!^"match" ^^ pp_uterm t ^^ !^"with" ^-^ newline
+      ^-^ nest
           (List.fold_left
               (fun acc ((pattern : ParserAst.pattern), body) ->
                 acc ^-^ !^"|" ^^ (pp_uTerm_pattern pattern) ^^ !^"=>" ^^ pp_uterm body ^-^ newline)
                 !^"" cases))
-  | _ -> failwith "TODO Not implemented - PrettyPrinter"
+  | ADTSig (nm, ts) -> 
+    nest
+      (!^"data" ^^ !^nm ^^ nest (pp_telescope ts))
+  | ADTDecl (nm, ts, con_defs) -> 
+    nest
+      (!^"data" ^^ !^nm ^^ nest ((pp_telescope ts) ^^ !^"=" ^-^ newline
+      ^-^ nest 
+        (List.fold_left
+          (fun acc con_def -> nest (!^"|" ^^ !^(con_def.cname) ^^ pp_telescope con_def.telescope))
+          !^"" con_defs
+        )
+      ))
+
+and pp_telescope (ts : ParserAst.telescope) : SmartPrint.t =
+  match ts with
+  | Empty -> !^""
+  | Cons (x, t, (Cons (_, _, _) as ts)) -> parens (!^x ^-^ !^":" ^^ pp_uterm t) ^^ pp_telescope ts
+  | Cons (x, t, Empty) -> parens (!^x ^-^ !^":" ^^ pp_uterm t)
 
 let rec uterm_to_string (t : uTerm) : string = to_string 40 2 (pp_uterm t)
 

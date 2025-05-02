@@ -41,7 +41,6 @@ let add_to_adtEnv (adtEnv : adtEnv) (nm : string) (adt_var : adt_var) : unit =
   then failwith "ADT already exists in Env"
   else StringHashtbl.add adtEnv nm adt_var 
 
-(* TODO Think about not using fresh var here *)
 let rec add_telescope_to_env ((uTermEnv, termEnv, _) as env: env) (ts : telescope) : unit =
 match ts with
   | Empty -> ()

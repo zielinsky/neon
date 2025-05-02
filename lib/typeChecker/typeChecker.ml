@@ -77,22 +77,6 @@ let telescope_length (ts: telescope) : int =
   in
   tele_len ts 0
 
-(* let rec merge_telescopes (ts1: telescope) (ts2: telescope) : telescope = 
-  match ts1 with
-  | Empty -> ts2
-  | Cons (nm, var, tp, ts) -> Cons (nm, var, tp, merge_telescopes ts ts2) *)
-
-(* let add_args_to_termEnv ((_, termEnv, _): env) (args_and_types: (var * tp) list) : unit =
-  List.iter (fun (arg, tp) -> add_to_termEnv termEnv arg (Opaque tp)) args_and_types 
-
-let rm_args_from_termEnv ((_, termEnv, _): env) (args_and_types: (var * tp) list) : unit =
-  List.iter (fun (arg, _) -> rm_from_termEnv termEnv arg) args_and_types 
-
-let rec drop_n_elems (xs: 'a list) (n: int) : 'a list =
-  match xs with
-  | _ :: xs' -> if n = 0 then xs else drop_n_elems xs' (n - 1)
-  | [] -> [] *)
-
 let split_pattern_args (tsT_len: int) (args: string list) : string list * string list=
   let rec split_list_at_n (n: int) (xs: 'a list) (acc: 'a list) =
     match xs, n with
@@ -102,12 +86,6 @@ let split_pattern_args (tsT_len: int) (args: string list) : string list * string
   in
   let _ = assert ((List.length args) >= tsT_len) in
   split_list_at_n tsT_len args []
-
-(* let rec telescope_to_list (ts: telescope) : ((string * var * tp) list) =
-  let rec to_list (ts: telescope) (acc: (string * var * tp) list) =
-    match ts with
-    | Empty -> acc
-    | Cons (nm, var, tp, ts) -> to_list ts ()  *)
 
 (** [substitute t sub] performs capture-avoiding substitution on term [t] using the substitution map [sub]. It replaces variables in [t] according to [sub], ensuring that bound variables are correctly handled to prevent variable capture.
 

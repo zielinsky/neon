@@ -7,14 +7,6 @@ type dataCName = string
 
 type uTerm = term_data node
 
-(* 
-let id (xs: List(A)) = 
-  match xs with
-  | Nil(_) ->  xs
-  | Cons(_, _, x, xs) ->  xs
-  | _ -> 
-*)
-
 and term_data =
   | Type
   | Kind
