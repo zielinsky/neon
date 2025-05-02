@@ -673,7 +673,7 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
         let _ = rm_telescope_from_env env ts' in
         let cs = List.map (fun data_con -> build_adt_data env ts' data_con.telescope [] ((nm, fresh_var))) con_list in
         let _ = List.map (fun (nmCon, tpCon) -> add_to_env env nmCon (Opaque tpCon)) (List.combine (List.map (fun data_con -> data_con.cname) con_list) cs) in
-        ((Var (nm, fresh_var)), adt_sig_tp) (* TODO *)
+        ((Var (nm, fresh_var)), adt_sig_tp)
     | Case (scrut, ps) ->
       let scrut', tp' = infer_type env scrut in
       begin match (to_whnf tp' termEnv) with 
@@ -681,16 +681,15 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
         let tsT_args = List.rev tsT_args in
         begin match find_opt_in_adtEnv adtEnv nm with 
         | Some (AdtTSig (tsT, dataCNames)) -> 
-          (* TODO ASK PPO If we need to check types here *)
           if (telescope_length tsT) = (List.length tsT_args)
             then 
               let (patterns, result_type) = check_pattern_matching_branches env ps tsT tsT_args dataCNames in
               (Case (scrut', patterns), result_type)
-            else create_infer_type_error pos "TODO ERROR 1" term env
-        | Some (AdtDSig _) -> create_infer_type_error pos "TODO ERROR 2" term env
-        | None -> create_infer_type_error pos "TODO ERROR 3" term env
+            else create_infer_type_error pos "The number of Scrutinee's type arguments must match the ADT signature" term env
+        | Some (AdtDSig _) -> create_infer_type_error pos "Scrutinee's type should be an ADT type and not an ADT constructor" term env
+        | None -> create_infer_type_error pos "Scrutinee's type should be an ADT type" term env
         end
-      | _ -> create_infer_type_error pos "TODO ERROR 4" term env
+      | _ -> create_infer_type_error pos "Scrutinee's type whnf form should be a neutral term" term env
       end
     | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ -> 
       create_infer_type_error pos "Expected ADT declaration" term env
@@ -778,7 +777,7 @@ and check_pattern_matching_branches (env: env) (ps: ParserAst.matchPat list) (ts
        we need to keep the internal representation in order to check if all branches have matching types *)
       let _ = List.iter (fun nm -> Env.rm_from_uTermEnv uTermEnv nm) ts_names in
       term, tp', (List.combine ts_names ts_vars)
-    else create_infer_type_error pos "TODO ERROR 5" term env 
+    else create_infer_type_error pos "The number of arguments in branch's pattern must match the telescope" term env 
   in 
   let infer_and_check_all_branches ((_, termEnv, _) as env : env) (ps: ParserAst.matchPat list) (tsT: telescope) (tsT_types: tp list) (dataCNames: dataCName list) : (Ast.matchPat * tp) list =
     let rec loop_over_branches ((_, _, adtEnv) as env : env) (ps: ParserAst.matchPat list) (tsT: telescope) (tsT_types: tp list) (dataCNames: dataCName list) : ((Ast.matchPat * tp) * ((string * var) list)) list =
@@ -793,12 +792,12 @@ and check_pattern_matching_branches (env: env) (ps: ParserAst.matchPat list) (ts
                 let (term, tp', ts_names_and_vars) = infer_branch_and_extend_env env tsT tsT_types tsD args uTerm in
                 let dataCNames = List.filter (fun x -> not (x = dataCName)) dataCNames in
                 (((Ast.PatCon (dataCName, ts_names_and_vars), term), tp'), ts_names_and_vars) :: (loop_over_branches env ps tsT tsT_types dataCNames)
-              | Some (AdtTSig _) -> failwith "TODO ERROR 6"
-              | None -> failwith "TODO ERROR 7"
+              | Some (AdtTSig _) -> failwith "Branch's pattern must be an ADT contructor. Found ADT type signature instead"
+              | None -> failwith "Branch's pattern must be an ADT constructor"
               end
               
-            else failwith "TODO ERROR 8"
-        | PatWild -> failwith "TODO 11"
+            else failwith "Pattern's constructor name not found in constructor list"
+        | PatWild -> failwith "Wildcard pattern must be at the end"
         end
       | (pattern, uTerm) :: [] -> 
         begin match pattern with
@@ -811,18 +810,18 @@ and check_pattern_matching_branches (env: env) (ps: ParserAst.matchPat list) (ts
                 let dataCNames = List.filter (fun x -> not (x = dataCName)) dataCNames in
                 if List.is_empty dataCNames
                   then (((Ast.PatCon (dataCName, ts_names_and_vars), term), tp'), ts_names_and_vars) :: []
-                  else failwith "TODO ERROR 9"
-              | Some (AdtTSig _) -> failwith "TODO ERROR 10"
-              | None -> failwith "TODO ERROR 12"
+                  else failwith "Expected list of constructor names to be empty, looped over all branches"
+              | Some (AdtTSig _) -> failwith "Branch's pattern must be an ADT contructor. Found ADT type signature instead"
+              | None -> failwith "Branch's pattern must be an ADT constructor"
               end
-            else failwith "TODO ERROR 13"
+            else failwith "Pattern's constructor name not found in constructor list"
         | PatWild -> 
           let (term, tp', ts_names_and_vars) = infer_branch_and_extend_env env Empty [] Empty [] uTerm in
           if (List.is_empty ts_names_and_vars)
             then (((Ast.PatWild, term), tp'), ts_names_and_vars) :: []
-            else failwith "TODO ERROR 15"
+            else failwith "Type inferences of branch with wildcard pattern shouldn't extend the environment"
         end
-      | [] -> failwith "TODO ERROR 14"
+      | [] -> failwith "There are no branches to check"
       end
     in
     let check_branch_types (env: env) (branch_types: tp list) : unit =
@@ -848,7 +847,7 @@ and check_pattern_matching_branches (env: env) (ps: ParserAst.matchPat list) (ts
       | (PatWild, _) :: ps ->
         let (cs, contaisWild) = collect_constructor_names ps in
         if contaisWild
-          then failwith "TODO ERROR 16"
+          then failwith "There can't be more than 1 wildcard branch"
           else (cs, true)
       | [] -> ([], false)
     in
@@ -868,7 +867,7 @@ and check_pattern_matching_branches (env: env) (ps: ParserAst.matchPat list) (ts
   if check_constructor_names ps dataCNames
     then
       let (branches, tps) = List.split (infer_and_check_all_branches env ps tsT tsT_types dataCNames) in
-      if (List.is_empty tps) then failwith "TODO ERROR 17" else
+      if (List.is_empty tps) then failwith "List of inferred types of branches is empty" else
       branches, (List.hd tps)
     else
-      failwith "TODO ERROR 18"
+      failwith "Branches' pattern constructors mismatch"
