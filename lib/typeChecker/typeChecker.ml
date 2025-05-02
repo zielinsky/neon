@@ -144,7 +144,21 @@ let rec substitute (t : term) (sub : sub_map) : term =
           substitute tp_t sub,
           substitute body (VarMap.add x (Var (nm, y)) sub) )
   | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ -> t
-  | Case _ -> failwith "TODO Substitute for Case"
+  | Case (scrutinee, matchPats) ->
+    let scrutinee' = substitute scrutinee sub in
+    let matchPats' = List.map (
+      fun (pattern, t) -> 
+        begin match pattern with
+        | PatWild -> PatWild, substitute t sub
+        | PatCon(con_nm, vars) ->
+          let (sub, rev_vars) = List.fold_left (fun (sub_map, new_vars) (nm, var) -> 
+            let fresh_var = fresh_var () in
+            (VarMap.add var (Var (nm, fresh_var)) sub_map), (nm, fresh_var) :: new_vars) (sub, []) vars in
+          PatCon(con_nm, List.rev rev_vars), substitute t sub
+        end
+      )
+       matchPats in
+    Case (scrutinee', matchPats')
 
 (** [substitute_whnf t sub] performs substitution on a term in weak head normal form (WHNF) [t] using the substitution map [sub].
 
