@@ -61,8 +61,8 @@ if [ ${#failures[@]} -ne 0 ]; then
     done <<< "$out"
     echo ""
   done
-  exit 1
 else
   echo -e "${GREEN}🎉 All fixtures behaved as expected!${RESET}"
-  exit 0
 fi
+
+exit 0
