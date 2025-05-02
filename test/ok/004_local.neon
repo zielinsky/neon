@@ -1,0 +1,2 @@
+let x = 
+    let id = fun (A: Type) (x: A) => x in id(Int, 10)

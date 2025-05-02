@@ -1,0 +1,1 @@
+let id (A: Type) = fun (x: A) => x
