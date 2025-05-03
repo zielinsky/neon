@@ -4,7 +4,7 @@ type parser_reason =
   | InvalidChar of char
   | UnexpectedToken of string
 
-exception Parse_error of ParserAst.position * parser_reason
+exception Parse_error of Raw.position * parser_reason
 exception Cannot_open_file of { fname : string; message : string }
 
 type type_checker_reason =
@@ -16,9 +16,9 @@ type type_checker_reason =
 exception Type_error of type_checker_reason
 
 val create_infer_type_error :
-  ParserAst.position -> string -> ParserAst.uTerm -> Env.env -> 'a
+  Raw.position -> string -> Raw.uTerm -> Env.env -> 'a
 
 val create_check_type_error :
-  ParserAst.position -> string -> ParserAst.uTerm -> Ast.tp -> Env.env -> 'a
+  Raw.position -> string -> Raw.uTerm -> Core.tp -> Env.env -> 'a
 
-val create_whnf_error : Ast.term -> Env.termEnv -> string -> 'a
+val create_whnf_error : Core.term -> Env.termEnv -> string -> 'a

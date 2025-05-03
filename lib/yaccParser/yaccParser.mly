@@ -11,12 +11,12 @@
 %token BAR
 %token MATCH WITH WILDCARD
 
-%type<ParserAst.program> program
+%type<Raw.program> program
 %start program
 
 %{
 
-open ParserAst
+open Raw
 
 let current_pos () =
   let start_p = symbol_start_pos () in

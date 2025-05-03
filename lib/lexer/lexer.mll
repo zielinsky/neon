@@ -2,8 +2,8 @@
 
 let raise_error (lexbuf : Lexing.lexbuf) reason =
   let pos =
-    { ParserAst.start  = lexbuf.lex_start_p
-    ; ParserAst.length = lexbuf.lex_curr_p.pos_cnum - lexbuf.lex_start_p.pos_cnum
+    { Raw.start  = lexbuf.lex_start_p
+    ; Raw.length = lexbuf.lex_curr_p.pos_cnum - lexbuf.lex_start_p.pos_cnum
     }
   in raise (Error.Parse_error(pos, reason))
 

@@ -1,35 +1,35 @@
 module StringHashtbl = Hashtbl.Make (String)
-module VarHashtbl = Hashtbl.Make (Ast.Var)
+module VarHashtbl = Hashtbl.Make (Core.Var)
 
-type env_var = Opaque of Ast.tp | Transparent of Ast.term * Ast.tp
+type env_var = Opaque of Core.tp | Transparent of Core.term * Core.tp
 
 type adt_var =
-  | AdtTSig of Ast.telescope * Ast.dataCName list
-  | AdtDSig of Ast.typeCName * Ast.telescope
+  | AdtTSig of Core.telescope * Core.dataCName list
+  | AdtDSig of Core.typeCName * Core.telescope
 
-type uTermEnv = Ast.Var.t StringHashtbl.t
+type uTermEnv = Core.Var.t StringHashtbl.t
 type termEnv = env_var VarHashtbl.t
 type adtEnv = adt_var StringHashtbl.t
 type env = uTermEnv * termEnv * adtEnv
 
 let counter = ref 0
 
-let fresh_var () : Ast.Var.t =
+let fresh_var () : Core.Var.t =
   let fresh_var = !counter in
   let _ = counter := !counter + 1 in
-  Ast.Var.of_int fresh_var
+  Core.Var.of_int fresh_var
 
 let create_env () : env =
   (StringHashtbl.create 10, VarHashtbl.create 10, StringHashtbl.create 10)
 
 let add_to_env ((uTermEnv, termEnv, _) : env) (nm : string) (var : env_var) :
-    Ast.Var.t =
+    Core.Var.t =
   let y = fresh_var () in
   let _ = StringHashtbl.add uTermEnv nm y in
   let _ = VarHashtbl.add termEnv y var in
   y
 
-let add_to_termEnv (termEnv : termEnv) (var : Ast.Var.t) (env_var : env_var) :
+let add_to_termEnv (termEnv : termEnv) (var : Core.Var.t) (env_var : env_var) :
     unit =
   assert (not (VarHashtbl.mem termEnv var));
   VarHashtbl.add termEnv var env_var
@@ -39,7 +39,7 @@ let add_to_adtEnv (adtEnv : adtEnv) (nm : string) (adt_var : adt_var) : unit =
   else StringHashtbl.add adtEnv nm adt_var
 
 let rec add_telescope_to_env ((uTermEnv, termEnv, _) as env : env)
-    (ts : Ast.telescope) : unit =
+    (ts : Core.telescope) : unit =
   match ts with
   | Empty -> ()
   | Cons (nm, var, tp, ts) ->
@@ -52,10 +52,10 @@ let rm_from_env ((uTermEnv, termEnv, _) : env) (nm : string) : unit =
   let _ = StringHashtbl.remove uTermEnv nm in
   VarHashtbl.remove termEnv y
 
-let rm_from_termEnv (termEnv : termEnv) (var : Ast.Var.t) : unit =
+let rm_from_termEnv (termEnv : termEnv) (var : Core.Var.t) : unit =
   VarHashtbl.remove termEnv var
 
-let rec rm_telescope_from_env (env : env) (ts : Ast.telescope) : unit =
+let rec rm_telescope_from_env (env : env) (ts : Core.telescope) : unit =
   match ts with
   | Empty -> ()
   | Cons (nm, _, _, ts) ->
@@ -69,7 +69,7 @@ let rm_from_uTermEnv (uTermEnv : uTermEnv) (nm : string) : unit =
   StringHashtbl.remove uTermEnv nm
 
 let find_opt_in_env ((uTermEnv, termEnv, _) : env) (nm : string) :
-    (Ast.Var.t * env_var) option =
+    (Core.Var.t * env_var) option =
   match StringHashtbl.find_opt uTermEnv nm with
   | None -> None
   | Some var -> (
@@ -77,7 +77,7 @@ let find_opt_in_env ((uTermEnv, termEnv, _) : env) (nm : string) :
       | None -> None
       | Some env_var -> Some (var, env_var))
 
-let find_opt_in_termEnv (termEnv : termEnv) (var : Ast.Var.t) : env_var option =
+let find_opt_in_termEnv (termEnv : termEnv) (var : Core.Var.t) : env_var option =
   VarHashtbl.find_opt termEnv var
 
 let find_opt_in_adtEnv (adtEnv : adtEnv) (nm : string) : adt_var option =
@@ -108,7 +108,7 @@ let termEnv_to_string (termEnv : termEnv) : string =
   VarHashtbl.fold
     (fun key v acc ->
       acc
-      ^ Printf.sprintf "%d %s\n" (Ast.Var.to_int key)
+      ^ Printf.sprintf "%d %s\n" (Core.Var.to_int key)
           (env_var_to_string (Some v)))
     termEnv "\n"
   ^ "\n"

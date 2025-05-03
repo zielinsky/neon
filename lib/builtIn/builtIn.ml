@@ -1,9 +1,9 @@
 open List
 
 type name = string
-type builtInFunction = Ast.tp * (Ast.whnf -> Ast.term option)
+type builtInFunction = Core.tp * (Core.whnf -> Core.term option)
 
-let int_add (w : Ast.whnf) : Ast.term option =
+let int_add (w : Core.whnf) : Core.term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 2 then None
@@ -15,7 +15,7 @@ let int_add (w : Ast.whnf) : Ast.term option =
         | _ -> None)
   | _ -> None
 
-let int_sub (w : Ast.whnf) : Ast.term option =
+let int_sub (w : Core.whnf) : Core.term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 2 then None
@@ -27,7 +27,7 @@ let int_sub (w : Ast.whnf) : Ast.term option =
         | _ -> None)
   | _ -> None
 
-let int_mul (w : Ast.whnf) : Ast.term option =
+let int_mul (w : Core.whnf) : Core.term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 2 then None
@@ -39,7 +39,7 @@ let int_mul (w : Ast.whnf) : Ast.term option =
         | _ -> None)
   | _ -> None
 
-let int_div (w : Ast.whnf) : Ast.term option =
+let int_div (w : Core.whnf) : Core.term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 2 then None
@@ -51,13 +51,13 @@ let int_div (w : Ast.whnf) : Ast.term option =
         | _ -> None)
   | _ -> None
 
-let io_read_int (w : Ast.whnf) : Ast.term option =
+let io_read_int (w : Core.whnf) : Core.term option =
   match w with
   | Neu (_, _, rev_args) ->
       if length rev_args <> 0 then None else Some (IntLit (read_int ()))
   | _ -> None
 
-let io_print_int (w : Ast.whnf) : Ast.term option =
+let io_print_int (w : Core.whnf) : Core.term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 1 then None
@@ -93,6 +93,6 @@ let load_builtins env =
     builtIn_functions;
   env
 
-let eval_builtin (name : name) (w : Ast.whnf) : Ast.term option =
+let eval_builtin (name : name) (w : Core.whnf) : Core.term option =
   let f = Hashtbl.find_opt builtIn_functions name in
   match f with Some (_, f) -> f w | None -> None

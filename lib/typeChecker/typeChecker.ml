@@ -1,8 +1,8 @@
 module Substitution = Substitution
 module Whnf = Whnf
 
-let telescope_length (ts : Ast.telescope) : int =
-  let rec tele_len (ts : Ast.telescope) (acc : int) =
+let telescope_length (ts : Core.telescope) : int =
+  let rec tele_len (ts : Core.telescope) (acc : int) =
     match ts with Empty -> acc | Cons (_, _, _, ts) -> tele_len ts (acc + 1)
   in
   tele_len ts 0
@@ -18,33 +18,33 @@ let split_pattern_args (tsT_len : int) (args : string list) :
   let _ = assert (List.length args >= tsT_len) in
   split_list_at_n tsT_len args []
 
-let rec build_adt_sig (env : Env.env) (ts : Ast.telescope) : Ast.term =
+let rec build_adt_sig (env : Env.env) (ts : Core.telescope) : Core.term =
   match ts with
   | Empty -> Type
   | Cons (nm, var, tp, ts) ->
-      let res : Ast.term = Product (nm, var, tp, build_adt_sig env ts) in
+      let res : Core.term = Product (nm, var, tp, build_adt_sig env ts) in
       res
 
-let rec build_adt_data (env : Env.env) (tsType : Ast.telescope)
-    (tsData : Ast.telescope) (var_list : (string * Ast.Var.t) list)
-    (adt_sig_var : string * Ast.Var.t) : Ast.term =
+let rec build_adt_data (env : Env.env) (tsType : Core.telescope)
+    (tsData : Core.telescope) (var_list : (string * Core.Var.t) list)
+    (adt_sig_var : string * Core.Var.t) : Core.term =
   match tsType with
   | Empty -> (
       match tsData with
       | Empty ->
           let adt_nm, adt_var = adt_sig_var in
           List.fold_left
-            (fun acc (nm, var) -> Ast.App (acc, Var (nm, var)))
-            (Ast.Var (adt_nm, adt_var))
+            (fun acc (nm, var) -> Core.App (acc, Var (nm, var)))
+            (Core.Var (adt_nm, adt_var))
             (List.rev var_list)
       | Cons (nm, var, tp, ts) ->
-          let res : Ast.term =
+          let res : Core.term =
             Product
               (nm, var, tp, build_adt_data env tsType ts var_list adt_sig_var)
           in
           res)
   | Cons (nm, var, tp, ts) ->
-      let res : Ast.term =
+      let res : Core.term =
         Product
           ( nm,
             var,
@@ -60,7 +60,7 @@ let rec build_adt_data (env : Env.env) (tsType : Ast.telescope)
     @param t2 The second term.
     @param env The environment containing variable and term bindings.
     @return [true] if [t1] and [t2] are equivalent; [false] otherwise. *)
-let rec equiv (t1 : Ast.term) (t2 : Ast.term) ((_, termEnv, _) as env : Env.env)
+let rec equiv (t1 : Core.term) (t2 : Core.term) ((_, termEnv, _) as env : Env.env)
     : bool =
   match (Whnf.to_whnf t1 termEnv, Whnf.to_whnf t2 termEnv) with
   | Type, Type ->
@@ -118,12 +118,12 @@ let rec equiv (t1 : Ast.term) (t2 : Ast.term) ((_, termEnv, _) as env : Env.env)
         let body1' =
           Substitution.substitute body1
             (Substitution.singleton_sub_map x1
-               (Ast.Var (Env.generate_fresh_var_name env nm1, fresh_var)))
+               (Core.Var (Env.generate_fresh_var_name env nm1, fresh_var)))
         in
         let body2' =
           Substitution.substitute body2
             (Substitution.singleton_sub_map x2
-               (Ast.Var (Env.generate_fresh_var_name env nm2, fresh_var)))
+               (Core.Var (Env.generate_fresh_var_name env nm2, fresh_var)))
         in
         (* Check if the bodies are equivalent *)
         let res = equiv body1' body2' env in
@@ -166,7 +166,7 @@ let rec equiv (t1 : Ast.term) (t2 : Ast.term) ((_, termEnv, _) as env : Env.env)
       If type inference fails, raises an exception with an appropriate error
       message. *)
 and infer_type ((_, termEnv, adtEnv) as env : Env.env)
-    ({ pos; data = t } as term : ParserAst.uTerm) : Ast.term * Ast.tp =
+    ({ pos; data = t } as term : Raw.uTerm) : Core.term * Core.tp =
   match t with
   | Type ->
       (* The type of 'Type' is 'Kind' *)
@@ -355,7 +355,7 @@ and infer_type ((_, termEnv, adtEnv) as env : Env.env)
       let ts' = telescope_check_type_and_extend_env env ts in
       let dataCNames =
         List.map
-          (fun { ParserAst.cname = nmCon; _ } -> Ast.dataCName_of_string nmCon)
+          (fun { Raw.cname = nmCon; _ } -> Core.dataCName_of_string nmCon)
           cs
       in
       let _ = Env.add_to_adtEnv adtEnv nm (AdtTSig (ts', dataCNames)) in
@@ -363,20 +363,20 @@ and infer_type ((_, termEnv, adtEnv) as env : Env.env)
       let fresh_var = Env.add_to_env env nm (Opaque adt_sig_tp) in
       let con_list =
         List.map
-          (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } ->
+          (fun { Raw.cname = nmCon; Raw.telescope = tsCon } ->
             let tsCon' = telescope_check_type_and_extend_env env tsCon in
             let _ =
               Env.add_to_adtEnv adtEnv nmCon
-                (AdtDSig (Ast.typeCName_of_string nm, tsCon'))
+                (AdtDSig (Core.typeCName_of_string nm, tsCon'))
             in
             let _ = Env.rm_telescope_from_env env tsCon' in
-            { Ast.cname = nmCon; Ast.telescope = tsCon' })
+            { Core.cname = nmCon; Core.telescope = tsCon' })
           cs
       in
       let _ = Env.rm_telescope_from_env env ts' in
       let cs =
         List.map
-          (fun (data_con : Ast.constructorDef) ->
+          (fun (data_con : Core.constructorDef) ->
             build_adt_data env ts' data_con.telescope [] (nm, fresh_var))
           con_list
       in
@@ -385,7 +385,7 @@ and infer_type ((_, termEnv, adtEnv) as env : Env.env)
           (fun (nmCon, tpCon) -> Env.add_to_env env nmCon (Opaque tpCon))
           (List.combine
              (List.map
-                (fun (data_con : Ast.constructorDef) -> data_con.cname)
+                (fun (data_con : Core.constructorDef) -> data_con.cname)
                 con_list)
              cs)
       in
@@ -430,7 +430,7 @@ and infer_type ((_, termEnv, adtEnv) as env : Env.env)
       If type checking fails, raises an exception with an appropriate error
       message. *)
 and check_type ((_, termEnv, _) as env : Env.env)
-    ({ pos; data = t } as term : ParserAst.uTerm) (tp : Ast.term) : Ast.term =
+    ({ pos; data = t } as term : Raw.uTerm) (tp : Core.term) : Core.term =
   match t with
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
   | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _
@@ -455,7 +455,7 @@ and check_type ((_, termEnv, _) as env : Env.env)
           let body' =
             check_type env body
               (Substitution.substitute body_tp
-                 (Substitution.singleton_sub_map y (Ast.Var (x, fresh_var))))
+                 (Substitution.singleton_sub_map y (Core.Var (x, fresh_var))))
           in
           (* Remove 'x' from the environment *)
           let _ = Env.rm_from_env env x in
@@ -529,28 +529,28 @@ and check_type ((_, termEnv, _) as env : Env.env)
       check_type env t tp
 
 and telescope_check_type_and_extend_env (env : Env.env)
-    (telescope : ParserAst.telescope) : Ast.telescope =
+    (telescope : Raw.telescope) : Core.telescope =
   match telescope with
   | Empty -> Empty
   | Cons (nm, tp, ts) ->
       let tp', _ = infer_type env tp in
       let fresh_var = Env.add_to_env env nm (Opaque tp') in
       let res =
-        Ast.Cons (nm, fresh_var, tp', telescope_check_type_and_extend_env env ts)
+        Core.Cons (nm, fresh_var, tp', telescope_check_type_and_extend_env env ts)
       in
       res
 
 and check_pattern_matching_branches (env : Env.env)
-    (ps : ParserAst.matchPat list) (tsT : Ast.telescope)
-    (tsT_types : Ast.tp list) (dataCNames : Ast.dataCName list) :
-    Ast.matchPat list * Ast.tp =
+    (ps : Raw.matchPat list) (tsT : Core.telescope)
+    (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
+    Core.matchPat list * Core.tp =
   let infer_branch_and_extend_env ((uTermEnv, _, _) as env : Env.env)
-      (tsT : Ast.telescope) (tsT_types : Ast.tp list) (tsD : Ast.telescope)
-      (args : string list) ({ pos; _ } as term : ParserAst.uTerm) :
-      Ast.term * Ast.tp * (string * Ast.Var.t) list =
-    let rec add_tsT_to_env (env : Env.env) (tsT : Ast.telescope)
-        (tsT_types : Ast.tp list) (argsT : string list) :
-        (Ast.Var.t * (string * Ast.Var.t)) list =
+      (tsT : Core.telescope) (tsT_types : Core.tp list) (tsD : Core.telescope)
+      (args : string list) ({ pos; _ } as term : Raw.uTerm) :
+      Core.term * Core.tp * (string * Core.Var.t) list =
+    let rec add_tsT_to_env (env : Env.env) (tsT : Core.telescope)
+        (tsT_types : Core.tp list) (argsT : string list) :
+        (Core.Var.t * (string * Core.Var.t)) list =
       match tsT with
       | Empty -> []
       | Cons (_, var, tp, tsT) ->
@@ -561,14 +561,14 @@ and check_pattern_matching_branches (env : Env.env)
           in
           let tsT =
             Substitution.substitute_in_telescope tsT
-              (Substitution.singleton_sub_map var (Ast.Var (new_nm, fresh_var)))
+              (Substitution.singleton_sub_map var (Core.Var (new_nm, fresh_var)))
           in
           (var, (new_nm, fresh_var))
           :: add_tsT_to_env env tsT (List.tl tsT_types) (List.tl argsT)
     in
 
-    let rec add_tsD_to_env (env : Env.env) (tsD : Ast.telescope)
-        (argsD : string list) : (Ast.Var.t * (string * Ast.Var.t)) list =
+    let rec add_tsD_to_env (env : Env.env) (tsD : Core.telescope)
+        (argsD : string list) : (Core.Var.t * (string * Core.Var.t)) list =
       match tsD with
       | Empty -> []
       | Cons (_, var, tp, tsD) ->
@@ -576,7 +576,7 @@ and check_pattern_matching_branches (env : Env.env)
           let fresh_var = Env.add_to_env env new_nm (Opaque tp) in
           let tsD =
             Substitution.substitute_in_telescope tsD
-              (Substitution.singleton_sub_map var (Ast.Var (new_nm, fresh_var)))
+              (Substitution.singleton_sub_map var (Core.Var (new_nm, fresh_var)))
           in
           (var, (new_nm, fresh_var)) :: add_tsD_to_env env tsD (List.tl argsD)
     in
@@ -589,7 +589,7 @@ and check_pattern_matching_branches (env : Env.env)
           (Substitution.of_list_sub_map
              (List.map
                 (fun (var, (new_nm, new_var)) ->
-                  (var, Ast.Var (new_nm, new_var)))
+                  (var, Core.Var (new_nm, new_var)))
                 tsT_all_vars))
       in
       let tsD_all_vars = add_tsD_to_env env tsD argsD in
@@ -606,18 +606,18 @@ and check_pattern_matching_branches (env : Env.env)
         term env
   in
   let infer_and_check_all_branches ((_, termEnv, _) as env : Env.env)
-      (ps : ParserAst.matchPat list) (tsT : Ast.telescope)
-      (tsT_types : Ast.tp list) (dataCNames : Ast.dataCName list) :
-      (Ast.matchPat * Ast.tp) list =
+      (ps : Raw.matchPat list) (tsT : Core.telescope)
+      (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
+      (Core.matchPat * Core.tp) list =
     let rec loop_over_branches ((_, _, adtEnv) as env : Env.env)
-        (ps : ParserAst.matchPat list) (tsT : Ast.telescope)
-        (tsT_types : Ast.tp list) (dataCNames : Ast.dataCName list) :
-        ((Ast.matchPat * Ast.tp) * (string * Ast.Var.t) list) list =
+        (ps : Raw.matchPat list) (tsT : Core.telescope)
+        (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
+        ((Core.matchPat * Core.tp) * (string * Core.Var.t) list) list =
       match ps with
       | (pattern, uTerm) :: (_ :: _ as ps) -> (
           match pattern with
           | PatCon (raw_dataCName, args) ->
-              let dataCName = Ast.dataCName_of_string raw_dataCName in
+              let dataCName = Core.dataCName_of_string raw_dataCName in
               if List.mem dataCName dataCNames then
                 match Env.find_opt_in_adtEnv adtEnv raw_dataCName with
                 | Some (AdtDSig (_, tsD)) ->
@@ -628,7 +628,7 @@ and check_pattern_matching_branches (env : Env.env)
                     let dataCNames =
                       List.filter (fun x -> not (x = dataCName)) dataCNames
                     in
-                    ( ((Ast.PatCon (dataCName, ts_names_and_vars), term), tp'),
+                    ( ((Core.PatCon (dataCName, ts_names_and_vars), term), tp'),
                       ts_names_and_vars )
                     :: loop_over_branches env ps tsT tsT_types dataCNames
                 | Some (AdtTSig _) ->
@@ -643,7 +643,7 @@ and check_pattern_matching_branches (env : Env.env)
       | (pattern, uTerm) :: [] -> (
           match pattern with
           | PatCon (raw_dataCName, args) ->
-              let dataCName = Ast.dataCName_of_string raw_dataCName in
+              let dataCName = Core.dataCName_of_string raw_dataCName in
               if List.mem dataCName dataCNames then
                 match Env.find_opt_in_adtEnv adtEnv raw_dataCName with
                 | Some (AdtDSig (_, tsD)) ->
@@ -655,7 +655,7 @@ and check_pattern_matching_branches (env : Env.env)
                       List.filter (fun x -> not (x = dataCName)) dataCNames
                     in
                     if List.is_empty dataCNames then
-                      ( ((Ast.PatCon (dataCName, ts_names_and_vars), term), tp'),
+                      ( ((Core.PatCon (dataCName, ts_names_and_vars), term), tp'),
                         ts_names_and_vars )
                       :: []
                     else
@@ -675,14 +675,14 @@ and check_pattern_matching_branches (env : Env.env)
                 infer_branch_and_extend_env env Empty [] Empty [] uTerm
               in
               if List.is_empty ts_names_and_vars then
-                (((Ast.PatWild, term), tp'), ts_names_and_vars) :: []
+                (((Core.PatWild, term), tp'), ts_names_and_vars) :: []
               else
                 failwith
                   "Type inferences of branch with wildcard pattern shouldn't \
                    extend the environment")
       | [] -> failwith "There are no branches to check"
     in
-    let check_branch_types (env : Env.env) (branch_types : Ast.tp list) : unit =
+    let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit =
       let hd = List.hd branch_types in
       let _, isSameType =
         List.fold_left
@@ -703,14 +703,14 @@ and check_pattern_matching_branches (env : Env.env)
     in
     result
   in
-  let check_constructor_names (ps : ParserAst.matchPat list)
-      (dataCNames : Ast.dataCName list) : bool =
-    let rec collect_constructor_names (ps : ParserAst.matchPat list) :
-        Ast.dataCName list * bool =
+  let check_constructor_names (ps : Raw.matchPat list)
+      (dataCNames : Core.dataCName list) : bool =
+    let rec collect_constructor_names (ps : Raw.matchPat list) :
+        Core.dataCName list * bool =
       match ps with
       | (PatCon (dataCName, _), _) :: ps ->
           let cs, contaisWild = collect_constructor_names ps in
-          (Ast.dataCName_of_string dataCName :: cs, contaisWild)
+          (Core.dataCName_of_string dataCName :: cs, contaisWild)
       | (PatWild, _) :: ps ->
           let cs, contaisWild = collect_constructor_names ps in
           if contaisWild then

@@ -1,15 +1,15 @@
-let find_matching_matchPat (nm : string) (patterns : Ast.matchPat list) :
-    Ast.matchPat =
+let find_matching_matchPat (nm : string) (patterns : Core.matchPat list) :
+    Core.matchPat =
   List.find
     (fun (pattern, _) ->
       match pattern with
-      | Ast.PatCon (dataCName, _) -> nm = Ast.dataCName_to_string dataCName
-      | Ast.PatWild -> true)
+      | Core.PatCon (dataCName, _) -> nm = Core.dataCName_to_string dataCName
+      | Core.PatWild -> true)
     patterns
 
-let add_pattern_vars_to_termEnv (vars : (string * Ast.Var.t) list)
-    (values : Ast.term list) (env : Env.termEnv) :
-    (string * Ast.Var.t * Ast.Var.t) list =
+let add_pattern_vars_to_termEnv (vars : (string * Core.Var.t) list)
+    (values : Core.term list) (env : Env.termEnv) :
+    (string * Core.Var.t * Core.Var.t) list =
   let _ = assert (List.length vars == List.length values) in
   List.fold_left
     (fun acc ((nm, var), term) ->
@@ -19,13 +19,13 @@ let add_pattern_vars_to_termEnv (vars : (string * Ast.Var.t) list)
     [] (List.combine vars values)
 
 let rm_pattern_vars_to_termEnv
-    (bindings : (string * Ast.Var.t * Ast.Var.t) list) (env : Env.termEnv) :
+    (bindings : (string * Core.Var.t * Core.Var.t) list) (env : Env.termEnv) :
     unit =
   List.iter (fun (_, _, x) -> Env.rm_from_termEnv env x) bindings
 
 (** [whnf_to_nf w env] fully normalizes a [whnf] node [w] in context [env],
     producing a [term] in normal form. *)
-let rec whnf_to_nf (w : Ast.whnf) (env : Env.termEnv) : Ast.term =
+let rec whnf_to_nf (w : Core.whnf) (env : Env.termEnv) : Core.term =
   match w with
   | Type ->
       (* Already a normal form. *)
@@ -60,16 +60,16 @@ let rec whnf_to_nf (w : Ast.whnf) (env : Env.termEnv) : Ast.term =
       | None ->
           (* Rebuild as a normal form: Var(...) applied to each argument in the correct order. *)
           List.fold_left
-            (fun acc arg -> Ast.App (acc, arg))
-            (Ast.Var (nm, x))
+            (fun acc arg -> Core.App (acc, arg))
+            (Core.Var (nm, x))
             nf_args)
   | Neu_with_Hole (nm, hole_tp, rev_args) ->
       (* A hole can still appear in normal forms, but we recursively evaluate
          the hole type and arguments, to produce a normal form. *)
       let nf_tp = eval hole_tp env in
       let nf_args = List.map (fun arg -> eval arg env) (List.rev rev_args) in
-      let hole = Ast.Hole (nm, nf_tp) in
-      List.fold_left (fun acc arg -> Ast.App (acc, arg)) hole nf_args
+      let hole = Core.Hole (nm, nf_tp) in
+      List.fold_left (fun acc arg -> Core.App (acc, arg)) hole nf_args
   | Lambda (nm, x, tp, body) ->
       (* Generate a fresh variable identifier *)
       let fresh_var = Env.fresh_var () in
@@ -80,14 +80,14 @@ let rec whnf_to_nf (w : Ast.whnf) (env : Env.termEnv) : Ast.term =
         eval
           (TypeChecker.Substitution.substitute tp
              (TypeChecker.Substitution.singleton_sub_map x
-                (Ast.Var (nm, fresh_var))))
+                (Core.Var (nm, fresh_var))))
           env
       in
       let nf_body =
         eval
           (TypeChecker.Substitution.substitute body
              (TypeChecker.Substitution.singleton_sub_map x
-                (Ast.Var (nm, fresh_var))))
+                (Core.Var (nm, fresh_var))))
           env
       in
       (* Remove the fresh variable from the environment *)
@@ -104,14 +104,14 @@ let rec whnf_to_nf (w : Ast.whnf) (env : Env.termEnv) : Ast.term =
         eval
           (TypeChecker.Substitution.substitute tp
              (TypeChecker.Substitution.singleton_sub_map x
-                (Ast.Var (nm, fresh_var))))
+                (Core.Var (nm, fresh_var))))
           env
       in
       let nf_body =
         eval
           (TypeChecker.Substitution.substitute body
              (TypeChecker.Substitution.singleton_sub_map x
-                (Ast.Var (nm, fresh_var))))
+                (Core.Var (nm, fresh_var))))
           env
       in
       (* Remove the fresh variable from the environment *)
@@ -144,6 +144,6 @@ let rec whnf_to_nf (w : Ast.whnf) (env : Env.termEnv) : Ast.term =
       | _ ->
           failwith "RUNTIME ERROR while evaluating Case, scrutinee is not Neu.")
 
-and eval (t : Ast.term) (env : Env.termEnv) : Ast.term =
+and eval (t : Core.term) (env : Env.termEnv) : Core.term =
   let w = TypeChecker.Whnf.to_whnf t env in
   whnf_to_nf w env

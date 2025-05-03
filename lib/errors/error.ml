@@ -4,7 +4,7 @@ type parser_reason =
   | InvalidChar of char
   | UnexpectedToken of string
 
-exception Parse_error of ParserAst.position * parser_reason
+exception Parse_error of Raw.position * parser_reason
 exception Cannot_open_file of { fname : string; message : string }
 
 type type_checker_reason =
@@ -27,8 +27,8 @@ exception Type_error of type_checker_reason
     @raise Failure
       Always raises a [Failure] exception with an error message including the
       line and column number. *)
-let create_infer_type_error (pos : ParserAst.position) (error_msg : string)
-    (term : ParserAst.uTerm) (env : Env.env) : 'a =
+let create_infer_type_error (pos : Raw.position) (error_msg : string)
+    (term : Raw.uTerm) (env : Env.env) : 'a =
   let _ =
     print_endline
       ("While inferring the type of term: "
@@ -56,8 +56,8 @@ let create_infer_type_error (pos : ParserAst.position) (error_msg : string)
     @raise Failure
       Always raises a [Failure] exception with an error message including the
       line and column number. *)
-let create_check_type_error (pos : ParserAst.position) (error_msg : string)
-    (term : ParserAst.uTerm) (tp : Ast.tp) (env : Env.env) : 'a =
+let create_check_type_error (pos : Raw.position) (error_msg : string)
+    (term : Raw.uTerm) (tp : Core.tp) (env : Env.env) : 'a =
   let _ =
     print_endline
       ("While checking the type of term: "
@@ -84,7 +84,7 @@ let create_check_type_error (pos : ParserAst.position) (error_msg : string)
     @param env The term environment at the time of the error.
     @param error_msg A message describing the error.
     @raise Failure Always raises a [Failure] exception with an error message. *)
-let create_whnf_error (term : Ast.term) (env : Env.termEnv) (error_msg : string)
+let create_whnf_error (term : Core.term) (env : Env.termEnv) (error_msg : string)
     : 'a =
   let _ =
     print_endline

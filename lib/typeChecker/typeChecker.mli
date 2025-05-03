@@ -3,5 +3,5 @@
 module Substitution = Substitution
 module Whnf = Whnf
 
-val infer_type : Env.env -> ParserAst.uTerm -> Ast.term * Ast.tp
-val check_type : Env.env -> ParserAst.uTerm -> Ast.term -> Ast.tp
+val infer_type : Env.env -> Raw.uTerm -> Core.term * Core.tp
+val check_type : Env.env -> Raw.uTerm -> Core.term -> Core.tp

@@ -6,8 +6,8 @@ let run_parser parse (lexbuf : Lexing.lexbuf) =
   with Parsing.Parse_error ->
     let pos =
       {
-        ParserAst.start = lexbuf.lex_start_p;
-        ParserAst.length =
+        Raw.start = lexbuf.lex_start_p;
+        Raw.length =
           lexbuf.lex_curr_p.pos_cnum - lexbuf.lex_start_p.pos_cnum;
       }
     in

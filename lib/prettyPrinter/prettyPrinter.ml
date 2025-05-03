@@ -8,27 +8,27 @@ let separate_map sep f l =
   in
   aux !^"" l
 
-let string_of_var (x : Ast.Var.t) : string = string_of_int (Ast.Var.to_int x)
+let string_of_var (x : Core.Var.t) : string = string_of_int (Core.Var.to_int x)
 
-let rec pp_pattern (p : Ast.pattern) : SmartPrint.t =
+let rec pp_pattern (p : Core.pattern) : SmartPrint.t =
   match p with
   | PatWild -> !^"_"
   | PatCon (nm, vars) ->
-      !^(Ast.dataCName_to_string nm)
+      !^(Core.dataCName_to_string nm)
       ^^ !^"("
       ^^ separate_map !^"," (fun (nm, _) -> !^nm) vars
       ^^ !^")"
 
-let rec pp_uTerm_pattern (p : ParserAst.pattern) : SmartPrint.t =
+let rec pp_uTerm_pattern (p : Raw.pattern) : SmartPrint.t =
   match p with
   | PatWild -> !^"_"
   | PatCon (nm, vars) ->
       !^nm ^-^ !^"(" ^-^ separate_map !^"," (fun nm -> !^nm) vars ^^ !^")"
 
-let pattern_to_string (p : Ast.pattern) : string = to_string 40 2 (pp_pattern p)
+let pattern_to_string (p : Core.pattern) : string = to_string 40 2 (pp_pattern p)
 
-let rec pp_term (e : Ast.term) : SmartPrint.t =
-  let parens_if_app (t : Ast.term) =
+let rec pp_term (e : Core.term) : SmartPrint.t =
+  let parens_if_app (t : Core.term) =
     match t with
     | Lambda _ | App _ | Hole (_, (Product _ | TypeArrow _)) ->
         parens (pp_term t)
@@ -68,12 +68,12 @@ let rec pp_term (e : Ast.term) : SmartPrint.t =
         (!^"match" ^^ pp_term t ^^ !^"with" ^^ newline
         ^^ nest
              (List.fold_left
-                (fun acc ((pattern : Ast.pattern), body) ->
+                (fun acc ((pattern : Core.pattern), body) ->
                   acc ^-^ !^"|" ^^ pp_pattern pattern ^^ !^"=>" ^^ pp_term body
                   ^-^ newline)
                 !^"" cases))
 
-let term_to_string (t : Ast.term) : string = to_string 40 2 (pp_term t)
+let term_to_string (t : Core.term) : string = to_string 40 2 (pp_term t)
 
 let print (term, tp) =
   print_endline
@@ -81,19 +81,19 @@ let print (term, tp) =
        (pp_term term ^-^ newline
        ^-^ nest (!^"\x1b[1mT:" ^^ pp_term tp ^-^ newline ^-^ !^"\x1b[0m")))
 
-let pp_telescope (ts : Ast.telescope) : SmartPrint.t =
+let pp_telescope (ts : Core.telescope) : SmartPrint.t =
   let rec aux acc = function
-    | Ast.Cons (nm, var, tp, ts) ->
+    | Core.Cons (nm, var, tp, ts) ->
         aux (acc ^-^ newline ^-^ !^nm ^^ !^(string_of_var var) ^^ pp_term tp) ts
-    | Ast.Empty -> acc
+    | Core.Empty -> acc
   in
   aux !^"" ts
 
-let telescope_to_string (ts : Ast.telescope) : string =
+let telescope_to_string (ts : Core.telescope) : string =
   to_string 40 2 (pp_telescope ts)
 
-let rec pp_uterm ({ data = e; pos } : ParserAst.uTerm) : SmartPrint.t =
-  let parens_if_app ({ data; pos } as t : ParserAst.uTerm) =
+let rec pp_uterm ({ data = e; pos } : Raw.uTerm) : SmartPrint.t =
+  let parens_if_app ({ data; pos } as t : Raw.uTerm) =
     match data with App (_, _) -> parens (pp_uterm t) | _ -> pp_uterm t
   in
   match e with
@@ -135,7 +135,7 @@ let rec pp_uterm ({ data = e; pos } : ParserAst.uTerm) : SmartPrint.t =
         (!^"match" ^^ pp_uterm t ^^ !^"with" ^-^ newline
         ^-^ nest
               (List.fold_left
-                 (fun acc ((pattern : ParserAst.pattern), body) ->
+                 (fun acc ((pattern : Raw.pattern), body) ->
                    acc ^-^ !^"|" ^^ pp_uTerm_pattern pattern ^^ !^"=>"
                    ^^ pp_uterm body ^-^ newline)
                  !^"" cases))
@@ -147,23 +147,23 @@ let rec pp_uterm ({ data = e; pos } : ParserAst.uTerm) : SmartPrint.t =
              (pp_telescope ts ^^ !^"=" ^-^ newline
              ^-^ nest
                    (List.fold_left
-                      (fun acc (con_def : ParserAst.constructorDef) ->
+                      (fun acc (con_def : Raw.constructorDef) ->
                         nest
                           (!^"|" ^^ !^(con_def.cname)
                           ^^ pp_telescope con_def.telescope))
                       !^"" con_defs)))
 
-and pp_telescope (ts : ParserAst.telescope) : SmartPrint.t =
+and pp_telescope (ts : Raw.telescope) : SmartPrint.t =
   match ts with
   | Empty -> !^""
   | Cons (x, t, (Cons (_, _, _) as ts)) ->
       parens (!^x ^-^ !^":" ^^ pp_uterm t) ^^ pp_telescope ts
   | Cons (x, t, Empty) -> parens (!^x ^-^ !^":" ^^ pp_uterm t)
 
-let rec uterm_to_string (t : ParserAst.uTerm) : string =
+let rec uterm_to_string (t : Raw.uTerm) : string =
   to_string 40 2 (pp_uterm t)
 
-let rec pp_whnf (e : Ast.whnf) : SmartPrint.t =
+let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
   match e with
   | IntType -> !^"Int"
   | StringType -> !^"String"
@@ -194,14 +194,14 @@ let rec pp_whnf (e : Ast.whnf) : SmartPrint.t =
         (!^"match" ^^ pp_whnf t ^^ !^"with" ^^ newline
         ^^ nest
              (List.fold_left
-                (fun acc ((pattern : Ast.pattern), body) ->
+                (fun acc ((pattern : Core.pattern), body) ->
                   acc ^-^ !^"|" ^^ pp_pattern pattern ^^ !^"=>" ^^ pp_term body
                   ^-^ newline)
                 !^"" cases))
 
-let rec whnf_to_string (t : Ast.whnf) : string = to_string 40 2 (pp_whnf t)
+let rec whnf_to_string (t : Core.whnf) : string = to_string 40 2 (pp_whnf t)
 
-let print_def ({ pos; data } : ParserAst.uTerm) : unit =
+let print_def ({ pos; data } : Raw.uTerm) : unit =
   match data with
   | LetDef (nm, _)
   | LemmaDef (nm, _)

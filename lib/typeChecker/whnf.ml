@@ -7,7 +7,7 @@
     @raise Failure
       If an error occurs during conversion, raises a failure with an appropriate
       error message. *)
-let rec to_whnf (t : Ast.term) (env : Env.termEnv) : Ast.whnf =
+let rec to_whnf (t : Core.term) (env : Env.termEnv) : Core.whnf =
   match t with
   | Type ->
       (* 'Type' is already in WHNF *)
@@ -45,7 +45,7 @@ let rec to_whnf (t : Ast.term) (env : Env.termEnv) : Ast.whnf =
       | None ->
           (* Variable not found in the environment; report an error *)
           Error.create_whnf_error t env
-            ("Couldn't find Variable " ^ nm ^ " " ^ Ast.Var.to_string x
+            ("Couldn't find Variable " ^ nm ^ " " ^ Core.Var.to_string x
            ^ " in environment"))
   | Lambda (nm, x, x_tp, body) ->
       (* Lambda abstraction is already in WHNF *)
@@ -55,7 +55,7 @@ let rec to_whnf (t : Ast.term) (env : Env.termEnv) : Ast.whnf =
       Product (nm, x, x_tp, body)
   | TypeArrow (tp1, tp2) ->
       (* Type arrow is syntactic sugar for a product type without a parameter name *)
-      Product ("", Ast.Var.of_int (-1), tp1, tp2)
+      Product ("", Core.Var.of_int (-1), tp1, tp2)
   | App (t1, t2) -> (
       (* Application of function 't1' to argument 't2' *)
       match to_whnf t1 env with
@@ -89,7 +89,7 @@ let rec to_whnf (t : Ast.term) (env : Env.termEnv) : Ast.whnf =
       let t2_whnf =
         to_whnf
           (Substitution.substitute t2
-             (Substitution.singleton_sub_map var (Ast.Var (nm, fresh_var))))
+             (Substitution.singleton_sub_map var (Core.Var (nm, fresh_var))))
           env
       in
       (* Substitute the fresh variable with 't1' in the result *)

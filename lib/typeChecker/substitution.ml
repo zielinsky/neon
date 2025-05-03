@@ -1,18 +1,18 @@
-module VarMap = Map.Make (Ast.Var)
+module VarMap = Map.Make (Core.Var)
 
-type sub_map = Ast.term VarMap.t
+type sub_map = Core.term VarMap.t
 
-let add_to_sub_map (var : Ast.Var.t) (t : Ast.term) (sub_map : sub_map) :
+let add_to_sub_map (var : Core.Var.t) (t : Core.term) (sub_map : sub_map) :
     sub_map =
   VarMap.add var t sub_map
 
-let singleton_sub_map (var : Ast.Var.t) (t : Ast.term) : sub_map =
+let singleton_sub_map (var : Core.Var.t) (t : Core.term) : sub_map =
   VarMap.singleton var t
 
-let find_opt_sub_map (var : Ast.Var.t) (sub_map : sub_map) : Ast.term option =
+let find_opt_sub_map (var : Core.Var.t) (sub_map : sub_map) : Core.term option =
   VarMap.find_opt var sub_map
 
-let of_list_sub_map (xs : (Ast.Var.t * Ast.term) list) : sub_map =
+let of_list_sub_map (xs : (Core.Var.t * Core.term) list) : sub_map =
   VarMap.of_list xs
 
 let empty_sub_map : sub_map = VarMap.empty
@@ -26,7 +26,7 @@ let empty_sub_map : sub_map = VarMap.empty
     @param sub The substitution map, mapping variable identifiers to terms.
     @return A new term where variables have been substituted according to [sub].
 *)
-let rec substitute (t : Ast.term) (sub : sub_map) : Ast.term =
+let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
   match t with
   | Var (nm, x) -> (
       match find_opt_sub_map x sub with Some t -> t | None -> Var (nm, x))
@@ -36,14 +36,14 @@ let rec substitute (t : Ast.term) (sub : sub_map) : Ast.term =
         ( nm,
           y,
           substitute tp sub,
-          substitute body (add_to_sub_map x (Ast.Var (nm, y)) sub) )
+          substitute body (add_to_sub_map x (Core.Var (nm, y)) sub) )
   | Product (nm, x, tp, body) ->
       let y = Env.fresh_var () in
       Product
         ( nm,
           y,
           substitute tp sub,
-          substitute body (add_to_sub_map x (Ast.Var (nm, y)) sub) )
+          substitute body (add_to_sub_map x (Core.Var (nm, y)) sub) )
   | App (t1, t2) -> App (substitute t1 sub, substitute t2 sub)
   | TypeArrow (t1, t2) -> TypeArrow (substitute t1 sub, substitute t2 sub)
   | Let (nm, x, t, tp_t, body) ->
@@ -53,7 +53,7 @@ let rec substitute (t : Ast.term) (sub : sub_map) : Ast.term =
           y,
           substitute t sub,
           substitute tp_t sub,
-          substitute body (add_to_sub_map x (Ast.Var (nm, y)) sub) )
+          substitute body (add_to_sub_map x (Core.Var (nm, y)) sub) )
   | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _
   | StringLit _ | BoolLit _ ->
       t
@@ -63,17 +63,17 @@ let rec substitute (t : Ast.term) (sub : sub_map) : Ast.term =
         List.map
           (fun (pattern, t) ->
             match pattern with
-            | Ast.PatWild -> (Ast.PatWild, substitute t sub)
-            | Ast.PatCon (con_nm, vars) ->
+            | Core.PatWild -> (Core.PatWild, substitute t sub)
+            | Core.PatCon (con_nm, vars) ->
                 let sub, rev_vars =
                   List.fold_left
                     (fun (sub_map, new_vars) (nm, var) ->
                       let fresh_var = Env.fresh_var () in
-                      ( add_to_sub_map var (Ast.Var (nm, fresh_var)) sub_map,
+                      ( add_to_sub_map var (Core.Var (nm, fresh_var)) sub_map,
                         (nm, fresh_var) :: new_vars ))
                     (sub, []) vars
                 in
-                (Ast.PatCon (con_nm, List.rev rev_vars), substitute t sub))
+                (Core.PatCon (con_nm, List.rev rev_vars), substitute t sub))
           matchPats
       in
       Case (scrutinee', matchPats')
@@ -84,7 +84,7 @@ let rec substitute (t : Ast.term) (sub : sub_map) : Ast.term =
     @param t The WHNF term in which to perform substitution.
     @param sub The substitution map.
     @return A new WHNF term with substitutions applied. *)
-let substitute_whnf (t : Ast.whnf) (sub : sub_map) : Ast.whnf =
+let substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
   match t with
   | Type | Kind | IntType | StringType | BoolType | IntLit _ | StringLit _
   | BoolLit _ | Case _ ->
@@ -98,8 +98,8 @@ let substitute_whnf (t : Ast.whnf) (sub : sub_map) : Ast.whnf =
   | Product (nm, var, tp, body) ->
       Product (nm, var, substitute tp sub, substitute body sub)
 
-let rec substitute_in_telescope (ts : Ast.telescope) (sub : sub_map) :
-    Ast.telescope =
+let rec substitute_in_telescope (ts : Core.telescope) (sub : sub_map) :
+    Core.telescope =
   match ts with
   | Cons (nm, var, tp, tl) ->
       Cons (nm, var, substitute tp sub, substitute_in_telescope tl sub)
