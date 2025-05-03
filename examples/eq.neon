@@ -24,5 +24,3 @@ let subst_type =
 
 lemma subst : subst_type = 
     fun A P x y xy => xy(P)
-
-/** let refl (A : Type) (x : A) (P : (A -> Type)) (px : P(x)) = px */

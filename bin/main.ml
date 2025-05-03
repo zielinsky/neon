@@ -8,40 +8,44 @@ let file = ref ""
 
 (* A reference to track whether we should print definitions verbosely *)
 let verbose_mode = ref false
-  
+
 (* A reference to track whether we should load the prelude *)
 let load_prelude_mode = ref true
 
 (* A specification list for possible command line options *)
-let speclist = [
-  ("-verbose", Set verbose_mode, "Enable verbose printing of definitions");
-  ("-no-prelude", Clear load_prelude_mode, "Do not load the prelude");
-]
+let speclist =
+  [
+    ("-verbose", Set verbose_mode, "Enable verbose printing of definitions");
+    ("-no-prelude", Clear load_prelude_mode, "Do not load the prelude");
+  ]
 
 (* Usage message that will be displayed if the user does not provide valid arguments *)
-let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " [-verbose] <file>"
+let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " [params] <file>"
 
 let process_parsed_def env x =
-  if !verbose_mode then begin
+  if !verbose_mode then (
     print_endline "----- PARSED -----";
     PrettyPrinter.print_def x;
-    print_endline "-------------------";
-  end;
+    print_endline "-------------------");
 
-  let (inferred_term, inferred_ty) = TypeChecker.infer_type env x in
-  if !verbose_mode then begin
+  let inferred_term, inferred_ty = TypeChecker.infer_type env x in
+  if !verbose_mode then (
     print_endline "----- INFERRED TYPE -----";
     PrettyPrinter.print (inferred_term, inferred_ty);
-    print_endline "-------------------";
-  end;
+    print_endline "-------------------");
 
-  let nf = Evaluator.eval inferred_term (snd env) in
-  if !verbose_mode then begin
+  let _, termEnv, _ = env in
+  let nf = Evaluator.eval inferred_term termEnv in
+  if !verbose_mode then (
     print_endline "----- NORMAL FORM -----";
-    Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf);
-  end 
-  else if not (String.starts_with ~prefix:"_builtin_" (PrettyPrinter.term_to_string nf)) then
-    Printf.printf "%s\n%s\n\n" (PrettyPrinter.term_to_string nf) (PrettyPrinter.term_to_string inferred_ty)
+    Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf))
+  else if
+    not
+      (String.starts_with ~prefix:"_builtin_" (PrettyPrinter.term_to_string nf))
+  then
+    Printf.printf "%s\n%s\n\n"
+      (PrettyPrinter.term_to_string nf)
+      (PrettyPrinter.term_to_string inferred_ty)
 
 (** Recursively lists all .neon files in the given directory. *)
 let list_neon_files dir =
@@ -57,13 +61,16 @@ let list_neon_files dir =
               []
           in
           let paths = List.map (fun entry -> concat d entry) entries in
-          let files, dirs' = List.partition (fun p -> not (is_directory p)) paths in
-          let neon_files = List.filter (fun p -> check_suffix p ".neon") files in
+          let files, dirs' =
+            List.partition (fun p -> not (is_directory p)) paths
+          in
+          let neon_files =
+            List.filter (fun p -> check_suffix p ".neon") files
+          in
           aux (neon_files @ acc) (dirs' @ ds)
-        else
-          aux acc ds
+        else aux acc ds
   in
-  aux [] [dir]
+  aux [] [ dir ]
 
 (** Loads all .neon files from the prelude directory into the environment. *)
 let load_prelude env prelude_dir =
@@ -71,13 +78,12 @@ let load_prelude env prelude_dir =
     failwith ("Prelude directory not found: " ^ prelude_dir)
   else
     let neon_files = list_neon_files prelude_dir in
-    List.iter (fun file ->
-        if !verbose_mode then begin
-          Printf.printf "Loading prelude file: %s\n%!" file;
-        end;
+    List.iter
+      (fun file ->
+        if !verbose_mode then Printf.printf "Loading prelude file: %s\n%!" file;
         let parsed = Parser.parse_file file in
-        List.iter (fun x -> process_parsed_def env x) parsed
-    ) neon_files
+        List.iter (fun x -> process_parsed_def env x) parsed)
+      neon_files
 
 (* The REPL loop. Reads lines, parses them, infers their type, and prints (if verbose). *)
 let rec repl env =
@@ -87,28 +93,23 @@ let rec repl env =
   | exception End_of_file ->
       print_endline "Goodbye!";
       exit 0
-
   | line ->
-      if String.trim line = "exit" then (
-          print_endline "Goodbye!";
-          exit 0)
-      else if String.trim line = "env" then
-          print_endline (Env.env_to_string env)
-      else if String.trim line = "clear" then (
-          Sys.command "clear" |> ignore
-      )
-      else (
-          try
-              let parsed = Parser.parse_string line in
-              List.iter (fun x -> process_parsed_def env x) parsed
-          with
-          | Errors.Parse_error _ ->
-              let wrapped_line = "let _last = " ^ line in
-              let parsed = Parser.parse_string wrapped_line in
-              List.iter (fun x -> process_parsed_def env x) parsed
-          | ex ->
-              Printf.printf "Unexpected error: %s\n" (Printexc.to_string ex);
-      );
+      (if String.trim line = "exit" then (
+         print_endline "Goodbye!";
+         exit 0)
+       else if String.trim line = "env" then
+         print_endline (Env.env_to_string env)
+       else if String.trim line = "clear" then Sys.command "clear" |> ignore
+       else
+         try
+           let parsed = Parser.parse_string line in
+           List.iter (fun x -> process_parsed_def env x) parsed
+         with
+         | Errors.Parse_error _ ->
+             let wrapped_line = "let _last = " ^ line in
+             let parsed = Parser.parse_string wrapped_line in
+             List.iter (fun x -> process_parsed_def env x) parsed
+         | ex -> Printf.printf "Unexpected error: %s\n" (Printexc.to_string ex));
       repl env
 
 let main () =
@@ -122,20 +123,19 @@ let main () =
   let _ = load_builtins env in
 
   (* Load the prelude *)
-  if !load_prelude_mode then begin
-    let prelude_dir = "stdlib/prelude" in
-    load_prelude env prelude_dir
-  end;
+  (if !load_prelude_mode then
+     let prelude_dir = "stdlib/prelude" in
+     load_prelude env prelude_dir);
 
   (* If a file is NOT provided, enter REPL mode. *)
-  if !file = "" then begin
-    print_endline "No file specified. Starting REPL mode (type \"exit\" to quit).";
-    repl env
-  end else begin
+  if !file = "" then (
+    print_endline
+      "No file specified. Starting REPL mode (type \"exit\" to quit).";
+    repl env)
+  else
     (* Otherwise, process the file in batch mode *)
     let parsed = Parser.parse_file !file in
     List.iter (fun x -> process_parsed_def env x) parsed
-  end
 
 (* Entry point *)
 let () = main ()

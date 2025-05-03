@@ -1,2 +1,8 @@
-(test
- (name neon))
+(rule
+ (alias runtest)
+ (deps
+  test.sh
+  (source_tree ok)
+  (source_tree error))
+ (action
+  (run bash ./test.sh)))

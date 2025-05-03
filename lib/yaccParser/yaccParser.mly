@@ -7,6 +7,9 @@
 %token BR_OPN BR_CLS
 %token ASTERISK COMMA COLON IN EQUAL
 %token EOF
+%token ADTDEF
+%token BAR
+%token MATCH WITH WILDCARD
 
 %type<ParserAst.program> program
 %start program
@@ -77,6 +80,40 @@ application_args
 | expression COMMA application_args { $1 :: $3 } 
 ;
 
+telescopes
+:                                               { Empty }
+| BR_OPN VAR COLON expression BR_CLS telescopes { Cons ($2, $4, $6) }
+;
+
+constructor_def
+: VAR telescopes { {cname = $1; telescope = $2;} }
+;
+
+constructor_def_list
+: BAR constructor_def constructor_def_list { $2 :: $3 }
+| BAR constructor_def { [$2] }
+;
+
+adt_def
+: ADTDEF VAR telescopes EQUAL constructor_def_list{ make (ADTDecl ($2, $3, $5)) }
+| ADTDEF VAR telescopes { make (ADTSig ($2, $3)) }
+;
+
+pattern_list
+: pattern { [$1] }
+| pattern pattern_list { $1 :: $2 }
+;
+
+pattern
+: BAR WILDCARD TYPE_ARROW expression { PatWild, $4 }
+| BAR VAR BR_OPN pattern_var_list BR_CLS TYPE_ARROW expression { PatCon ($2, $4), $7 }
+;
+
+pattern_var_list
+: VAR { [$1] }
+| VAR COMMA pattern_var_list { $1 :: $3 }
+;
+
 expression
 : TYPE { make (Type) }
 | KIND { make (Kind) }
@@ -92,6 +129,7 @@ expression
 | PRODUCT products { $2 }
 | LET VAR EQUAL expression IN expression {make (Let ($2, $4, $6)) }
 | LEMMA VAR EQUAL expression IN expression { make (Lemma ($2, $4, $6)) }
+| MATCH expression WITH pattern_list { make (Case ($2, $4)) }
 | expression TYPE_ARROW expression {make (TypeArrow ($1, $3)) }
 | application { $1 }
 | BR_OPN expression BR_CLS { $2 }
@@ -125,6 +163,7 @@ lemma_args
 expression_definition
 : LET let_def { $2 }
 | LEMMA lemma_def { $2 }
+| adt_def        { $1 }
 ;
 
 /* ========================================================================= */

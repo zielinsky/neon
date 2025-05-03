@@ -31,11 +31,16 @@ rule token = parse
   | "let" { YaccParser.LET }
   | "lemma" { YaccParser.LEMMA }
   | "?" var_char* as x { YaccParser.HOLE x }
-  | "Int"             { YaccParser.INT_TYPE }
-  | "String"          { YaccParser.STRING_TYPE }
-  | "Bool"            { YaccParser.BOOL_TYPE }
-  | "true"            { YaccParser.BOOL_LIT true }
-  | "false"           { YaccParser.BOOL_LIT false }
+  | "Int" { YaccParser.INT_TYPE }
+  | "String" { YaccParser.STRING_TYPE }
+  | "Bool" { YaccParser.BOOL_TYPE }
+  | "true" { YaccParser.BOOL_LIT true }
+  | "false" { YaccParser.BOOL_LIT false }
+  | "data" { YaccParser.ADTDEF }
+  | "match" { YaccParser.MATCH }
+  | "with" { YaccParser.WITH }
+  | '|' { YaccParser.BAR }
+  | '_' { YaccParser.WILDCARD }
   | var_char* as x { YaccParser.VAR x }
   (* Integer literals *)
   | ['0'-'9']+ as digits {

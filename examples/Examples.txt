@@ -1,0 +1,61 @@
+Figuring out Match and how to properly resolve types in all pattern cases
+
+data Option (A: Type) = | Some (x: A) | None
+
+let y = Some (Int, 5)
+
+let sd = 
+    match y with 
+    | Some(B, z) -> z
+    | None(B) -> 3
+
+
+    tsT:      (A, 8, Type)
+    tsT_args: Int
+    argsT:    [B]
+    tsD:      (x, 10, (Var A, 8))
+    argsD:    [z]
+
+    Expected Result:
+    B -> 18 -> Transparent(Int, Type)
+    z -> 17 -> Opaque(B)
+
+    tsT:
+    for tsT ...
+
+        tst: Cons(a, var, Type, tl)
+        tsT_args.hd: Int
+        argsT.hd: "B"
+
+        add_to_env "B" Transparent(Int, Type)
+        tl = substitute tl (SubMap A -> B)
+        acc :: substitute tsD (SubMap A -> B)
+
+    Env:
+    "B" -> n -> Transparent(Int, Type)
+
+    tsD: (x, 10, Var ("B", n))
+    argsD: [Z]
+
+    tsD:
+    for tsD ...
+
+        tsD: Cons(a, var, Var("B", n), tl)
+        argsD: "z"
+
+        add_to_env "z" Opaque(Var("B", n))
+
+
+        "B" -> 10 -> Transparent ...
+
+        10 -> Transparent ...
+
+        
+
+data Option (A: Type) (P: (A -> Type)) =
+| Some (x: A) (y: P(x))
+| None
+
+let y = fun (A: Type) (P: (A -> Type)) (x: A) (px: P(x)) => Some(A, P, x, px)
+
+(A : type) => (x : A) -> App ( [App (Some, A)], x)

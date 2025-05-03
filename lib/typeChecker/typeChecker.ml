@@ -1,19 +1,22 @@
 open Ast
 open PrettyPrinter
 open Env
-
 module VarMap = Map.Make (Int)
 
 type sub_map = term VarMap.t
 
-(** [create_infer_type_error pos error_msg term env] raises a failure exception with an error message when an error occurs during type inference of [term]. It prints detailed information about the term, the error, and the environment.
+(** [create_infer_type_error pos error_msg term env] raises a failure exception
+    with an error message when an error occurs during type inference of [term].
+    It prints detailed information about the term, the error, and the
+    environment.
 
     @param pos The position in the source code where the error occurred.
     @param error_msg A message describing the error.
     @param term The term whose type was being inferred when the error occurred.
     @param env The environment at the time of the error.
-    @raise Failure Always raises a [Failure] exception with an error message including the line and column number.
-*)
+    @raise Failure
+      Always raises a [Failure] exception with an error message including the
+      line and column number. *)
 let create_infer_type_error (pos : ParserAst.position) (error_msg : string)
     (term : ParserAst.uTerm) (env : env) : 'a =
   let _ =
@@ -28,15 +31,19 @@ let create_infer_type_error (pos : ParserAst.position) (error_msg : string)
     ^ ":"
     ^ Int.to_string (pos.start.pos_cnum - pos.start.pos_bol))
 
-(** [create_check_type_error pos error_msg term tp env] raises a failure exception with an error message when an error occurs during type checking of [term] against the expected type [tp]. It prints detailed information about the term, the expected type, the error, and the environment.
+(** [create_check_type_error pos error_msg term tp env] raises a failure
+    exception with an error message when an error occurs during type checking of
+    [term] against the expected type [tp]. It prints detailed information about
+    the term, the expected type, the error, and the environment.
 
     @param pos The position in the source code where the error occurred.
     @param error_msg A message describing the error.
     @param term The term that was being type-checked when the error occurred.
     @param tp The expected type of the term.
     @param env The environment at the time of the error.
-    @raise Failure Always raises a [Failure] exception with an error message including the line and column number.
-*)
+    @raise Failure
+      Always raises a [Failure] exception with an error message including the
+      line and column number. *)
 let create_check_type_error (pos : ParserAst.position) (error_msg : string)
     (term : ParserAst.uTerm) (tp : tp) (env : env) : 'a =
   let _ =
@@ -52,13 +59,16 @@ let create_check_type_error (pos : ParserAst.position) (error_msg : string)
     ^ ":"
     ^ Int.to_string (pos.start.pos_cnum - pos.start.pos_bol))
 
-(** [create_whnf_error term env error_msg] raises a failure exception with an error message when an error occurs during the conversion of [term] to its weak head normal form (WHNF). It prints detailed information about the term, the error, and the environment.
+(** [create_whnf_error term env error_msg] raises a failure exception with an
+    error message when an error occurs during the conversion of [term] to its
+    weak head normal form (WHNF). It prints detailed information about the term,
+    the error, and the environment.
 
-    @param term The term that was being converted to WHNF when the error occurred.
+    @param term
+      The term that was being converted to WHNF when the error occurred.
     @param env The term environment at the time of the error.
     @param error_msg A message describing the error.
-    @raise Failure Always raises a [Failure] exception with an error message.
-*)
+    @raise Failure Always raises a [Failure] exception with an error message. *)
 let create_whnf_error (term : term) (env : termEnv) (error_msg : string) : 'a =
   let _ =
     print_endline
@@ -69,7 +79,27 @@ let create_whnf_error (term : term) (env : termEnv) (error_msg : string) : 'a =
   in
   failwith "Error when converting to WHNF"
 
-(** [substitute t sub] performs capture-avoiding substitution on term [t] using the substitution map [sub]. It replaces variables in [t] according to [sub], ensuring that bound variables are correctly handled to prevent variable capture.
+let telescope_length (ts : telescope) : int =
+  let rec tele_len (ts : telescope) (acc : int) =
+    match ts with Empty -> acc | Cons (_, _, _, ts) -> tele_len ts (acc + 1)
+  in
+  tele_len ts 0
+
+let split_pattern_args (tsT_len : int) (args : string list) :
+    string list * string list =
+  let rec split_list_at_n (n : int) (xs : 'a list) (acc : 'a list) =
+    match (xs, n) with
+    | xs, 0 -> (List.rev acc, xs)
+    | x :: xs, _ -> split_list_at_n (n - 1) xs (x :: acc)
+    | [], _ -> failwith "Unreachable in split_list_at_n"
+  in
+  let _ = assert (List.length args >= tsT_len) in
+  split_list_at_n tsT_len args []
+
+(** [substitute t sub] performs capture-avoiding substitution on term [t] using
+    the substitution map [sub]. It replaces variables in [t] according to [sub],
+    ensuring that bound variables are correctly handled to prevent variable
+    capture.
 
     @param t The term in which to perform substitution.
     @param sub The substitution map, mapping variable identifiers to terms.
@@ -103,17 +133,41 @@ let rec substitute (t : term) (sub : sub_map) : term =
           substitute t sub,
           substitute tp_t sub,
           substitute body (VarMap.add x (Var (nm, y)) sub) )
-  | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ -> t
+  | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _
+  | StringLit _ | BoolLit _ ->
+      t
+  | Case (scrutinee, matchPats) ->
+      let scrutinee' = substitute scrutinee sub in
+      let matchPats' =
+        List.map
+          (fun (pattern, t) ->
+            match pattern with
+            | PatWild -> (PatWild, substitute t sub)
+            | PatCon (con_nm, vars) ->
+                let sub, rev_vars =
+                  List.fold_left
+                    (fun (sub_map, new_vars) (nm, var) ->
+                      let fresh_var = fresh_var () in
+                      ( VarMap.add var (Var (nm, fresh_var)) sub_map,
+                        (nm, fresh_var) :: new_vars ))
+                    (sub, []) vars
+                in
+                (PatCon (con_nm, List.rev rev_vars), substitute t sub))
+          matchPats
+      in
+      Case (scrutinee', matchPats')
 
-(** [substitute_whnf t sub] performs substitution on a term in weak head normal form (WHNF) [t] using the substitution map [sub].
+(** [substitute_whnf t sub] performs substitution on a term in weak head normal
+    form (WHNF) [t] using the substitution map [sub].
 
     @param t The WHNF term in which to perform substitution.
     @param sub The substitution map.
-    @return A new WHNF term with substitutions applied.
-*)
+    @return A new WHNF term with substitutions applied. *)
 let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
   match t with
-  | Type | Kind | IntType  | StringType | BoolType | IntLit _  | StringLit _ | BoolLit _ -> t
+  | Type | Kind | IntType | StringType | BoolType | IntLit _ | StringLit _
+  | BoolLit _ | Case _ ->
+      t
   | Neu (nm, var, term_list) ->
       Neu (nm, var, List.map (fun t -> substitute t sub) term_list)
   | Neu_with_Hole (nm, tp, term_list) ->
@@ -123,39 +177,47 @@ let substitute_whnf (t : whnf) (sub : sub_map) : whnf =
   | Product (nm, var, tp, body) ->
       Product (nm, var, substitute tp sub, substitute body sub)
 
-(** [to_whnf t env] converts a term [t] to its weak head normal form (WHNF) in the context of environment [env].
+let rec substitute_in_telescope (ts : telescope) (sub : sub_map) : telescope =
+  match ts with
+  | Cons (nm, var, tp, tl) ->
+      Cons (nm, var, substitute tp sub, substitute_in_telescope tl sub)
+  | Empty -> Empty
+
+(** [to_whnf t env] converts a term [t] to its weak head normal form (WHNF) in
+    the context of environment [env].
 
     @param t The term to convert to WHNF.
     @param env The term environment.
     @return The WHNF form of [t].
-    @raise Failure If an error occurs during conversion, raises a failure with an appropriate error message.
-*)
+    @raise Failure
+      If an error occurs during conversion, raises a failure with an appropriate
+      error message. *)
 let rec to_whnf (t : term) (env : termEnv) : whnf =
   match t with
   | Type ->
-		(* 'Type' is already in WHNF *)
-		Type
+      (* 'Type' is already in WHNF *)
+      Type
   | Kind ->
-		(* 'Kind' is already in WHNF *)
-		Kind
-	| IntType ->
-		(* 'IntType' is already in WHNF *)
-		IntType
-	| StringType ->
-		(* 'StringType' is already in WHNF *)
-		StringType
-	| BoolType ->
-		(* 'BoolType' is already in WHNF *)
-		BoolType
+      (* 'Kind' is already in WHNF *)
+      Kind
+  | IntType ->
+      (* 'IntType' is already in WHNF *)
+      IntType
+  | StringType ->
+      (* 'StringType' is already in WHNF *)
+      StringType
+  | BoolType ->
+      (* 'BoolType' is already in WHNF *)
+      BoolType
   | IntLit n ->
-    (* Integer literal is already in WHNF *)
-		IntLit n
-	| StringLit s ->
-		(* String literal is already in WHNF *)
-		StringLit s
-	| BoolLit s ->
-		(* Boolean literal is already in WHNF *)
-		BoolLit s
+      (* Integer literal is already in WHNF *)
+      IntLit n
+  | StringLit s ->
+      (* String literal is already in WHNF *)
+      StringLit s
+  | BoolLit s ->
+      (* Boolean literal is already in WHNF *)
+      BoolLit s
   | Var (nm, x) -> (
       (* Variable 'x' with name 'nm' *)
       match find_opt_in_termEnv env x with
@@ -167,7 +229,9 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
           to_whnf body env
       | None ->
           (* Variable not found in the environment; report an error *)
-          create_whnf_error t env ("Variable " ^ nm ^ " " ^ Int.to_string x))
+          create_whnf_error t env
+            ("Couldn't find Variable " ^ nm ^ " " ^ Int.to_string x
+           ^ " in environment"))
   | Lambda (nm, x, x_tp, body) ->
       (* Lambda abstraction is already in WHNF *)
       Lambda (nm, x, x_tp, body)
@@ -193,7 +257,7 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
           (* 't1' is not a function; cannot apply 't2'; report an error *)
           create_whnf_error t env
             ("When reducing Application expected Neu or Lambda\n" ^ "Got "
-            ^ whnf_to_string whnf_term ^ " instead"))
+           ^ whnf_to_string whnf_term ^ " instead"))
   | Hole (nm, tp) ->
       (* A hole is treated as a neutral term with a hole *)
       Neu_with_Hole (nm, tp, [])
@@ -215,15 +279,18 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
       let _ = rm_from_termEnv env fresh_var in
       (* Return the reduced term *)
       t2_whnf_substituted
+  | Case (term, patterns) ->
+      let term_whnf = to_whnf term env in
+      Case (term_whnf, patterns)
 
-(** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the environment [env].
+(** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the
+    environment [env].
 
     @param t1 The first term.
     @param t2 The second term.
     @param env The environment containing variable and term bindings.
-    @return [true] if [t1] and [t2] are equivalent; [false] otherwise.
-*)
-let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
+    @return [true] if [t1] and [t2] are equivalent; [false] otherwise. *)
+let rec equiv (t1 : term) (t2 : term) ((_, termEnv, _) as env : env) : bool =
   match (to_whnf t1 termEnv, to_whnf t2 termEnv) with
   | Type, Type ->
       (* Both terms are 'Type'; they are equivalent *)
@@ -231,12 +298,12 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
   | Kind, Kind ->
       (* Both terms are 'Kind'; they are equivalent *)
       true
-	| IntType, IntType -> true
-	| StringType, StringType -> true
-	| BoolType, BoolType -> true
-	| IntLit n1, IntLit n2 -> n1 = n2
-	| StringLit s1, StringLit s2 -> s1 = s2
-	| BoolLit b1, BoolLit b2 -> b1 = b2
+  | IntType, IntType -> true
+  | StringType, StringType -> true
+  | BoolType, BoolType -> true
+  | IntLit n1, IntLit n2 -> n1 = n2
+  | StringLit s1, StringLit s2 -> s1 = s2
+  | BoolLit b1, BoolLit b2 -> b1 = b2
   | Neu (_, x1, ts1), Neu (_, x2, ts2) ->
       (* Both terms are neutral terms *)
       (* They are equivalent if the variable identifiers are the same and their argument lists are equivalent *)
@@ -257,10 +324,10 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
         let _ =
           print_endline
             ("Term_1 " ^ term_to_string t1 ^ "\n" ^ "Whnf_1 "
-            ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
-            ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
-            ^ whnf_to_string whnf_2 ^ "\nEnv at this moment:\n"
-            ^ termEnv_to_string termEnv)
+           ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
+           ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
+           ^ whnf_to_string whnf_2 ^ "\nEnv at this moment:\n"
+           ^ termEnv_to_string termEnv)
         in
         true (* Returning true here might be specific to handling holes *)
   | Lambda (nm1, x1, x1_tp, body1), Lambda (nm2, x2, x2_tp, body2)
@@ -274,11 +341,13 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
         (* Substitute both bodies with the fresh variable *)
         let body1' =
           substitute body1
-            (VarMap.singleton x1 (Var (generate_fresh_var_name env nm1, fresh_var)))
+            (VarMap.singleton x1
+               (Var (generate_fresh_var_name env nm1, fresh_var)))
         in
         let body2' =
           substitute body2
-            (VarMap.singleton x2 (Var (generate_fresh_var_name env nm2, fresh_var)))
+            (VarMap.singleton x2
+               (Var (generate_fresh_var_name env nm2, fresh_var)))
         in
         (* Check if the bodies are equivalent *)
         let res = equiv body1' body2' env in
@@ -294,24 +363,28 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv) as env : env) : bool =
       let _ =
         print_endline
           ("Term_1 " ^ term_to_string t1 ^ "\n" ^ "Whnf_1 "
-          ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
-          ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
-          ^ whnf_to_string whnf_2 ^ "\n Env at this moment:\n"
-          ^ termEnv_to_string termEnv)
+         ^ whnf_to_string whnf_1 ^ "\n" ^ "Is expected to be equal to\n"
+         ^ "Term_2 " ^ term_to_string t2 ^ "\n" ^ "Whnf_2 "
+         ^ whnf_to_string whnf_2 ^ "\n Env at this moment:\n"
+         ^ termEnv_to_string termEnv)
       in
       true
   | _ ->
       (* Terms are not equivalent *)
       false
 
-(** [infer_type env term] infers the type of the given term [term] in the context of environment [env].
+(** [infer_type env term] infers the type of the given term [term] in the
+    context of environment [env].
 
     @param env The environment containing variable and term bindings.
     @param term The term for which to infer the type.
-    @return A pair [(t, tp)] where [t] is the term with variables resolved, and [tp] is the inferred type of [t].
-    @raise Failure If type inference fails, raises an exception with an appropriate error message.
-*)
-and infer_type ((_, termEnv) as env : env)
+    @return
+      A pair [(t, tp)] where [t] is the term with variables resolved, and [tp]
+      is the inferred type of [t].
+    @raise Failure
+      If type inference fails, raises an exception with an appropriate error
+      message. *)
+and infer_type ((_, termEnv, _) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) : term * term =
   match t with
   | Type ->
@@ -320,18 +393,12 @@ and infer_type ((_, termEnv) as env : env)
   | Kind ->
       (* Cannot infer the type of 'Kind' *)
       create_infer_type_error pos "Can't infer the type of Kind" term env
-	| IntType ->
-		(IntType, Type)
-	| StringType ->
-        (StringType, Type)
-	| BoolType ->
-        (BoolType, Type)
-	| IntLit n ->
-        (IntLit n, IntType)
-	| StringLit s ->
-        (StringLit s, StringType)
-	| BoolLit b ->
-        (BoolLit b, BoolType)
+  | IntType -> (IntType, Type)
+  | StringType -> (StringType, Type)
+  | BoolType -> (BoolType, Type)
+  | IntLit n -> (IntLit n, IntType)
+  | StringLit s -> (StringLit s, StringType)
+  | BoolLit b -> (BoolLit b, BoolType)
   | Var x -> (
       (* If the term is a variable, look up its type in the environment *)
       match find_opt_in_env env x with
@@ -339,7 +406,6 @@ and infer_type ((_, termEnv) as env : env)
           (* Variable 'x' is found with identifier 'y' and type 'tp' *)
           (Var (x, y), tp)
       | None ->
-          (* Variable not found in the environment *)
           create_infer_type_error pos ("Variable " ^ x ^ " not found") term env)
   | Lambda (_, None, _) ->
       (* Lambda expression with omitted argument type *)
@@ -491,19 +557,23 @@ and infer_type ((_, termEnv) as env : env)
       create_infer_type_error pos
         ("Trying to infer the type of a Hole " ^ x)
         term env
+  | ADTSig _ | ADTDecl _ | Case _ -> infer_data_type env term
 
-(** [check_type env term tp] checks whether the term [term] has the expected type [tp] in the context of environment [env].
+(** [check_type env term tp] checks whether the term [term] has the expected
+    type [tp] in the context of environment [env].
 
     @param env The environment containing variable and term bindings.
     @param term The term to check.
     @param tp The expected type of the term.
     @return The term [term] with variables resolved and type-checked.
-    @raise Failure If type checking fails, raises an exception with an appropriate error message.
-*)
-and check_type ((_, termEnv) as env : env)
+    @raise Failure
+      If type checking fails, raises an exception with an appropriate error
+      message. *)
+and check_type ((_, termEnv, _) as env : env)
     ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
   match t with
-  | Type | Var _ | App _ | Product _  | TermWithTypeAnno _ | TypeArrow _ | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ ->
+  | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
+  | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
       if equiv tp t_tp env then t
@@ -593,3 +663,333 @@ and check_type ((_, termEnv) as env : env)
   | LemmaDef (_, t) | LetDef (_, t) ->
       (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
       check_type env t tp
+  | ADTSig _ | ADTDecl _ | Case _ -> check_data_type env term tp
+
+and infer_data_type ((_, termEnv, adtEnv) as env : env)
+    ({ pos; data = t } as term : ParserAst.uTerm) : term * term =
+  match t with
+  | ADTSig (nm, ts) ->
+      let ts' = telescope_check_type_and_extend_env env ts in
+      let _ = add_to_adtEnv adtEnv nm (AdtTSig (ts', [])) in
+      let adt_sig_tp = build_adt_sig env ts' in
+      let fresh_var = add_to_env env nm (Opaque adt_sig_tp) in
+      let _ = rm_telescope_from_env env ts' in
+      (Var (nm, fresh_var), adt_sig_tp)
+  | ADTDecl (nm, ts, cs) ->
+      let ts' = telescope_check_type_and_extend_env env ts in
+      let dataCNames =
+        List.map (fun { ParserAst.cname = nmCon; _ } -> nmCon) cs
+      in
+      let _ = add_to_adtEnv adtEnv nm (AdtTSig (ts', dataCNames)) in
+      let adt_sig_tp = build_adt_sig env ts' in
+      let fresh_var = add_to_env env nm (Opaque adt_sig_tp) in
+      let con_list =
+        List.map
+          (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } ->
+            let tsCon' = telescope_check_type_and_extend_env env tsCon in
+            let _ = add_to_adtEnv adtEnv nmCon (AdtDSig (nm, tsCon')) in
+            let _ = rm_telescope_from_env env tsCon' in
+            { cname = nmCon; telescope = tsCon' })
+          cs
+      in
+      let _ = rm_telescope_from_env env ts' in
+      let cs =
+        List.map
+          (fun data_con ->
+            build_adt_data env ts' data_con.telescope [] (nm, fresh_var))
+          con_list
+      in
+      let _ =
+        List.map
+          (fun (nmCon, tpCon) -> add_to_env env nmCon (Opaque tpCon))
+          (List.combine (List.map (fun data_con -> data_con.cname) con_list) cs)
+      in
+      (Var (nm, fresh_var), adt_sig_tp)
+  | Case (scrut, ps) -> (
+      let scrut', tp' = infer_type env scrut in
+      match to_whnf tp' termEnv with
+      | Neu (nm, _, tsT_args) -> (
+          let tsT_args = List.rev tsT_args in
+          match find_opt_in_adtEnv adtEnv nm with
+          | Some (AdtTSig (tsT, dataCNames)) ->
+              if telescope_length tsT = List.length tsT_args then
+                let patterns, result_type =
+                  check_pattern_matching_branches env ps tsT tsT_args dataCNames
+                in
+                (Case (scrut', patterns), result_type)
+              else
+                create_infer_type_error pos
+                  "The number of Scrutinee's type arguments must match the ADT \
+                   signature"
+                  term env
+          | Some (AdtDSig _) ->
+              create_infer_type_error pos
+                "Scrutinee's type should be an ADT type and not an ADT \
+                 constructor"
+                term env
+          | None ->
+              create_infer_type_error pos
+                "Scrutinee's type should be an ADT type" term env)
+      | _ ->
+          create_infer_type_error pos
+            "Scrutinee's type whnf form should be a neutral term" term env)
+  | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
+  | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _
+  | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ ->
+      create_infer_type_error pos "Expected ADT declaration" term env
+
+and check_data_type ((_, _, _) as env : env)
+    ({ pos; data = t } as term : ParserAst.uTerm) (tp : term) : term =
+  match t with
+  | ADTDecl _ | ADTSig _ | Case _ ->
+      let t', tp' = infer_data_type env term in
+      if equiv tp tp' env then t'
+      else
+        create_check_type_error pos
+          ("Instead got:\n" ^ term_to_string tp')
+          term tp env
+  | Type | Kind | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
+  | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _
+  | Lambda _ | Let _ | LetDef _ | Lemma _ | LemmaDef _ | Hole _ ->
+      create_infer_type_error pos "Expected ADT declaration" term env
+
+and telescope_check_type_and_extend_env (env : env)
+    (telescope : ParserAst.telescope) : Ast.telescope =
+  match telescope with
+  | Empty -> Empty
+  | Cons (nm, tp, ts) ->
+      let tp', _ = infer_type env tp in
+      let fresh_var = add_to_env env nm (Opaque tp') in
+      let res =
+        Cons (nm, fresh_var, tp', telescope_check_type_and_extend_env env ts)
+      in
+      res
+
+and build_adt_sig (env : env) (ts : telescope) : term =
+  match ts with
+  | Empty -> Type
+  | Cons (nm, var, tp, ts) ->
+      let res : term = Product (nm, var, tp, build_adt_sig env ts) in
+      res
+
+and build_adt_data (env : env) (tsType : telescope) (tsData : telescope)
+    (var_list : (string * var) list) (adt_sig_var : string * var) : term =
+  match tsType with
+  | Empty -> (
+      match tsData with
+      | Empty ->
+          let adt_nm, adt_var = adt_sig_var in
+          List.fold_left
+            (fun acc (nm, var) -> App (acc, Var (nm, var)))
+            (Var (adt_nm, adt_var))
+            (List.rev var_list)
+      | Cons (nm, var, tp, ts) ->
+          let res : term =
+            Product
+              (nm, var, tp, build_adt_data env tsType ts var_list adt_sig_var)
+          in
+          res)
+  | Cons (nm, var, tp, ts) ->
+      let res : term =
+        Product
+          ( nm,
+            var,
+            tp,
+            build_adt_data env ts tsData ((nm, var) :: var_list) adt_sig_var )
+      in
+      res
+
+and check_pattern_matching_branches (env : env) (ps : ParserAst.matchPat list)
+    (tsT : telescope) (tsT_types : tp list) (dataCNames : dataCName list) :
+    Ast.matchPat list * tp =
+  let infer_branch_and_extend_env ((uTermEnv, _, _) as env : env)
+      (tsT : telescope) (tsT_types : tp list) (tsD : telescope)
+      (args : string list) ({ pos; _ } as term : ParserAst.uTerm) :
+      Ast.term * Ast.tp * (string * var) list =
+    let rec add_tsT_to_env (env : env) (tsT : telescope) (tsT_types : tp list)
+        (argsT : string list) : (var * (string * var)) list =
+      match tsT with
+      | Empty -> []
+      | Cons (_, var, tp, tsT) ->
+          let concrete_tp = List.hd tsT_types in
+          let new_nm = List.hd argsT in
+          let fresh_var =
+            add_to_env env new_nm (Transparent (concrete_tp, tp))
+          in
+          let tsT =
+            substitute_in_telescope tsT
+              (VarMap.singleton var (Var (new_nm, fresh_var)))
+          in
+          (var, (new_nm, fresh_var))
+          :: add_tsT_to_env env tsT (List.tl tsT_types) (List.tl argsT)
+    in
+
+    let rec add_tsD_to_env (env : env) (tsD : telescope) (argsD : string list) :
+        (var * (string * var)) list =
+      match tsD with
+      | Empty -> []
+      | Cons (_, var, tp, tsD) ->
+          let new_nm = List.hd argsD in
+          let fresh_var = add_to_env env new_nm (Opaque tp) in
+          let tsD =
+            substitute_in_telescope tsD
+              (VarMap.singleton var (Var (new_nm, fresh_var)))
+          in
+          (var, (new_nm, fresh_var)) :: add_tsD_to_env env tsD (List.tl argsD)
+    in
+
+    if telescope_length tsT + telescope_length tsD = List.length args then
+      let argsT, argsD = split_pattern_args (telescope_length tsT) args in
+      let tsT_all_vars = add_tsT_to_env env tsT tsT_types argsT in
+      let tsD =
+        substitute_in_telescope tsD
+          (VarMap.of_list
+             (List.map
+                (fun (var, (new_nm, new_var)) -> (var, Var (new_nm, new_var)))
+                tsT_all_vars))
+      in
+      let tsD_all_vars = add_tsD_to_env env tsD argsD in
+      let ts_all_vars = tsT_all_vars @ tsD_all_vars in
+      let term, tp' = infer_type env term in
+      let ts_names, ts_vars = List.split (snd (List.split ts_all_vars)) in
+      (* We need to remove the names from the env as the branches could over shadow each others variables but
+       we need to keep the internal representation in order to check if all branches have matching types *)
+      let _ = List.iter (fun nm -> Env.rm_from_uTermEnv uTermEnv nm) ts_names in
+      (term, tp', List.combine ts_names ts_vars)
+    else
+      create_infer_type_error pos
+        "The number of arguments in branch's pattern must match the telescope"
+        term env
+  in
+  let infer_and_check_all_branches ((_, termEnv, _) as env : env)
+      (ps : ParserAst.matchPat list) (tsT : telescope) (tsT_types : tp list)
+      (dataCNames : dataCName list) : (Ast.matchPat * tp) list =
+    let rec loop_over_branches ((_, _, adtEnv) as env : env)
+        (ps : ParserAst.matchPat list) (tsT : telescope) (tsT_types : tp list)
+        (dataCNames : dataCName list) :
+        ((Ast.matchPat * tp) * (string * var) list) list =
+      match ps with
+      | (pattern, uTerm) :: (_ :: _ as ps) -> (
+          match pattern with
+          | PatCon (dataCName, args) ->
+              if List.mem dataCName dataCNames then
+                match find_opt_in_adtEnv adtEnv dataCName with
+                | Some (AdtDSig (_, tsD)) ->
+                    let term, tp', ts_names_and_vars =
+                      infer_branch_and_extend_env env tsT tsT_types tsD args
+                        uTerm
+                    in
+                    let dataCNames =
+                      List.filter (fun x -> not (x = dataCName)) dataCNames
+                    in
+                    ( ((Ast.PatCon (dataCName, ts_names_and_vars), term), tp'),
+                      ts_names_and_vars )
+                    :: loop_over_branches env ps tsT tsT_types dataCNames
+                | Some (AdtTSig _) ->
+                    failwith
+                      "Branch's pattern must be an ADT contructor. Found ADT \
+                       type signature instead"
+                | None -> failwith "Branch's pattern must be an ADT constructor"
+              else
+                failwith
+                  "Pattern's constructor name not found in constructor list"
+          | PatWild -> failwith "Wildcard pattern must be at the end")
+      | (pattern, uTerm) :: [] -> (
+          match pattern with
+          | PatCon (dataCName, args) ->
+              if List.mem dataCName dataCNames then
+                match find_opt_in_adtEnv adtEnv dataCName with
+                | Some (AdtDSig (_, tsD)) ->
+                    let term, tp', ts_names_and_vars =
+                      infer_branch_and_extend_env env tsT tsT_types tsD args
+                        uTerm
+                    in
+                    let dataCNames =
+                      List.filter (fun x -> not (x = dataCName)) dataCNames
+                    in
+                    if List.is_empty dataCNames then
+                      ( ((Ast.PatCon (dataCName, ts_names_and_vars), term), tp'),
+                        ts_names_and_vars )
+                      :: []
+                    else
+                      failwith
+                        "Expected list of constructor names to be empty, \
+                         looped over all branches"
+                | Some (AdtTSig _) ->
+                    failwith
+                      "Branch's pattern must be an ADT contructor. Found ADT \
+                       type signature instead"
+                | None -> failwith "Branch's pattern must be an ADT constructor"
+              else
+                failwith
+                  "Pattern's constructor name not found in constructor list"
+          | PatWild ->
+              let term, tp', ts_names_and_vars =
+                infer_branch_and_extend_env env Empty [] Empty [] uTerm
+              in
+              if List.is_empty ts_names_and_vars then
+                (((Ast.PatWild, term), tp'), ts_names_and_vars) :: []
+              else
+                failwith
+                  "Type inferences of branch with wildcard pattern shouldn't \
+                   extend the environment")
+      | [] -> failwith "There are no branches to check"
+    in
+    let check_branch_types (env : env) (branch_types : tp list) : unit =
+      let hd = List.hd branch_types in
+      let _, isSameType =
+        List.fold_left
+          (fun (prev_tp, cond) tp -> (tp, cond && equiv prev_tp tp env))
+          (hd, true) (List.tl branch_types)
+      in
+      if isSameType then ()
+      else failwith "Pattern matching branches have different types"
+    in
+
+    let result, tp_names_and_vars =
+      List.split (loop_over_branches env ps tsT tsT_types dataCNames)
+    in
+    let _ = check_branch_types env (snd (List.split result)) in
+    let all_ts_vars = snd (List.split (List.flatten tp_names_and_vars)) in
+    let _ =
+      List.iter (fun var -> Env.rm_from_termEnv termEnv var) all_ts_vars
+    in
+    result
+  in
+  let check_constructor_names (ps : ParserAst.matchPat list)
+      (dataCNames : dataCName list) : bool =
+    let rec collect_constructor_names (ps : ParserAst.matchPat list) :
+        string list * bool =
+      match ps with
+      | (PatCon (dataCName, _), _) :: ps ->
+          let cs, contaisWild = collect_constructor_names ps in
+          (dataCName :: cs, contaisWild)
+      | (PatWild, _) :: ps ->
+          let cs, contaisWild = collect_constructor_names ps in
+          if contaisWild then
+            failwith "There can't be more than 1 wildcard branch"
+          else (cs, true)
+      | [] -> ([], false)
+    in
+    let cs, containsWild = collect_constructor_names ps in
+    if
+      containsWild
+      && List.compare_lengths cs dataCNames < 0
+      && List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs
+    then true
+    else if
+      (not containsWild)
+      && List.compare_lengths cs dataCNames == 0
+      && List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs
+    then true
+    else false
+  in
+
+  if check_constructor_names ps dataCNames then
+    let branches, tps =
+      List.split (infer_and_check_all_branches env ps tsT tsT_types dataCNames)
+    in
+    if List.is_empty tps then
+      failwith "List of inferred types of branches is empty"
+    else (branches, List.hd tps)
+  else failwith "Branches' pattern constructors mismatch"
