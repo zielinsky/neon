@@ -1,4 +1,5 @@
 open Ast
+open Whnf
 
 (* ENV *)
 module StringHashtbl = Hashtbl.Make (String)

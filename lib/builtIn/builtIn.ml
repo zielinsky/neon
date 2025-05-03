@@ -3,9 +3,9 @@ open Env
 open List
 
 type name = string
-type builtInFunction = tp * (whnf -> term option)
+type builtInFunction = tp * (Whnf.whnf -> term option)
 
-let int_add (w : whnf) : term option =
+let int_add (w : Whnf.whnf) : term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 2 then None
@@ -17,7 +17,7 @@ let int_add (w : whnf) : term option =
         | _ -> None)
   | _ -> None
 
-let int_sub (w : whnf) : term option =
+let int_sub (w : Whnf.whnf) : term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 2 then None
@@ -29,7 +29,7 @@ let int_sub (w : whnf) : term option =
         | _ -> None)
   | _ -> None
 
-let int_mul (w : whnf) : term option =
+let int_mul (w : Whnf.whnf) : term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 2 then None
@@ -41,7 +41,7 @@ let int_mul (w : whnf) : term option =
         | _ -> None)
   | _ -> None
 
-let int_div (w : whnf) : term option =
+let int_div (w : Whnf.whnf) : term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 2 then None
@@ -53,13 +53,13 @@ let int_div (w : whnf) : term option =
         | _ -> None)
   | _ -> None
 
-let io_read_int (w : whnf) : term option =
+let io_read_int (w : Whnf.whnf) : term option =
   match w with
   | Neu (_, _, rev_args) ->
       if length rev_args <> 0 then None else Some (IntLit (read_int ()))
   | _ -> None
 
-let io_print_int (w : whnf) : term option =
+let io_print_int (w : Whnf.whnf) : term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 1 then None
@@ -95,6 +95,6 @@ let load_builtins env =
     builtIn_functions;
   env
 
-let eval_builtin (name : name) (w : whnf) : term option =
+let eval_builtin (name : name) (w : Whnf.whnf) : term option =
   let f = Hashtbl.find_opt builtIn_functions name in
   match f with Some (_, f) -> f w | None -> None

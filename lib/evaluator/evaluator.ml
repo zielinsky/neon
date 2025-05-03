@@ -27,7 +27,7 @@ let rm_pattern_vars_to_termEnv (bindings : (string * var * var) list)
 
 (** [whnf_to_nf w env] fully normalizes a [whnf] node [w] in context [env],
     producing a [term] in normal form. *)
-let rec whnf_to_nf (w : whnf) (env : termEnv) : term =
+let rec whnf_to_nf (w : Whnf.whnf) (env : termEnv) : term =
   match w with
   | Type ->
       (* Already a normal form. *)

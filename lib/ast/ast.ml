@@ -25,19 +25,3 @@ and telescope = Empty | Cons of string * var * tp * telescope
 and matchPat = pattern * term
 and pattern = PatWild | PatCon of dataCName * (string * var) list
 and tp = term
-
-(* The term list in Neu is stored in reverse order. *)
-type whnf =
-  | Type
-  | Kind
-  | Neu of string * var * term list
-  | Neu_with_Hole of string * tp * term list
-  | IntType
-  | StringType
-  | BoolType
-  | IntLit of int
-  | StringLit of string
-  | BoolLit of bool
-  | Lambda of string * var * tp * term
-  | Product of string * var * tp * tp
-  | Case of whnf * matchPat list
