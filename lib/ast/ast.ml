@@ -1,5 +1,4 @@
 type var = int
-
 type typeCName = string
 type dataCName = string
 
@@ -21,21 +20,10 @@ type term =
   | TypeArrow of tp * tp
   | Case of term * matchPat list
 
-and constructorDef = {
-  cname : string;
-  telescope : telescope;
-}
-
-and telescope =
-  | Empty
-  | Cons of string * var * tp * telescope
-
+and constructorDef = { cname : string; telescope : telescope }
+and telescope = Empty | Cons of string * var * tp * telescope
 and matchPat = pattern * term
-
-and pattern = 
-  | PatWild
-  | PatCon of dataCName * (string * var) list
-
+and pattern = PatWild | PatCon of dataCName * (string * var) list
 and tp = term
 
 (* The term list in Neu is stored in reverse order. *)
@@ -53,4 +41,3 @@ type whnf =
   | Lambda of string * var * tp * term
   | Product of string * var * tp * tp
   | Case of whnf * matchPat list
-  

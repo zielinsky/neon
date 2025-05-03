@@ -1,6 +1,5 @@
 type position = { start : Lexing.position; length : int }
 type 'a node = { pos : position; data : 'a }
-
 type adtCName = string
 type typeCName = string
 type dataCName = string
@@ -13,9 +12,9 @@ and term_data =
   | IntType
   | StringType
   | BoolType
-  | IntLit of int               
-  | StringLit of string          
-  | BoolLit of bool 
+  | IntLit of int
+  | StringLit of string
+  | BoolLit of bool
   | Var of string
   | Lambda of string * uTerm option * uTerm
   | Product of string * uTerm * uTerm
@@ -31,19 +30,9 @@ and term_data =
   | ADTDecl of typeCName * telescope * constructorDef list
   | Case of uTerm * matchPat list
 
-and constructorDef = {
-  cname : dataCName;
-  telescope : telescope;
-}
-
-and telescope =
-  | Empty
-  | Cons of string * uTerm * telescope
-
+and constructorDef = { cname : dataCName; telescope : telescope }
+and telescope = Empty | Cons of string * uTerm * telescope
 and matchPat = pattern * uTerm
-
-and pattern = 
-  | PatWild
-  | PatCon of dataCName * string list
+and pattern = PatWild | PatCon of dataCName * string list
 
 type program = uTerm list

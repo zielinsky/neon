@@ -25,17 +25,26 @@ dune exec neon [file.neon]
 A small example of a Neon program illustrating dependent types and ADTs:
 
 ```neon
-data List (A : Type) =
+data List (A: Type) =
 | Nil
-| Cons (x : A) (xs : List(A))
+| Cons (x: A) (xs: List(A))
 
-let id (A : Type) (xs : List(A)) = xs
+let id (A: Type) (xs: List(A)) = xs
 
 let nums = Cons(Int, 1, Cons(Int, 2, Nil(Int)))
-let nums2 = id(Int, nums)
+let nums_id = id(Int, nums)
+
+let x = match nums_id with
+| Cons(A, x, xs) -> x
+| Nil(A) -> 42
 ```
 
 - `List` is a simple ADT with two constructors, `Nil` and `Cons`.
 - `id` is a polymorphic function that takes a type `A` and a `List(A)`, returning the same list.
 - `nums` is a `List Int` with two elements (1, 2).
 - `nums2` is the result of applying `id(Int, nums)`.
+
+```neon
+data Sigma (A: Type) (P: (A -> Type)) =
+| Pair (x: A) (y: P(x))
+```

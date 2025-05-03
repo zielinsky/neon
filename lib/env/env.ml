@@ -4,13 +4,11 @@ open Ast
 module StringHashtbl = Hashtbl.Make (String)
 module IntHashtbl = Hashtbl.Make (Int)
 
-type env_var = 
-  | Opaque of tp 
-  | Transparent of term * tp 
+type env_var = Opaque of tp | Transparent of term * tp
 
-type adt_var = 
-| AdtTSig of telescope * dataCName list
-| AdtDSig of typeCName * telescope
+type adt_var =
+  | AdtTSig of telescope * dataCName list
+  | AdtDSig of typeCName * telescope
 
 type uTermEnv = var StringHashtbl.t
 type termEnv = env_var IntHashtbl.t
@@ -24,9 +22,11 @@ let fresh_var () : int =
   let _ = counter := !counter + 1 in
   fresh_var
 
-let create_env () : env = (StringHashtbl.create 10, IntHashtbl.create 10, StringHashtbl.create 10)
+let create_env () : env =
+  (StringHashtbl.create 10, IntHashtbl.create 10, StringHashtbl.create 10)
 
-let add_to_env ((uTermEnv, termEnv, _) : env) (nm : string) (var : env_var) : var =
+let add_to_env ((uTermEnv, termEnv, _) : env) (nm : string) (var : env_var) :
+    var =
   let y = fresh_var () in
   let _ = StringHashtbl.add uTermEnv nm y in
   let _ = IntHashtbl.add termEnv y var in
@@ -37,17 +37,17 @@ let add_to_termEnv (termEnv : termEnv) (var : var) (env_var : env_var) : unit =
   IntHashtbl.add termEnv var env_var
 
 let add_to_adtEnv (adtEnv : adtEnv) (nm : string) (adt_var : adt_var) : unit =
-  if (StringHashtbl.mem adtEnv nm)
-  then failwith "ADT already exists in Env"
-  else StringHashtbl.add adtEnv nm adt_var 
+  if StringHashtbl.mem adtEnv nm then failwith "ADT already exists in Env"
+  else StringHashtbl.add adtEnv nm adt_var
 
-let rec add_telescope_to_env ((uTermEnv, termEnv, _) as env: env) (ts : telescope) : unit =
-match ts with
+let rec add_telescope_to_env ((uTermEnv, termEnv, _) as env : env)
+    (ts : telescope) : unit =
+  match ts with
   | Empty -> ()
-  | Cons (nm, var, tp, ts) -> 
-    let _ = StringHashtbl.add uTermEnv nm var in
-    let _ = IntHashtbl.add termEnv var (Opaque tp) in
-    add_telescope_to_env env ts
+  | Cons (nm, var, tp, ts) ->
+      let _ = StringHashtbl.add uTermEnv nm var in
+      let _ = IntHashtbl.add termEnv var (Opaque tp) in
+      add_telescope_to_env env ts
 
 let rm_from_env ((uTermEnv, termEnv, _) : env) (nm : string) : unit =
   let y = StringHashtbl.find uTermEnv nm in
@@ -56,18 +56,18 @@ let rm_from_env ((uTermEnv, termEnv, _) : env) (nm : string) : unit =
 
 let rm_from_termEnv (termEnv : termEnv) (var : var) : unit =
   IntHashtbl.remove termEnv var
-  
-let rec rm_telescope_from_env (env: env) (ts : telescope) : unit =
-match ts with
+
+let rec rm_telescope_from_env (env : env) (ts : telescope) : unit =
+  match ts with
   | Empty -> ()
-  | Cons (nm, _, _, ts) -> 
-    let _ = rm_from_env env nm in
-    rm_telescope_from_env env ts
+  | Cons (nm, _, _, ts) ->
+      let _ = rm_from_env env nm in
+      rm_telescope_from_env env ts
 
 let rm_from_adtEnv (adtEnv : adtEnv) (nm : string) : unit =
   StringHashtbl.remove adtEnv nm
 
-let rm_from_uTermEnv (uTermEnv: uTermEnv) (nm: string): unit =
+let rm_from_uTermEnv (uTermEnv : uTermEnv) (nm : string) : unit =
   StringHashtbl.remove uTermEnv nm
 
 let find_opt_in_env ((uTermEnv, termEnv, _) : env) (nm : string) :
@@ -82,18 +82,20 @@ let find_opt_in_env ((uTermEnv, termEnv, _) : env) (nm : string) :
 let find_opt_in_termEnv (termEnv : termEnv) (var : var) : env_var option =
   IntHashtbl.find_opt termEnv var
 
-let find_opt_in_adtEnv (adtEnv : adtEnv) (nm : string) :adt_var option =
+let find_opt_in_adtEnv (adtEnv : adtEnv) (nm : string) : adt_var option =
   StringHashtbl.find_opt adtEnv nm
 
 let env_var_to_string (env_var : env_var option) : string =
   match env_var with
   | None -> "Not found"
-  | Some (Opaque tp) -> ": \x1b[1m" ^ PrettyPrinter.term_to_string tp ^ "\x1b[0m"
+  | Some (Opaque tp) ->
+      ": \x1b[1m" ^ PrettyPrinter.term_to_string tp ^ "\x1b[0m"
   | Some (Transparent (term, tp)) ->
       "|> "
       ^ PrettyPrinter.term_to_string term
       ^ " : \x1b[1m"
-      ^ PrettyPrinter.term_to_string tp^ "\x1b[0m"
+      ^ PrettyPrinter.term_to_string tp
+      ^ "\x1b[0m"
 
 let env_to_string ((uTermEnv, termEnv, _) : env) : string =
   StringHashtbl.fold

@@ -1,7 +1,8 @@
 (rule
- (alias       runtest)
+ (alias runtest)
  (deps
-   test.sh
-   (source_tree ok)
-   (source_tree error)) 
-   (action      (run bash ./test.sh)))
+  test.sh
+  (source_tree ok)
+  (source_tree error))
+ (action
+  (run bash ./test.sh)))
