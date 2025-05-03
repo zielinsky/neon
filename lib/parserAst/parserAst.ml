@@ -43,7 +43,6 @@ and telescope =
 and matchPat = pattern * uTerm
 
 and pattern = 
-  (* | PatVar of string * uTerm *)
   | PatWild
   | PatCon of dataCName * string list
 
