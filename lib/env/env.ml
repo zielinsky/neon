@@ -77,7 +77,8 @@ let find_opt_in_env ((uTermEnv, termEnv, _) : env) (nm : string) :
       | None -> None
       | Some env_var -> Some (var, env_var))
 
-let find_opt_in_termEnv (termEnv : termEnv) (var : Core.Var.t) : env_var option =
+let find_opt_in_termEnv (termEnv : termEnv) (var : Core.Var.t) : env_var option
+    =
   VarHashtbl.find_opt termEnv var
 
 let find_opt_in_adtEnv (adtEnv : adtEnv) (nm : string) : adt_var option =

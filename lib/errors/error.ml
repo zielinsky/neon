@@ -84,8 +84,8 @@ let create_check_type_error (pos : Raw.position) (error_msg : string)
     @param env The term environment at the time of the error.
     @param error_msg A message describing the error.
     @raise Failure Always raises a [Failure] exception with an error message. *)
-let create_whnf_error (term : Core.term) (env : Env.termEnv) (error_msg : string)
-    : 'a =
+let create_whnf_error (term : Core.term) (env : Env.termEnv)
+    (error_msg : string) : 'a =
   let _ =
     print_endline
       ("While converting term "

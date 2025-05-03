@@ -60,8 +60,8 @@ let rec build_adt_data (env : Env.env) (tsType : Core.telescope)
     @param t2 The second term.
     @param env The environment containing variable and term bindings.
     @return [true] if [t1] and [t2] are equivalent; [false] otherwise. *)
-let rec equiv (t1 : Core.term) (t2 : Core.term) ((_, termEnv, _) as env : Env.env)
-    : bool =
+let rec equiv (t1 : Core.term) (t2 : Core.term)
+    ((_, termEnv, _) as env : Env.env) : bool =
   match (Whnf.to_whnf t1 termEnv, Whnf.to_whnf t2 termEnv) with
   | Type, Type ->
       (* Both terms are 'Type'; they are equivalent *)
@@ -536,14 +536,14 @@ and telescope_check_type_and_extend_env (env : Env.env)
       let tp', _ = infer_type env tp in
       let fresh_var = Env.add_to_env env nm (Opaque tp') in
       let res =
-        Core.Cons (nm, fresh_var, tp', telescope_check_type_and_extend_env env ts)
+        Core.Cons
+          (nm, fresh_var, tp', telescope_check_type_and_extend_env env ts)
       in
       res
 
-and check_pattern_matching_branches (env : Env.env)
-    (ps : Raw.matchPat list) (tsT : Core.telescope)
-    (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
-    Core.matchPat list * Core.tp =
+and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
+    (tsT : Core.telescope) (tsT_types : Core.tp list)
+    (dataCNames : Core.dataCName list) : Core.matchPat list * Core.tp =
   let infer_branch_and_extend_env ((uTermEnv, _, _) as env : Env.env)
       (tsT : Core.telescope) (tsT_types : Core.tp list) (tsD : Core.telescope)
       (args : string list) ({ pos; _ } as term : Raw.uTerm) :
@@ -561,7 +561,8 @@ and check_pattern_matching_branches (env : Env.env)
           in
           let tsT =
             Substitution.substitute_in_telescope tsT
-              (Substitution.singleton_sub_map var (Core.Var (new_nm, fresh_var)))
+              (Substitution.singleton_sub_map var
+                 (Core.Var (new_nm, fresh_var)))
           in
           (var, (new_nm, fresh_var))
           :: add_tsT_to_env env tsT (List.tl tsT_types) (List.tl argsT)
@@ -576,7 +577,8 @@ and check_pattern_matching_branches (env : Env.env)
           let fresh_var = Env.add_to_env env new_nm (Opaque tp) in
           let tsD =
             Substitution.substitute_in_telescope tsD
-              (Substitution.singleton_sub_map var (Core.Var (new_nm, fresh_var)))
+              (Substitution.singleton_sub_map var
+                 (Core.Var (new_nm, fresh_var)))
           in
           (var, (new_nm, fresh_var)) :: add_tsD_to_env env tsD (List.tl argsD)
     in
@@ -606,9 +608,8 @@ and check_pattern_matching_branches (env : Env.env)
         term env
   in
   let infer_and_check_all_branches ((_, termEnv, _) as env : Env.env)
-      (ps : Raw.matchPat list) (tsT : Core.telescope)
-      (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
-      (Core.matchPat * Core.tp) list =
+      (ps : Raw.matchPat list) (tsT : Core.telescope) (tsT_types : Core.tp list)
+      (dataCNames : Core.dataCName list) : (Core.matchPat * Core.tp) list =
     let rec loop_over_branches ((_, _, adtEnv) as env : Env.env)
         (ps : Raw.matchPat list) (tsT : Core.telescope)
         (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
@@ -682,7 +683,8 @@ and check_pattern_matching_branches (env : Env.env)
                    extend the environment")
       | [] -> failwith "There are no branches to check"
     in
-    let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit =
+    let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit
+        =
       let hd = List.hd branch_types in
       let _, isSameType =
         List.fold_left

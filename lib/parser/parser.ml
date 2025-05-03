@@ -7,8 +7,7 @@ let run_parser parse (lexbuf : Lexing.lexbuf) =
     let pos =
       {
         Raw.start = lexbuf.lex_start_p;
-        Raw.length =
-          lexbuf.lex_curr_p.pos_cnum - lexbuf.lex_start_p.pos_cnum;
+        Raw.length = lexbuf.lex_curr_p.pos_cnum - lexbuf.lex_start_p.pos_cnum;
       }
     in
     raise (Error.Parse_error (pos, UnexpectedToken (Lexing.lexeme lexbuf)))

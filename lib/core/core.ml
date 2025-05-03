@@ -45,10 +45,10 @@ and matchPat = pattern * term
 and pattern = PatWild | PatCon of dataCName * (string * Var.t) list
 and tp = term
 
-(* The term list in Neu is stored in reverse order. *)
 type whnf =
   | Type
   | Kind
+  (* The term list is stored in reverse order. *)
   | Neu of string * Var.t * term list
   | Neu_with_Hole of string * tp * term list
   | IntType

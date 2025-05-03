@@ -25,7 +25,8 @@ let rec pp_uTerm_pattern (p : Raw.pattern) : SmartPrint.t =
   | PatCon (nm, vars) ->
       !^nm ^-^ !^"(" ^-^ separate_map !^"," (fun nm -> !^nm) vars ^^ !^")"
 
-let pattern_to_string (p : Core.pattern) : string = to_string 40 2 (pp_pattern p)
+let pattern_to_string (p : Core.pattern) : string =
+  to_string 40 2 (pp_pattern p)
 
 let rec pp_term (e : Core.term) : SmartPrint.t =
   let parens_if_app (t : Core.term) =
@@ -160,8 +161,7 @@ and pp_telescope (ts : Raw.telescope) : SmartPrint.t =
       parens (!^x ^-^ !^":" ^^ pp_uterm t) ^^ pp_telescope ts
   | Cons (x, t, Empty) -> parens (!^x ^-^ !^":" ^^ pp_uterm t)
 
-let rec uterm_to_string (t : Raw.uTerm) : string =
-  to_string 40 2 (pp_uterm t)
+let rec uterm_to_string (t : Raw.uTerm) : string = to_string 40 2 (pp_uterm t)
 
 let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
   match e with
