@@ -33,7 +33,6 @@ and telescope =
 and matchPat = pattern * term
 
 and pattern = 
-  (* | PatVar of string * var * term *)
   | PatWild
   | PatCon of dataCName * (string * var) list
 
@@ -55,7 +54,3 @@ type whnf =
   | Product of string * var * tp * tp
   | Case of whnf * matchPat list
   
-  (* and matchPatWhnf = patternWhnf * whnf
-  and patternWhnf = 
-    | PatWild
-    | PatCon of dataCName * string list *)

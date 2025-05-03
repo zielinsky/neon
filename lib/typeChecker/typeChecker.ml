@@ -255,7 +255,6 @@ let rec to_whnf (t : term) (env : termEnv) : whnf =
       t2_whnf_substituted
   | Case (term, patterns) ->
     let term_whnf = to_whnf term env in
-    (* let patterns_whnf = List.map (fun (pattern, term) -> (pattern, (to_whnf term env))) patterns in *)
     Case (term_whnf, patterns)
   
 (** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the environment [env].
@@ -345,7 +344,6 @@ let rec equiv (t1 : term) (t2 : term) ((_, termEnv, _) as env : env) : bool =
   | _ ->
       (* Terms are not equivalent *)
       false
-
 
 (** [infer_type env term] infers the type of the given term [term] in the context of environment [env].
 
@@ -535,7 +533,6 @@ and infer_type ((_, termEnv, _) as env : env)
         term env
   | ADTSig _ | ADTDecl _ | Case _ ->
     infer_data_type env term
-
 
 (** [check_type env term tp] checks whether the term [term] has the expected type [tp] in the context of environment [env].
 
