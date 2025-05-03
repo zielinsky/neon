@@ -1,8 +1,5 @@
 open PrettyPrinter
 open Env
-module VarMap = Map.Make (Int)
-
-type sub_map = Ast.term VarMap.t
 
 (** [create_infer_type_error pos error_msg term env] raises a failure exception
     with an error message when an error occurs during type inference of [term].
@@ -105,24 +102,24 @@ let split_pattern_args (tsT_len : int) (args : string list) :
     @param sub The substitution map, mapping variable identifiers to terms.
     @return A new term where variables have been substituted according to [sub].
 *)
-let rec substitute (t : Ast.term) (sub : sub_map) : Ast.term =
+let rec substitute (t : Ast.term) (sub : Ast.sub_map) : Ast.term =
   match t with
   | Var (nm, x) -> (
-      match VarMap.find_opt x sub with Some t -> t | None -> Var (nm, x))
+      match Ast.find_opt_sub_map x sub with Some t -> t | None -> Var (nm, x))
   | Lambda (nm, x, tp, body) ->
       let y = fresh_var () in
       Lambda
         ( nm,
           y,
           substitute tp sub,
-          substitute body (VarMap.add x (Ast.Var (nm, y)) sub) )
+          substitute body (Ast.add_to_sub_map x (Ast.Var (nm, y)) sub) )
   | Product (nm, x, tp, body) ->
       let y = fresh_var () in
       Product
         ( nm,
           y,
           substitute tp sub,
-          substitute body (VarMap.add x (Ast.Var (nm, y)) sub) )
+          substitute body (Ast.add_to_sub_map x (Ast.Var (nm, y)) sub) )
   | App (t1, t2) -> App (substitute t1 sub, substitute t2 sub)
   | TypeArrow (t1, t2) -> TypeArrow (substitute t1 sub, substitute t2 sub)
   | Let (nm, x, t, tp_t, body) ->
@@ -132,7 +129,7 @@ let rec substitute (t : Ast.term) (sub : sub_map) : Ast.term =
           y,
           substitute t sub,
           substitute tp_t sub,
-          substitute body (VarMap.add x (Ast.Var (nm, y)) sub) )
+          substitute body (Ast.add_to_sub_map x (Ast.Var (nm, y)) sub) )
   | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _
   | StringLit _ | BoolLit _ ->
       t
@@ -148,7 +145,7 @@ let rec substitute (t : Ast.term) (sub : sub_map) : Ast.term =
                   List.fold_left
                     (fun (sub_map, new_vars) (nm, var) ->
                       let fresh_var = fresh_var () in
-                      ( VarMap.add var (Ast.Var (nm, fresh_var)) sub_map,
+                      ( Ast.add_to_sub_map var (Ast.Var (nm, fresh_var)) sub_map,
                         (nm, fresh_var) :: new_vars ))
                     (sub, []) vars
                 in
@@ -163,7 +160,7 @@ let rec substitute (t : Ast.term) (sub : sub_map) : Ast.term =
     @param t The WHNF term in which to perform substitution.
     @param sub The substitution map.
     @return A new WHNF term with substitutions applied. *)
-let substitute_whnf (t : Whnf.whnf) (sub : sub_map) : Whnf.whnf =
+let substitute_whnf (t : Whnf.whnf) (sub : Ast.sub_map) : Whnf.whnf =
   match t with
   | Type | Kind | IntType | StringType | BoolType | IntLit _ | StringLit _
   | BoolLit _ | Case _ ->
@@ -177,7 +174,7 @@ let substitute_whnf (t : Whnf.whnf) (sub : sub_map) : Whnf.whnf =
   | Product (nm, var, tp, body) ->
       Product (nm, var, substitute tp sub, substitute body sub)
 
-let rec substitute_in_telescope (ts : Ast.telescope) (sub : sub_map) :
+let rec substitute_in_telescope (ts : Ast.telescope) (sub : Ast.sub_map) :
     Ast.telescope =
   match ts with
   | Cons (nm, var, tp, tl) ->
@@ -231,7 +228,7 @@ let rec to_whnf (t : Ast.term) (env : termEnv) : Whnf.whnf =
       | None ->
           (* Variable not found in the environment; report an error *)
           create_whnf_error t env
-            ("Couldn't find Variable " ^ nm ^ " " ^ Int.to_string x
+            ("Couldn't find Variable " ^ nm ^ " " ^ Ast.Var.to_string x
            ^ " in environment"))
   | Lambda (nm, x, x_tp, body) ->
       (* Lambda abstraction is already in WHNF *)
@@ -241,7 +238,7 @@ let rec to_whnf (t : Ast.term) (env : termEnv) : Whnf.whnf =
       Product (nm, x, x_tp, body)
   | TypeArrow (tp1, tp2) ->
       (* Type arrow is syntactic sugar for a product type without a parameter name *)
-      Product ("", -1, tp1, tp2)
+      Product ("", Ast.Var.of_int (-1), tp1, tp2)
   | App (t1, t2) -> (
       (* Application of function 't1' to argument 't2' *)
       match to_whnf t1 env with
@@ -253,7 +250,7 @@ let rec to_whnf (t : Ast.term) (env : termEnv) : Whnf.whnf =
           Neu_with_Hole (nm, tp, t2 :: ts)
       | Lambda (_, x, _, body) ->
           (* 't1' is a lambda abstraction; perform beta reduction by substituting 't2' for 'x' in 'body' *)
-          to_whnf (substitute body (VarMap.singleton x t2)) env
+          to_whnf (substitute body (Ast.singleton_sub_map x t2)) env
       | whnf_term ->
           (* 't1' is not a function; cannot apply 't2'; report an error *)
           create_whnf_error t env
@@ -271,12 +268,12 @@ let rec to_whnf (t : Ast.term) (env : termEnv) : Whnf.whnf =
       (* Substitute 'var' with the fresh variable in 't2' and reduce *)
       let t2_whnf =
         to_whnf
-          (substitute t2 (VarMap.singleton var (Ast.Var (nm, fresh_var))))
+          (substitute t2 (Ast.singleton_sub_map var (Ast.Var (nm, fresh_var))))
           env
       in
       (* Substitute the fresh variable with 't1' in the result *)
       let t2_whnf_substituted =
-        substitute_whnf t2_whnf (VarMap.singleton fresh_var t1)
+        substitute_whnf t2_whnf (Ast.singleton_sub_map fresh_var t1)
       in
       (* Remove the fresh variable from the environment *)
       let _ = rm_from_termEnv env fresh_var in
@@ -345,12 +342,12 @@ let rec equiv (t1 : Ast.term) (t2 : Ast.term) ((_, termEnv, _) as env : env) :
         (* Substitute both bodies with the fresh variable *)
         let body1' =
           substitute body1
-            (VarMap.singleton x1
+            (Ast.singleton_sub_map x1
                (Ast.Var (generate_fresh_var_name env nm1, fresh_var)))
         in
         let body2' =
           substitute body2
-            (VarMap.singleton x2
+            (Ast.singleton_sub_map x2
                (Ast.Var (generate_fresh_var_name env nm2, fresh_var)))
         in
         (* Check if the bodies are equivalent *)
@@ -497,7 +494,7 @@ and infer_type ((_, termEnv, _) as env : env)
           (* Check that 't2' has type 'x_tp' *)
           let t2 = check_type env t2 x_tp in
           (* The result type is 'tp_body' with 'x' substituted by 't2' *)
-          (App (t1, t2), substitute tp_body (VarMap.singleton x t2))
+          (App (t1, t2), substitute tp_body (Ast.singleton_sub_map x t2))
       | _ ->
           (* The type of 't1' is not a function type *)
           create_infer_type_error pos
@@ -528,7 +525,7 @@ and infer_type ((_, termEnv, _) as env : env)
       let _ = rm_from_env env x in
       (* The type of the let-binding is 'tp_t2' with 'x' substituted by 't1' *)
       ( Let (x, fresh_var, t1, tp_t1, t2),
-        substitute tp_t2 (VarMap.singleton fresh_var t1) )
+        substitute tp_t2 (Ast.singleton_sub_map fresh_var t1) )
   | LetDef (x, t1) ->
       (* Let-definition 'let x = t1' *)
       (* Infer the type of 't1' *)
@@ -548,7 +545,7 @@ and infer_type ((_, termEnv, _) as env : env)
       let _ = rm_from_env env x in
       (* Apply the lemma by constructing 'App (Lambda (x, tp_t1, t2), t1)' *)
       ( App (Lambda (x, fresh_var, tp_t1, t2), t1),
-        substitute tp_t2 (VarMap.singleton fresh_var t1) )
+        substitute tp_t2 (Ast.singleton_sub_map fresh_var t1) )
   | LemmaDef (x, t1) ->
       (* Lemma definition 'lemma x = t1' *)
       (* Infer the type of the proof 't1' *)
@@ -597,7 +594,8 @@ and check_type ((_, termEnv, _) as env : env)
           (* Check the body against the expected body type with 'y' substituted by 'x' *)
           let body' =
             check_type env body
-              (substitute body_tp (VarMap.singleton y (Ast.Var (x, fresh_var))))
+              (substitute body_tp
+                 (Ast.singleton_sub_map y (Ast.Var (x, fresh_var))))
           in
           (* Remove 'x' from the environment *)
           let _ = rm_from_env env x in
@@ -682,7 +680,9 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
   | ADTDecl (nm, ts, cs) ->
       let ts' = telescope_check_type_and_extend_env env ts in
       let dataCNames =
-        List.map (fun { ParserAst.cname = nmCon; _ } -> nmCon) cs
+        List.map
+          (fun { ParserAst.cname = nmCon; _ } -> Ast.dataCName_of_string nmCon)
+          cs
       in
       let _ = add_to_adtEnv adtEnv nm (AdtTSig (ts', dataCNames)) in
       let adt_sig_tp = build_adt_sig env ts' in
@@ -691,7 +691,10 @@ and infer_data_type ((_, termEnv, adtEnv) as env : env)
         List.map
           (fun { ParserAst.cname = nmCon; ParserAst.telescope = tsCon } ->
             let tsCon' = telescope_check_type_and_extend_env env tsCon in
-            let _ = add_to_adtEnv adtEnv nmCon (AdtDSig (nm, tsCon')) in
+            let _ =
+              add_to_adtEnv adtEnv nmCon
+                (AdtDSig (Ast.typeCName_of_string nm, tsCon'))
+            in
             let _ = rm_telescope_from_env env tsCon' in
             { Ast.cname = nmCon; Ast.telescope = tsCon' })
           cs
@@ -781,7 +784,7 @@ and build_adt_sig (env : env) (ts : Ast.telescope) : Ast.term =
       res
 
 and build_adt_data (env : env) (tsType : Ast.telescope) (tsData : Ast.telescope)
-    (var_list : (string * Ast.var) list) (adt_sig_var : string * Ast.var) :
+    (var_list : (string * Ast.Var.t) list) (adt_sig_var : string * Ast.Var.t) :
     Ast.term =
   match tsType with
   | Empty -> (
@@ -814,10 +817,10 @@ and check_pattern_matching_branches (env : env) (ps : ParserAst.matchPat list)
   let infer_branch_and_extend_env ((uTermEnv, _, _) as env : env)
       (tsT : Ast.telescope) (tsT_types : Ast.tp list) (tsD : Ast.telescope)
       (args : string list) ({ pos; _ } as term : ParserAst.uTerm) :
-      Ast.term * Ast.tp * (string * Ast.var) list =
+      Ast.term * Ast.tp * (string * Ast.Var.t) list =
     let rec add_tsT_to_env (env : env) (tsT : Ast.telescope)
         (tsT_types : Ast.tp list) (argsT : string list) :
-        (Ast.var * (string * Ast.var)) list =
+        (Ast.Var.t * (string * Ast.Var.t)) list =
       match tsT with
       | Empty -> []
       | Cons (_, var, tp, tsT) ->
@@ -828,14 +831,14 @@ and check_pattern_matching_branches (env : env) (ps : ParserAst.matchPat list)
           in
           let tsT =
             substitute_in_telescope tsT
-              (VarMap.singleton var (Ast.Var (new_nm, fresh_var)))
+              (Ast.singleton_sub_map var (Ast.Var (new_nm, fresh_var)))
           in
           (var, (new_nm, fresh_var))
           :: add_tsT_to_env env tsT (List.tl tsT_types) (List.tl argsT)
     in
 
     let rec add_tsD_to_env (env : env) (tsD : Ast.telescope)
-        (argsD : string list) : (Ast.var * (string * Ast.var)) list =
+        (argsD : string list) : (Ast.Var.t * (string * Ast.Var.t)) list =
       match tsD with
       | Empty -> []
       | Cons (_, var, tp, tsD) ->
@@ -843,7 +846,7 @@ and check_pattern_matching_branches (env : env) (ps : ParserAst.matchPat list)
           let fresh_var = add_to_env env new_nm (Opaque tp) in
           let tsD =
             substitute_in_telescope tsD
-              (VarMap.singleton var (Ast.Var (new_nm, fresh_var)))
+              (Ast.singleton_sub_map var (Ast.Var (new_nm, fresh_var)))
           in
           (var, (new_nm, fresh_var)) :: add_tsD_to_env env tsD (List.tl argsD)
     in
@@ -853,7 +856,7 @@ and check_pattern_matching_branches (env : env) (ps : ParserAst.matchPat list)
       let tsT_all_vars = add_tsT_to_env env tsT tsT_types argsT in
       let tsD =
         substitute_in_telescope tsD
-          (VarMap.of_list
+          (Ast.of_list_sub_map
              (List.map
                 (fun (var, (new_nm, new_var)) ->
                   (var, Ast.Var (new_nm, new_var)))
@@ -879,13 +882,14 @@ and check_pattern_matching_branches (env : env) (ps : ParserAst.matchPat list)
     let rec loop_over_branches ((_, _, adtEnv) as env : env)
         (ps : ParserAst.matchPat list) (tsT : Ast.telescope)
         (tsT_types : Ast.tp list) (dataCNames : Ast.dataCName list) :
-        ((Ast.matchPat * Ast.tp) * (string * Ast.var) list) list =
+        ((Ast.matchPat * Ast.tp) * (string * Ast.Var.t) list) list =
       match ps with
       | (pattern, uTerm) :: (_ :: _ as ps) -> (
           match pattern with
-          | PatCon (dataCName, args) ->
+          | PatCon (raw_dataCName, args) ->
+              let dataCName = Ast.dataCName_of_string raw_dataCName in
               if List.mem dataCName dataCNames then
-                match find_opt_in_adtEnv adtEnv dataCName with
+                match find_opt_in_adtEnv adtEnv raw_dataCName with
                 | Some (AdtDSig (_, tsD)) ->
                     let term, tp', ts_names_and_vars =
                       infer_branch_and_extend_env env tsT tsT_types tsD args
@@ -908,9 +912,10 @@ and check_pattern_matching_branches (env : env) (ps : ParserAst.matchPat list)
           | PatWild -> failwith "Wildcard pattern must be at the end")
       | (pattern, uTerm) :: [] -> (
           match pattern with
-          | PatCon (dataCName, args) ->
+          | PatCon (raw_dataCName, args) ->
+              let dataCName = Ast.dataCName_of_string raw_dataCName in
               if List.mem dataCName dataCNames then
-                match find_opt_in_adtEnv adtEnv dataCName with
+                match find_opt_in_adtEnv adtEnv raw_dataCName with
                 | Some (AdtDSig (_, tsD)) ->
                     let term, tp', ts_names_and_vars =
                       infer_branch_and_extend_env env tsT tsT_types tsD args
@@ -971,11 +976,11 @@ and check_pattern_matching_branches (env : env) (ps : ParserAst.matchPat list)
   let check_constructor_names (ps : ParserAst.matchPat list)
       (dataCNames : Ast.dataCName list) : bool =
     let rec collect_constructor_names (ps : ParserAst.matchPat list) :
-        string list * bool =
+        Ast.dataCName list * bool =
       match ps with
       | (PatCon (dataCName, _), _) :: ps ->
           let cs, contaisWild = collect_constructor_names ps in
-          (dataCName :: cs, contaisWild)
+          (Ast.dataCName_of_string dataCName :: cs, contaisWild)
       | (PatWild, _) :: ps ->
           let cs, contaisWild = collect_constructor_names ps in
           if contaisWild then

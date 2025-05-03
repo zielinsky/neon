@@ -1,5 +1,3 @@
-open Ast
-open ParserAst
 open SmartPrint
 
 let separate_map sep f l =
@@ -10,11 +8,16 @@ let separate_map sep f l =
   in
   aux !^"" l
 
+let string_of_var (x : Ast.Var.t) : string = string_of_int (Ast.Var.to_int x)
+
 let rec pp_pattern (p : Ast.pattern) : SmartPrint.t =
   match p with
   | PatWild -> !^"_"
   | PatCon (nm, vars) ->
-      !^nm ^^ !^"(" ^^ separate_map !^"," (fun (nm, _) -> !^nm) vars ^^ !^")"
+      !^(Ast.dataCName_to_string nm)
+      ^^ !^"("
+      ^^ separate_map !^"," (fun (nm, _) -> !^nm) vars
+      ^^ !^")"
 
 let rec pp_uTerm_pattern (p : ParserAst.pattern) : SmartPrint.t =
   match p with
@@ -24,8 +27,8 @@ let rec pp_uTerm_pattern (p : ParserAst.pattern) : SmartPrint.t =
 
 let pattern_to_string (p : Ast.pattern) : string = to_string 40 2 (pp_pattern p)
 
-let rec pp_term (e : term) : SmartPrint.t =
-  let parens_if_app (t : term) =
+let rec pp_term (e : Ast.term) : SmartPrint.t =
+  let parens_if_app (t : Ast.term) =
     match t with
     | Lambda _ | App _ | Hole (_, (Product _ | TypeArrow _)) ->
         parens (pp_term t)
@@ -41,16 +44,16 @@ let rec pp_term (e : term) : SmartPrint.t =
   | BoolLit false -> !^"false"
   | Type -> !^"type"
   | Kind -> !^"kind"
-  | Var (nm, var) -> !^"(" ^^ !^nm ^-^ !^":" ^^ !^(string_of_int var) ^^ !^")"
+  | Var (nm, var) -> !^"(" ^^ !^nm ^-^ !^":" ^^ !^(string_of_var var) ^^ !^")"
   | Lambda (nm, var, tp_x, body) ->
       nest
         (!^"λ" ^-^ !^"(" ^^ !^nm ^-^ !^":"
-        ^^ !^(string_of_int var)
+        ^^ !^(string_of_var var)
         ^^ !^")" ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
   | Product (nm, var, tp_x, body) ->
       nest
         (!^"Π" ^-^ !^"(" ^^ !^nm ^-^ !^":"
-        ^^ !^(string_of_int var)
+        ^^ !^(string_of_var var)
         ^^ !^")" ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
   | App (t1, t2) -> nest (parens_if_app t1 ^^ parens_if_app t2)
   | Let (nm, _, t1, tp_t1, t2) ->
@@ -70,7 +73,7 @@ let rec pp_term (e : term) : SmartPrint.t =
                   ^-^ newline)
                 !^"" cases))
 
-let term_to_string (t : term) : string = to_string 40 2 (pp_term t)
+let term_to_string (t : Ast.term) : string = to_string 40 2 (pp_term t)
 
 let print (term, tp) =
   print_endline
@@ -81,7 +84,7 @@ let print (term, tp) =
 let pp_telescope (ts : Ast.telescope) : SmartPrint.t =
   let rec aux acc = function
     | Ast.Cons (nm, var, tp, ts) ->
-        aux (acc ^-^ newline ^-^ !^nm ^^ !^(string_of_int var) ^^ pp_term tp) ts
+        aux (acc ^-^ newline ^-^ !^nm ^^ !^(string_of_var var) ^^ pp_term tp) ts
     | Ast.Empty -> acc
   in
   aux !^"" ts
@@ -89,8 +92,8 @@ let pp_telescope (ts : Ast.telescope) : SmartPrint.t =
 let telescope_to_string (ts : Ast.telescope) : string =
   to_string 40 2 (pp_telescope ts)
 
-let rec pp_uterm ({ data = e; pos } : uTerm) : SmartPrint.t =
-  let parens_if_app ({ data; pos } as t : uTerm) =
+let rec pp_uterm ({ data = e; pos } : ParserAst.uTerm) : SmartPrint.t =
+  let parens_if_app ({ data; pos } as t : ParserAst.uTerm) =
     match data with App (_, _) -> parens (pp_uterm t) | _ -> pp_uterm t
   in
   match e with
@@ -144,7 +147,7 @@ let rec pp_uterm ({ data = e; pos } : uTerm) : SmartPrint.t =
              (pp_telescope ts ^^ !^"=" ^-^ newline
              ^-^ nest
                    (List.fold_left
-                      (fun acc con_def ->
+                      (fun acc (con_def : ParserAst.constructorDef) ->
                         nest
                           (!^"|" ^^ !^(con_def.cname)
                           ^^ pp_telescope con_def.telescope))
@@ -157,7 +160,8 @@ and pp_telescope (ts : ParserAst.telescope) : SmartPrint.t =
       parens (!^x ^-^ !^":" ^^ pp_uterm t) ^^ pp_telescope ts
   | Cons (x, t, Empty) -> parens (!^x ^-^ !^":" ^^ pp_uterm t)
 
-let rec uterm_to_string (t : uTerm) : string = to_string 40 2 (pp_uterm t)
+let rec uterm_to_string (t : ParserAst.uTerm) : string =
+  to_string 40 2 (pp_uterm t)
 
 let rec pp_whnf (e : Whnf.whnf) : SmartPrint.t =
   match e with
@@ -197,7 +201,7 @@ let rec pp_whnf (e : Whnf.whnf) : SmartPrint.t =
 
 let rec whnf_to_string (t : Whnf.whnf) : string = to_string 40 2 (pp_whnf t)
 
-let print_def ({ pos; data } : uTerm) : unit =
+let print_def ({ pos; data } : ParserAst.uTerm) : unit =
   match data with
   | LetDef (nm, _)
   | LemmaDef (nm, _)

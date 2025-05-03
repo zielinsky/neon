@@ -1,18 +1,18 @@
-open TypeChecker
-open Ast
 open Env
 open BuiltIn
 
-let find_matching_matchPat (nm : string) (patterns : matchPat list) : matchPat =
+let find_matching_matchPat (nm : string) (patterns : Ast.matchPat list) :
+    Ast.matchPat =
   List.find
     (fun (pattern, _) ->
       match pattern with
-      | PatCon (dataCName, _) -> nm = dataCName
-      | PatWild -> true)
+      | Ast.PatCon (dataCName, _) -> nm = Ast.dataCName_to_string dataCName
+      | Ast.PatWild -> true)
     patterns
 
-let add_pattern_vars_to_termEnv (vars : (string * var) list)
-    (values : term list) (env : termEnv) : (string * var * var) list =
+let add_pattern_vars_to_termEnv (vars : (string * Ast.Var.t) list)
+    (values : Ast.term list) (env : termEnv) :
+    (string * Ast.Var.t * Ast.Var.t) list =
   let _ = assert (List.length vars == List.length values) in
   List.fold_left
     (fun acc ((nm, var), term) ->
@@ -21,13 +21,13 @@ let add_pattern_vars_to_termEnv (vars : (string * var) list)
       (nm, var, fresh_var) :: acc)
     [] (List.combine vars values)
 
-let rm_pattern_vars_to_termEnv (bindings : (string * var * var) list)
-    (env : termEnv) : unit =
+let rm_pattern_vars_to_termEnv
+    (bindings : (string * Ast.Var.t * Ast.Var.t) list) (env : termEnv) : unit =
   List.iter (fun (_, _, x) -> rm_from_termEnv env x) bindings
 
 (** [whnf_to_nf w env] fully normalizes a [whnf] node [w] in context [env],
     producing a [term] in normal form. *)
-let rec whnf_to_nf (w : Whnf.whnf) (env : termEnv) : term =
+let rec whnf_to_nf (w : Whnf.whnf) (env : termEnv) : Ast.term =
   match w with
   | Type ->
       (* Already a normal form. *)
@@ -61,14 +61,17 @@ let rec whnf_to_nf (w : Whnf.whnf) (env : termEnv) : term =
       | Some nf -> nf
       | None ->
           (* Rebuild as a normal form: Var(...) applied to each argument in the correct order. *)
-          List.fold_left (fun acc arg -> App (acc, arg)) (Var (nm, x)) nf_args)
+          List.fold_left
+            (fun acc arg -> Ast.App (acc, arg))
+            (Ast.Var (nm, x))
+            nf_args)
   | Neu_with_Hole (nm, hole_tp, rev_args) ->
       (* A hole can still appear in normal forms, but we recursively evaluate
          the hole type and arguments, to produce a normal form. *)
       let nf_tp = eval hole_tp env in
       let nf_args = List.map (fun arg -> eval arg env) (List.rev rev_args) in
-      let hole = Hole (nm, nf_tp) in
-      List.fold_left (fun acc arg -> App (acc, arg)) hole nf_args
+      let hole = Ast.Hole (nm, nf_tp) in
+      List.fold_left (fun acc arg -> Ast.App (acc, arg)) hole nf_args
   | Lambda (nm, x, tp, body) ->
       (* Generate a fresh variable identifier *)
       let fresh_var = fresh_var () in
@@ -76,10 +79,16 @@ let rec whnf_to_nf (w : Whnf.whnf) (env : termEnv) : term =
       add_to_termEnv env fresh_var (Opaque tp);
       (* Evaluate type and body *)
       let nf_tp =
-        eval (substitute tp (VarMap.singleton x (Var (nm, fresh_var)))) env
+        eval
+          (TypeChecker.substitute tp
+             (Ast.singleton_sub_map x (Ast.Var (nm, fresh_var))))
+          env
       in
       let nf_body =
-        eval (substitute body (VarMap.singleton x (Var (nm, fresh_var)))) env
+        eval
+          (TypeChecker.substitute body
+             (Ast.singleton_sub_map x (Ast.Var (nm, fresh_var))))
+          env
       in
       (* Remove the fresh variable from the environment *)
       rm_from_termEnv env fresh_var;
@@ -92,10 +101,16 @@ let rec whnf_to_nf (w : Whnf.whnf) (env : termEnv) : term =
       add_to_termEnv env fresh_var (Opaque tp);
       (* Evaluate type and body *)
       let nf_tp =
-        eval (substitute tp (VarMap.singleton x (Var (nm, fresh_var)))) env
+        eval
+          (TypeChecker.substitute tp
+             (Ast.singleton_sub_map x (Ast.Var (nm, fresh_var))))
+          env
       in
       let nf_body =
-        eval (substitute body (VarMap.singleton x (Var (nm, fresh_var)))) env
+        eval
+          (TypeChecker.substitute body
+             (Ast.singleton_sub_map x (Ast.Var (nm, fresh_var))))
+          env
       in
       (* Remove the fresh variable from the environment *)
       rm_from_termEnv env fresh_var;
@@ -114,15 +129,15 @@ let rec whnf_to_nf (w : Whnf.whnf) (env : termEnv) : term =
               let sub_map =
                 List.fold_left
                   (fun acc (nm, var, fresh_var) ->
-                    VarMap.add var (Var (nm, fresh_var)) acc)
-                  VarMap.empty bindings
+                    Ast.add_to_sub_map var (Var (nm, fresh_var)) acc)
+                  Ast.empty_sub_map bindings
               in
-              let nf_term = eval (substitute term sub_map) env in
+              let nf_term = eval (TypeChecker.substitute term sub_map) env in
               let _ = rm_pattern_vars_to_termEnv bindings env in
               nf_term)
       | _ ->
           failwith "RUNTIME ERROR while evaluating Case, scrutinee is not Neu.")
 
-and eval (t : term) (env : termEnv) : term =
-  let w = to_whnf t env in
+and eval (t : Ast.term) (env : termEnv) : Ast.term =
+  let w = TypeChecker.to_whnf t env in
   whnf_to_nf w env
