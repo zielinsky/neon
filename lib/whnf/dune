@@ -1,3 +1,0 @@
-(library
- (name whnf)
- (libraries ast))

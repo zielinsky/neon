@@ -163,7 +163,7 @@ and pp_telescope (ts : ParserAst.telescope) : SmartPrint.t =
 let rec uterm_to_string (t : ParserAst.uTerm) : string =
   to_string 40 2 (pp_uterm t)
 
-let rec pp_whnf (e : Whnf.whnf) : SmartPrint.t =
+let rec pp_whnf (e : Ast.whnf) : SmartPrint.t =
   match e with
   | IntType -> !^"Int"
   | StringType -> !^"String"
@@ -199,7 +199,7 @@ let rec pp_whnf (e : Whnf.whnf) : SmartPrint.t =
                   ^-^ newline)
                 !^"" cases))
 
-let rec whnf_to_string (t : Whnf.whnf) : string = to_string 40 2 (pp_whnf t)
+let rec whnf_to_string (t : Ast.whnf) : string = to_string 40 2 (pp_whnf t)
 
 let print_def ({ pos; data } : ParserAst.uTerm) : unit =
   match data with

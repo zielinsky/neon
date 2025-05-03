@@ -45,21 +45,22 @@ and matchPat = pattern * term
 and pattern = PatWild | PatCon of dataCName * (string * Var.t) list
 and tp = term
 
-module VarMap = Map.Make (Var)
+(* The term list in Neu is stored in reverse order. *)
+type whnf =
+  | Type
+  | Kind
+  | Neu of string * Var.t * term list
+  | Neu_with_Hole of string * tp * term list
+  | IntType
+  | StringType
+  | BoolType
+  | IntLit of int
+  | StringLit of string
+  | BoolLit of bool
+  | Lambda of string * Var.t * tp * term
+  | Product of string * Var.t * tp * tp
+  | Case of whnf * matchPat list
 
-type sub_map = term VarMap.t
-
-let add_to_sub_map (var : Var.t) (t : term) (sub_map : sub_map) : sub_map =
-  VarMap.add var t sub_map
-
-let singleton_sub_map (var : Var.t) (t : term) : sub_map =
-  VarMap.singleton var t
-
-let find_opt_sub_map (var : Var.t) (sub_map : sub_map) : term option =
-  VarMap.find_opt var sub_map
-
-let of_list_sub_map (xs : (Var.t * term) list) : sub_map = VarMap.of_list xs
-let empty_sub_map : sub_map = VarMap.empty
 let dataCName_of_string (s : string) : dataCName = s
 let typeCName_of_string (s : string) : typeCName = s
 let dataCName_to_string (s : dataCName) : string = s

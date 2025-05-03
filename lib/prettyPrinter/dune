@@ -2,4 +2,4 @@
  (name prettyPrinter)
  (flags
   (-warn-error -A))
- (libraries ast whnf parserAst smart-print))
+ (libraries ast parserAst smart-print))

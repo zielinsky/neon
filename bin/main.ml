@@ -105,7 +105,7 @@ let rec repl env =
            let parsed = Parser.parse_string line in
            List.iter (fun x -> process_parsed_def env x) parsed
          with
-         | Errors.Parse_error _ ->
+         | Error.Parse_error _ ->
              let wrapped_line = "let _last = " ^ line in
              let parsed = Parser.parse_string wrapped_line in
              List.iter (fun x -> process_parsed_def env x) parsed

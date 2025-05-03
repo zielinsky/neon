@@ -36,13 +36,22 @@ and matchPat = pattern * term
 and pattern = PatWild | PatCon of dataCName * (string * Var.t) list
 and tp = term
 
-type sub_map
+(* The term list in Neu is stored in reverse order. *)
+type whnf =
+  | Type
+  | Kind
+  | Neu of string * Var.t * term list
+  | Neu_with_Hole of string * tp * term list
+  | IntType
+  | StringType
+  | BoolType
+  | IntLit of int
+  | StringLit of string
+  | BoolLit of bool
+  | Lambda of string * Var.t * tp * term
+  | Product of string * Var.t * tp * tp
+  | Case of whnf * matchPat list
 
-val add_to_sub_map : Var.t -> term -> sub_map -> sub_map
-val singleton_sub_map : Var.t -> term -> sub_map
-val find_opt_sub_map : Var.t -> sub_map -> term option
-val of_list_sub_map : (Var.t * term) list -> sub_map
-val empty_sub_map : sub_map
 val dataCName_of_string : string -> dataCName
 val typeCName_of_string : string -> typeCName
 val dataCName_to_string : dataCName -> string

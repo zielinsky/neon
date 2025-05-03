@@ -11,7 +11,7 @@ let run_parser parse (lexbuf : Lexing.lexbuf) =
           lexbuf.lex_curr_p.pos_cnum - lexbuf.lex_start_p.pos_cnum;
       }
     in
-    raise (Errors.Parse_error (pos, UnexpectedToken (Lexing.lexeme lexbuf)))
+    raise (Error.Parse_error (pos, UnexpectedToken (Lexing.lexeme lexbuf)))
 
 let parse_file fname =
   match open_in fname with
@@ -28,7 +28,7 @@ let parse_file fname =
           close_in_noerr chan;
           raise exn)
   | exception Sys_error message ->
-      raise (Errors.Cannot_open_file { fname; message })
+      raise (Error.Cannot_open_file { fname; message })
 
 let parse_string input =
   let lexbuf = Lexing.from_string input in

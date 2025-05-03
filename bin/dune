@@ -9,6 +9,6 @@
   prettyPrinter
   smart-print
   unix
-  errors
+  error
   evaluator
   builtIn))

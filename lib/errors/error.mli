@@ -14,3 +14,11 @@ type type_checker_reason =
   | WhnfError of string
 
 exception Type_error of type_checker_reason
+
+val create_infer_type_error :
+  ParserAst.position -> string -> ParserAst.uTerm -> Env.env -> 'a
+
+val create_check_type_error :
+  ParserAst.position -> string -> ParserAst.uTerm -> Ast.tp -> Env.env -> 'a
+
+val create_whnf_error : Ast.term -> Env.termEnv -> string -> 'a
