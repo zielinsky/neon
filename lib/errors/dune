@@ -1,3 +1,0 @@
-(library
- (name error)
- (libraries raw core env))

@@ -4,11 +4,10 @@
  (libraries
   core
   env
-  parser
+  neonParser
   typeChecker
   prettyPrinter
   smart-print
   unix
-  error
   evaluator
   builtIn))

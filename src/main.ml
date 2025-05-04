@@ -81,7 +81,7 @@ let load_prelude env prelude_dir =
     List.iter
       (fun file ->
         if !verbose_mode then Printf.printf "Loading prelude file: %s\n%!" file;
-        let parsed = Parser.parse_file file in
+        let parsed = NeonParser.Parser.parse_file file in
         List.iter (fun x -> process_parsed_def env x) parsed)
       neon_files
 
@@ -102,12 +102,12 @@ let rec repl env =
        else if String.trim line = "clear" then Sys.command "clear" |> ignore
        else
          try
-           let parsed = Parser.parse_string line in
+           let parsed = NeonParser.Parser.parse_string line in
            List.iter (fun x -> process_parsed_def env x) parsed
          with
-         | Error.Parse_error _ ->
+         | NeonParser.Error.Parse_error _ ->
              let wrapped_line = "let _last = " ^ line in
-             let parsed = Parser.parse_string wrapped_line in
+             let parsed = NeonParser.Parser.parse_string wrapped_line in
              List.iter (fun x -> process_parsed_def env x) parsed
          | ex -> Printf.printf "Unexpected error: %s\n" (Printexc.to_string ex));
       repl env
@@ -134,7 +134,7 @@ let main () =
     repl env)
   else
     (* Otherwise, process the file in batch mode *)
-    let parsed = Parser.parse_file !file in
+    let parsed = NeonParser.Parser.parse_file !file in
     List.iter (fun x -> process_parsed_def env x) parsed
 
 (* Entry point *)
