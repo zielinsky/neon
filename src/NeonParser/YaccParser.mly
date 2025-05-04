@@ -127,7 +127,7 @@ expression
 | HOLE { make (Hole $1) }
 | LAMBDA functions { $2 }
 | PRODUCT products { $2 }
-| LET VAR EQUAL expression IN expression {make (Let ($2, $4, $6)) }
+| LET let_in { $2 }
 | LEMMA VAR EQUAL expression IN expression { make (Lemma ($2, $4, $6)) }
 | MATCH expression WITH pattern_list { make (Case ($2, $4)) }
 | expression TYPE_ARROW expression {make (TypeArrow ($1, $3)) }
@@ -140,6 +140,12 @@ let_def
 | VAR COLON expression EQUAL expression { make (TermWithTypeAnno(make (LetDef ($1, $5)), $3)) }
 | BR_OPN VAR COLON expression BR_CLS EQUAL expression { make (TermWithTypeAnno(make (LetDef ($2, $7)), $4)) }
 ;
+
+let_in
+: VAR EQUAL expression IN expression{ make (Let ($1, $3, $5)) }
+| VAR let_args IN expression  { make (Let ($1, $2, $4)) }
+| VAR COLON expression EQUAL expression IN expression { make (TermWithTypeAnno(make (Let ($1, $5, $7)), $3)) }
+| BR_OPN VAR COLON expression BR_CLS EQUAL expression IN expression { make (TermWithTypeAnno(make (Let ($2, $7, $9)), $4)) }
 
 let_args
 : VAR EQUAL expression { make (Lambda ($1, None, $3)) }
