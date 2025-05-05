@@ -1,5 +1,6 @@
 module Substitution = Substitution
 module Whnf = Whnf
+module Equiv = Equiv
 
 let telescope_length (ts : Core.telescope) : int =
   let rec tele_len (ts : Core.telescope) (acc : int) =
@@ -53,107 +54,6 @@ let rec build_adt_data (env : Env.env) (tsType : Core.telescope)
       in
       res
 
-(** [equiv t1 t2 env] checks if two terms [t1] and [t2] are equivalent under the
-    environment [env].
-
-    @param t1 The first term.
-    @param t2 The second term.
-    @param env The environment containing variable and term bindings.
-    @return [true] if [t1] and [t2] are equivalent; [false] otherwise. *)
-let rec equiv (t1 : Core.term) (t2 : Core.term)
-    ((_, termEnv, _) as env : Env.env) : bool =
-  match (Whnf.to_whnf t1 termEnv, Whnf.to_whnf t2 termEnv) with
-  | Type, Type ->
-      (* Both terms are 'Type'; they are equivalent *)
-      true
-  | Kind, Kind ->
-      (* Both terms are 'Kind'; they are equivalent *)
-      true
-  | IntType, IntType -> true
-  | StringType, StringType -> true
-  | BoolType, BoolType -> true
-  | IntLit n1, IntLit n2 -> n1 = n2
-  | StringLit s1, StringLit s2 -> s1 = s2
-  | BoolLit b1, BoolLit b2 -> b1 = b2
-  | Neu (_, x1, ts1), Neu (_, x2, ts2) ->
-      (* Both terms are neutral terms *)
-      (* They are equivalent if the variable identifiers are the same and their argument lists are equivalent *)
-      x1 = x2
-      && List.length ts1 = List.length ts2
-      && List.for_all2 (fun x y -> equiv x y env) ts1 ts2
-  | ( (Neu_with_Hole (_, tp1, ts1) as whnf_1),
-      (Neu_with_Hole (_, tp2, ts2) as whnf_2) ) ->
-      (* Both terms are neutral terms with holes *)
-      if
-        (* They are considered equivalent if their types are equivalent and their argument lists are equivalent *)
-        equiv tp1 tp2 env
-        && List.length ts1 = List.length ts2
-        && List.for_all2 (fun x y -> equiv x y env) ts1 ts2
-      then true
-      else
-        (* Types or arguments do not match; print debugging information *)
-        let _ =
-          print_endline
-            ("Term_1 "
-            ^ PrettyPrinter.term_to_string t1
-            ^ "\n" ^ "Whnf_1 "
-            ^ PrettyPrinter.whnf_to_string whnf_1
-            ^ "\n" ^ "Is expected to be equal to\n" ^ "Term_2 "
-            ^ PrettyPrinter.term_to_string t2
-            ^ "\n" ^ "Whnf_2 "
-            ^ PrettyPrinter.whnf_to_string whnf_2
-            ^ "\nEnv at this moment:\n"
-            ^ Env.termEnv_to_string termEnv)
-        in
-        true (* Returning true here might be specific to handling holes *)
-  | Lambda (nm1, x1, x1_tp, body1), Lambda (nm2, x2, x2_tp, body2)
-  | Product (nm1, x1, x1_tp, body1), Product (nm2, x2, x2_tp, body2) ->
-      (* Both terms are lambdas or products *)
-      if equiv x1_tp x2_tp env then
-        (* If the parameter types are equivalent *)
-        let fresh_var = Env.fresh_var () in
-        (* Introduce a fresh variable to avoid variable capture *)
-        let _ = Env.add_to_termEnv termEnv fresh_var (Opaque x1_tp) in
-        (* Substitute both bodies with the fresh variable *)
-        let body1' =
-          Substitution.substitute body1
-            (Substitution.singleton_sub_map x1
-               (Core.Var (Env.generate_fresh_var_name env nm1, fresh_var)))
-        in
-        let body2' =
-          Substitution.substitute body2
-            (Substitution.singleton_sub_map x2
-               (Core.Var (Env.generate_fresh_var_name env nm2, fresh_var)))
-        in
-        (* Check if the bodies are equivalent *)
-        let res = equiv body1' body2' env in
-        (* Remove the fresh variable from the environment *)
-        let _ = Env.rm_from_termEnv termEnv fresh_var in
-        res
-      else
-        (* Parameter types are not equivalent *)
-        false
-  | (Neu_with_Hole (_, _, _) as whnf_1), (_ as whnf_2)
-  | (_ as whnf_1), (Neu_with_Hole (_, _, _) as whnf_2) ->
-      (* One of the terms is a hole; consider them equivalent for now *)
-      let _ =
-        print_endline
-          ("Term_1 "
-          ^ PrettyPrinter.term_to_string t1
-          ^ "\n" ^ "Whnf_1 "
-          ^ PrettyPrinter.whnf_to_string whnf_1
-          ^ "\n" ^ "Is expected to be equal to\n" ^ "Term_2 "
-          ^ PrettyPrinter.term_to_string t2
-          ^ "\n" ^ "Whnf_2 "
-          ^ PrettyPrinter.whnf_to_string whnf_2
-          ^ "\n Env at this moment:\n"
-          ^ Env.termEnv_to_string termEnv)
-      in
-      true
-  | _ ->
-      (* Terms are not equivalent *)
-      false
-
 (** [infer_type env term] infers the type of the given term [term] in the
     context of environment [env].
 
@@ -165,7 +65,7 @@ let rec equiv (t1 : Core.term) (t2 : Core.term)
     @raise Failure
       If type inference fails, raises an exception with an appropriate error
       message. *)
-and infer_type ((_, termEnv, adtEnv) as env : Env.env)
+let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
     ({ pos; data = t } as term : Raw.uTerm) : Core.term * Core.tp =
   match t with
   | Type ->
@@ -437,7 +337,7 @@ and check_type ((_, termEnv, _) as env : Env.env)
   | ADTSig _ | ADTDecl _ | Case _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
-      if equiv tp t_tp env then t
+      if Equiv.equiv tp t_tp termEnv then t
       else
         (* Types are not equivalent; report an error *)
         Error.create_check_type_error pos
@@ -461,10 +361,10 @@ and check_type ((_, termEnv, _) as env : Env.env)
           let _ = Env.rm_from_env env x in
           (* Return the lambda term with the inferred argument type *)
           Lambda (x, fresh_var, y_tp, body')
-      | _ ->
+      | _ as whnf ->
           (* The expected type is not a function type *)
           Error.create_check_type_error pos
-            "The type of Lambda must be a Product" term tp env)
+            ("The type of Lambda must be a Product. Instead got " ^ PrettyPrinter.whnf_to_string whnf) term tp env)
   | Lambda (x, Some x_tp, body) -> (
       (* Lambda with argument type annotation 'x_tp' *)
       (* First, check the lambda without the argument type against the expected type *)
@@ -472,7 +372,7 @@ and check_type ((_, termEnv, _) as env : Env.env)
       | Lambda (_, _, arg_tp, _) as lambda ->
           (* Infer the type of the provided argument type 'x_tp' *)
           let x_tp, _ = infer_type env x_tp in
-          if equiv x_tp arg_tp env then
+          if Equiv.equiv x_tp arg_tp termEnv then
             (* The provided argument type matches the expected argument type *)
             lambda
           else
@@ -524,9 +424,16 @@ and check_type ((_, termEnv, _) as env : Env.env)
       in
       (* Return the hole with its type *)
       Hole (nm, tp)
-  | LemmaDef (_, t) | LetDef (_, t) ->
-      (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
-      check_type env t tp
+  (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
+  | LemmaDef (x, t) ->
+    let t = check_type env t tp in
+    let _ = Env.add_to_env env x (Opaque tp) in
+    t
+  | LetDef (x, t) ->
+    let t = check_type env t tp in
+    let _ = Env.add_to_env env x (Transparent (t, tp)) in
+    t 
+    
 
 and telescope_check_type_and_extend_env (env : Env.env)
     (telescope : Raw.telescope) : Core.telescope =
@@ -683,12 +590,13 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
                    extend the environment")
       | [] -> failwith "There are no branches to check"
     in
-    let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit
-        =
+    let check_branch_types (termEnv : Env.termEnv) (branch_types : Core.tp list)
+        : unit =
       let hd = List.hd branch_types in
       let _, isSameType =
         List.fold_left
-          (fun (prev_tp, cond) tp -> (tp, cond && equiv prev_tp tp env))
+          (fun (prev_tp, cond) tp ->
+            (tp, cond && Equiv.equiv prev_tp tp termEnv))
           (hd, true) (List.tl branch_types)
       in
       if isSameType then ()
@@ -698,7 +606,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
     let result, tp_names_and_vars =
       List.split (loop_over_branches env ps tsT tsT_types dataCNames)
     in
-    let _ = check_branch_types env (snd (List.split result)) in
+    let _ = check_branch_types termEnv (snd (List.split result)) in
     let all_ts_vars = snd (List.split (List.flatten tp_names_and_vars)) in
     let _ =
       List.iter (fun var -> Env.rm_from_termEnv termEnv var) all_ts_vars

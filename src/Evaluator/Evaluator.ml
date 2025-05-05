@@ -95,29 +95,34 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.termEnv) : Core.term =
       (* Return the normalized lambda *)
       Lambda (nm, fresh_var, nf_tp, nf_body)
   | Product (nm, x, tp, body) ->
-      (* Generate a fresh variable identifier *)
-      let fresh_var = Env.fresh_var () in
-      (* Add the definition of 'tp' to the environment with the fresh variable *)
-      Env.add_to_termEnv env fresh_var (Opaque tp);
-      (* Evaluate type and body *)
-      let nf_tp =
-        eval
-          (TypeChecker.Substitution.substitute tp
-             (TypeChecker.Substitution.singleton_sub_map x
-                (Core.Var (nm, fresh_var))))
-          env
-      in
-      let nf_body =
-        eval
-          (TypeChecker.Substitution.substitute body
-             (TypeChecker.Substitution.singleton_sub_map x
-                (Core.Var (nm, fresh_var))))
-          env
-      in
-      (* Remove the fresh variable from the environment *)
-      Env.rm_from_termEnv env fresh_var;
-      (* Return the normalized product *)
-      Product (nm, fresh_var, nf_tp, nf_body)
+      if Core.Var.equal x (Core.Var.of_int (-1)) then
+        let nf_tp = eval tp env in
+        let nf_body = eval body env in
+        TypeArrow (nf_tp, nf_body)
+      else
+        (* Generate a fresh variable identifier *)
+        let fresh_var = Env.fresh_var () in
+        (* Add the definition of 'tp' to the environment with the fresh variable *)
+        Env.add_to_termEnv env fresh_var (Opaque tp);
+        (* Evaluate type and body *)
+        let nf_tp =
+          eval
+            (TypeChecker.Substitution.substitute tp
+               (TypeChecker.Substitution.singleton_sub_map x
+                  (Core.Var (nm, fresh_var))))
+            env
+        in
+        let nf_body =
+          eval
+            (TypeChecker.Substitution.substitute body
+               (TypeChecker.Substitution.singleton_sub_map x
+                  (Core.Var (nm, fresh_var))))
+            env
+        in
+        (* Remove the fresh variable from the environment *)
+        Env.rm_from_termEnv env fresh_var;
+        (* Return the normalized product *)
+        Product (nm, fresh_var, nf_tp, nf_body)
   | Case (scrutinee, patterns) -> (
       match scrutinee with
       | Neu (nm, _, rev_args) -> (

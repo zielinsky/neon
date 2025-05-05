@@ -1,0 +1,6 @@
+data DepPair (A: Type) (P: (A -> Type)) =
+| MakeDepPair (x: A) (y: P(x))
+
+let depType (n: Int) = Int
+
+let depIntPair = MakeDepPair(Int, depType, 0, 42)

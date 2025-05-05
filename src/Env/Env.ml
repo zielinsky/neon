@@ -114,10 +114,6 @@ let termEnv_to_string (termEnv : termEnv) : string =
     termEnv "\n"
   ^ "\n"
 
-let generate_fresh_var_name (env : env) (nm : string) : string =
-  let rec helper ((uTermEnv, _, _) : env) (nm : string) (cnt : int) : string =
-    let new_nm = nm ^ "_" ^ Int.to_string cnt in
-    if StringHashtbl.mem uTermEnv new_nm then helper env nm (cnt + 1)
-    else new_nm
-  in
-  helper env nm 0
+let generate_fresh_var_name (nm : string) : string =
+  let fresh_var = fresh_var () in
+  nm ^ "$" ^ Core.Var.to_string fresh_var

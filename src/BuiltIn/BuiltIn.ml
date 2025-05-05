@@ -3,7 +3,8 @@ open List
 type name = string
 type builtInFunction = Core.tp * (Core.whnf -> Core.term option)
 
-let int_add (w : Core.whnf) : Core.term option =
+let int_binary_function (w : Core.whnf) (f : int -> int -> Core.term) :
+    Core.term option =
   match w with
   | Neu (_, _, rev_args) -> (
       if length rev_args <> 2 then None
@@ -11,45 +12,22 @@ let int_add (w : Core.whnf) : Core.term option =
         let arg1 = hd rev_args in
         let arg2 = hd (tl rev_args) in
         match (arg1, arg2) with
-        | IntLit n1, IntLit n2 -> Some (IntLit (n1 + n2))
+        | IntLit n1, IntLit n2 -> Some (f n1 n2)
         | _ -> None)
   | _ -> None
+
+let int_add (w : Core.whnf) : Core.term option =
+  int_binary_function w (fun n1 n2 -> IntLit (n1 + n2))
 
 let int_sub (w : Core.whnf) : Core.term option =
-  match w with
-  | Neu (_, _, rev_args) -> (
-      if length rev_args <> 2 then None
-      else
-        let arg1 = hd rev_args in
-        let arg2 = hd (tl rev_args) in
-        match (arg1, arg2) with
-        | IntLit n1, IntLit n2 -> Some (IntLit (n1 - n2))
-        | _ -> None)
-  | _ -> None
+  int_binary_function w (fun n1 n2 -> IntLit (n1 - n2))
 
 let int_mul (w : Core.whnf) : Core.term option =
-  match w with
-  | Neu (_, _, rev_args) -> (
-      if length rev_args <> 2 then None
-      else
-        let arg1 = hd rev_args in
-        let arg2 = hd (tl rev_args) in
-        match (arg1, arg2) with
-        | IntLit n1, IntLit n2 -> Some (IntLit (n1 * n2))
-        | _ -> None)
-  | _ -> None
+  int_binary_function w (fun n1 n2 -> IntLit (n1 * n2))
 
 let int_div (w : Core.whnf) : Core.term option =
-  match w with
-  | Neu (_, _, rev_args) -> (
-      if length rev_args <> 2 then None
-      else
-        let arg1 = hd rev_args in
-        let arg2 = hd (tl rev_args) in
-        match (arg1, arg2) with
-        | IntLit n1, IntLit n2 -> Some (IntLit (n1 / n2))
-        | _ -> None)
-  | _ -> None
+  int_binary_function w (fun n1 n2 -> IntLit (n1 / n2))
+
 
 let io_read_int (w : Core.whnf) : Core.term option =
   match w with

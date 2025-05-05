@@ -45,17 +45,18 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
   | BoolLit false -> !^"false"
   | Type -> !^"type"
   | Kind -> !^"kind"
-  | Var (nm, var) -> !^"(" ^^ !^nm ^-^ !^":" ^^ !^(string_of_var var) ^^ !^")"
+  | Var (nm, var) ->
+      !^"(" ^-^ !^nm ^-^ !^"@" ^-^ !^(string_of_var var) ^-^ !^")"
   | Lambda (nm, var, tp_x, body) ->
       nest
-        (!^"λ" ^-^ !^"(" ^^ !^nm ^-^ !^":"
-        ^^ !^(string_of_var var)
-        ^^ !^")" ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
+        (!^"λ" ^-^ !^"(" ^-^ !^nm ^-^ !^"@"
+        ^-^ !^(string_of_var var)
+        ^-^ !^":" ^^ pp_term tp_x ^-^ !^")" ^^ !^"=>" ^^ pp_term body)
   | Product (nm, var, tp_x, body) ->
       nest
-        (!^"Π" ^-^ !^"(" ^^ !^nm ^-^ !^":"
-        ^^ !^(string_of_var var)
-        ^^ !^")" ^-^ !^":" ^^ pp_term tp_x ^^ !^"=>" ^^ pp_term body)
+        (!^"Π" ^-^ !^"(" ^-^ !^nm ^-^ !^"@"
+        ^-^ !^(string_of_var var)
+        ^-^ !^":" ^^ pp_term tp_x ^-^ !^")" ^^ !^"=>" ^^ pp_term body)
   | App (t1, t2) -> nest (parens_if_app t1 ^^ parens_if_app t2)
   | Let (nm, _, t1, tp_t1, t2) ->
       nest

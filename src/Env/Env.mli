@@ -26,4 +26,4 @@ val find_opt_in_adtEnv : adtEnv -> string -> adt_var option
 val env_var_to_string : env_var option -> string
 val env_to_string : env -> string
 val termEnv_to_string : termEnv -> string
-val generate_fresh_var_name : env -> string -> string
+val generate_fresh_var_name : string -> string
