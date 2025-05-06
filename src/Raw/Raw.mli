@@ -28,6 +28,8 @@ and term_data =
   | ADTSig of typeCName * telescope
   | ADTDecl of typeCName * telescope * constructorDef list
   | Case of uTerm * matchPat list
+  | IfExpr of uTerm * uTerm * uTerm
+  | Equality of uTerm * uTerm
 
 and constructorDef = { cname : dataCName; telescope : telescope }
 and telescope = Empty | Cons of string * uTerm * telescope

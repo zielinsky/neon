@@ -318,6 +318,22 @@ let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
       | _ ->
           Error.create_infer_type_error pos
             "Scrutinee's type whnf form should be a neutral term" term env)
+  | IfExpr (t, b, c) -> (
+      let t, tp = infer_type env t in
+      match Whnf.to_whnf tp termEnv with
+      | BoolType ->
+          let b, b_tp = infer_type env b in
+          let c, c_tp = infer_type env c in
+          if Equiv.equiv b_tp c_tp termEnv then (IfExpr (t, b, c), b_tp)
+          else (IfExpr (t, b, c), IfExpr (t, b_tp, c_tp))
+      | _ ->
+          Error.create_infer_type_error pos
+            "The condition's type must be a Bool type" term env)
+  | Equality (t1, t2) ->
+      let t1, t1_tp = infer_type env t1 in
+      let t2, t2_tp = infer_type env t2 in
+      if Equiv.equiv t1_tp t2_tp termEnv then (Equality (t1, t2), BoolType)
+      else (BoolLit false, BoolType)
 
 (** [check_type env term tp] checks whether the term [term] has the expected
     type [tp] in the context of environment [env].
@@ -334,7 +350,7 @@ and check_type ((_, termEnv, _) as env : Env.env)
   match t with
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
   | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _
-  | ADTSig _ | ADTDecl _ | Case _ ->
+  | ADTSig _ | ADTDecl _ | Case _ | Equality _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
       if Equiv.equiv tp t_tp termEnv then t
@@ -364,7 +380,9 @@ and check_type ((_, termEnv, _) as env : Env.env)
       | _ as whnf ->
           (* The expected type is not a function type *)
           Error.create_check_type_error pos
-            ("The type of Lambda must be a Product. Instead got " ^ PrettyPrinter.whnf_to_string whnf) term tp env)
+            ("The type of Lambda must be a Product. Instead got "
+            ^ PrettyPrinter.whnf_to_string whnf)
+            term tp env)
   | Lambda (x, Some x_tp, body) -> (
       (* Lambda with argument type annotation 'x_tp' *)
       (* First, check the lambda without the argument type against the expected type *)
@@ -426,14 +444,44 @@ and check_type ((_, termEnv, _) as env : Env.env)
       Hole (nm, tp)
   (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
   | LemmaDef (x, t) ->
-    let t = check_type env t tp in
-    let _ = Env.add_to_env env x (Opaque tp) in
-    t
+      let t = check_type env t tp in
+      let _ = Env.add_to_env env x (Opaque tp) in
+      t
   | LetDef (x, t) ->
-    let t = check_type env t tp in
-    let _ = Env.add_to_env env x (Transparent (t, tp)) in
-    t 
-    
+      let t = check_type env t tp in
+      let _ = Env.add_to_env env x (Transparent (t, tp)) in
+      t
+  | IfExpr (t, b, c) -> (
+      let t, t_tp = infer_type env t in
+      match Whnf.to_whnf t_tp termEnv with
+      | BoolType -> (
+          match t with
+          | Var (nm, var) ->
+              let xs =
+                List.map
+                  (fun (branch, v) ->
+                    let fresh_var =
+                      Env.add_to_env env nm (Transparent (BoolLit v, BoolType))
+                    in
+                    let branch =
+                      check_type env branch
+                        (Substitution.substitute tp
+                           (Substitution.singleton_sub_map var
+                              (Var (nm, fresh_var))))
+                    in
+                    let _ = Env.rm_from_env env nm in
+                    branch)
+                  [ (b, true); (c, false) ]
+              in
+              let b, c = (List.hd xs, List.nth xs 1) in
+              IfExpr (t, b, c)
+          | _ ->
+              let b = check_type env b tp in
+              let c = check_type env c tp in
+              IfExpr (t, b, c))
+      | _ ->
+          Error.create_infer_type_error pos
+            "The condition's type must be a Bool type" term env)
 
 and telescope_check_type_and_extend_env (env : Env.env)
     (telescope : Raw.telescope) : Core.telescope =

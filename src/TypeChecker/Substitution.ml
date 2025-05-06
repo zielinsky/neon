@@ -77,6 +77,9 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
           matchPats
       in
       Case (scrutinee', matchPats')
+  | IfExpr (t, b1, b2) ->
+      IfExpr (substitute t sub, substitute b1 sub, substitute b2 sub)
+  | Equality (t1, t2) -> Equality (substitute t1 sub, substitute t2 sub)
 
 (** [substitute_whnf t sub] performs substitution on a term in weak head normal
     form (WHNF) [t] using the substitution map [sub].
@@ -84,7 +87,7 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
     @param t The WHNF term in which to perform substitution.
     @param sub The substitution map.
     @return A new WHNF term with substitutions applied. *)
-let substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
+let rec substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
   match t with
   | Type | Kind | IntType | StringType | BoolType | IntLit _ | StringLit _
   | BoolLit _ | Case _ ->
@@ -97,6 +100,9 @@ let substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
       Lambda (nm, var, substitute tp sub, substitute body sub)
   | Product (nm, var, tp, body) ->
       Product (nm, var, substitute tp sub, substitute body sub)
+  | IfExpr (t, b1, b2) ->
+      IfExpr (substitute_whnf t sub, substitute b1 sub, substitute b2 sub)
+  | Equality (t1, t2) -> Equality (substitute t1 sub, substitute t2 sub)
 
 let rec substitute_in_telescope (ts : Core.telescope) (sub : sub_map) :
     Core.telescope =

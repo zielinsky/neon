@@ -1,5 +1,4 @@
-let and_type = Type -> Type -> Type
-let and : and_type = fun p q => forall (c : Type) => (p -> q -> c) -> c
-
-let conj_type = forall (p: Type) (q : Type) => p -> q -> and (p, q)
-let conj : conj_type = fun p q x y c f => f(x, y) 
+let foo : Int -> Type = fun n => if eq(n, 0) then Int else String
+let fooz (n: Int) = if eq(n, 0) then Int else String
+let fuz (b: Bool) = if b then 3 else "a"
+let x = fuz(true)

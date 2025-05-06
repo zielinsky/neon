@@ -74,6 +74,10 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
                   acc ^-^ !^"|" ^^ pp_pattern pattern ^^ !^"=>" ^^ pp_term body
                   ^-^ newline)
                 !^"" cases))
+  | IfExpr (t, b1, b2) ->
+      nest
+        (!^"if" ^^ pp_term t ^^ !^"then" ^^ pp_term b1 ^^ !^"else" ^^ pp_term b2)
+  | Equality (t1, t2) -> nest (pp_term t1 ^^ !^"==" ^^ pp_term t2)
 
 let term_to_string (t : Core.term) : string = to_string 40 2 (pp_term t)
 
@@ -154,6 +158,11 @@ let rec pp_uterm ({ data = e; pos } : Raw.uTerm) : SmartPrint.t =
                           (!^"|" ^^ !^(con_def.cname)
                           ^^ pp_telescope con_def.telescope))
                       !^"" con_defs)))
+  | IfExpr (t, b1, b2) ->
+      nest
+        (!^"if" ^^ pp_uterm t ^^ !^"then" ^^ pp_uterm b1 ^^ !^"else"
+       ^^ pp_uterm b2)
+  | Equality (t1, t2) -> nest (pp_uterm t1 ^^ !^"==" ^^ pp_uterm t2)
 
 and pp_telescope (ts : Raw.telescope) : SmartPrint.t =
   match ts with
@@ -199,6 +208,10 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
                   acc ^-^ !^"|" ^^ pp_pattern pattern ^^ !^"=>" ^^ pp_term body
                   ^-^ newline)
                 !^"" cases))
+  | IfExpr (t, b1, b2) ->
+      nest
+        (!^"if" ^^ pp_whnf t ^^ !^"then" ^^ pp_term b1 ^^ !^"else" ^^ pp_term b2)
+  | Equality (t1, t2) -> nest (pp_term t1 ^^ !^"==" ^^ pp_term t2)
 
 let rec whnf_to_string (t : Core.whnf) : string = to_string 40 2 (pp_whnf t)
 

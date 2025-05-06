@@ -104,3 +104,9 @@ let rec to_whnf (t : Core.term) (env : Env.termEnv) : Core.whnf =
   | Case (term, patterns) ->
       let term_whnf = to_whnf term env in
       Case (term_whnf, patterns)
+  | IfExpr (t, b1, b2) -> (
+    let t = to_whnf t env in
+      match t with
+      | BoolLit b -> if b then to_whnf b1 env else to_whnf b2 env
+      | _ -> IfExpr (t, b1, b2))
+  | Equality (t1, t2) -> Equality (t1, t2)

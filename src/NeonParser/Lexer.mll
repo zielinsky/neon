@@ -19,6 +19,7 @@ rule token = parse
   | '('  { YaccParser.BR_OPN    }
   | ')'  { YaccParser.BR_CLS    }
   | ':'  { YaccParser.COLON     }
+  | "==" { YaccParser.EQUALITY }
   | '='  { YaccParser.EQUAL     }
   | ','  { YaccParser.COMMA     }
   | "in"  { YaccParser.IN     }
@@ -41,6 +42,9 @@ rule token = parse
   | "with" { YaccParser.WITH }
   | '|' { YaccParser.BAR }
   | '_' { YaccParser.WILDCARD }
+  | "if" { YaccParser.IF }
+  | "then" { YaccParser.THEN }
+  | "else" { YaccParser.ELSE }
   | var_char* as x { YaccParser.VAR x }
   (* Integer literals *)
   | ['0'-'9']+ as digits {

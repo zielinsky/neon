@@ -28,6 +28,20 @@ let int_mul (w : Core.whnf) : Core.term option =
 let int_div (w : Core.whnf) : Core.term option =
   int_binary_function w (fun n1 n2 -> IntLit (n1 / n2))
 
+let int_eq (w : Core.whnf) : Core.term option =
+  int_binary_function w (fun n1 n2 -> BoolLit (Int.equal n1 n2))
+
+let int_greater (w : Core.whnf) : Core.term option =
+  int_binary_function w (fun n1 n2 -> BoolLit (n1 > n2))
+
+let int_greater_or_eq (w : Core.whnf) : Core.term option =
+  int_binary_function w (fun n1 n2 -> BoolLit (n1 >= n2))
+
+let int_less (w : Core.whnf) : Core.term option =
+  int_binary_function w (fun n1 n2 -> BoolLit (n1 < n2))
+
+let int_less_or_eq (w : Core.whnf) : Core.term option =
+  int_binary_function w (fun n1 n2 -> BoolLit (n1 <= n2))
 
 let io_read_int (w : Core.whnf) : Core.term option =
   match w with
@@ -59,7 +73,17 @@ let () =
   Hashtbl.add builtIn_functions "_builtin_mul"
     (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_mul);
   Hashtbl.add builtIn_functions "_builtin_div"
-    (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_div)
+    (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_div);
+  Hashtbl.add builtIn_functions "_builtin_eq"
+    (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_eq);
+Hashtbl.add builtIn_functions "_builtin_g"
+    (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_greater);
+  Hashtbl.add builtIn_functions "_builtin_ge"
+    (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_greater_or_eq);
+  Hashtbl.add builtIn_functions "_builtin_l"
+    (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_less);
+  Hashtbl.add builtIn_functions "_builtin_le"
+    (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_less_or_eq)
 
 let load_builtins env =
   let add_builtin name (ty, _) env =

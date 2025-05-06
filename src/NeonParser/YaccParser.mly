@@ -10,6 +10,8 @@
 %token ADTDEF
 %token BAR
 %token MATCH WITH WILDCARD
+%token IF THEN ELSE
+%token EQUALITY
 
 %type<Raw.program> program
 %start program
@@ -130,6 +132,8 @@ expression
 | LET let_in { $2 }
 | LEMMA VAR EQUAL expression IN expression { make (Lemma ($2, $4, $6)) }
 | MATCH expression WITH pattern_list { make (Case ($2, $4)) }
+| IF expression THEN expression ELSE expression { make (IfExpr ($2, $4, $6)) }
+| expression EQUALITY expression { make (Equality ($1, $3)) }
 | expression TYPE_ARROW expression {make (TypeArrow ($1, $3)) }
 | application { $1 }
 | BR_OPN expression BR_CLS { $2 }

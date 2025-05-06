@@ -38,6 +38,8 @@ type term =
   | Let of string * Var.t * term * tp * term
   | TypeArrow of tp * tp
   | Case of term * matchPat list
+  | IfExpr of term * term * term
+  | Equality of term * term
 
 and constructorDef = { cname : string; telescope : telescope }
 and telescope = Empty | Cons of string * Var.t * tp * telescope
@@ -60,6 +62,8 @@ type whnf =
   | Lambda of string * Var.t * tp * term
   | Product of string * Var.t * tp * tp
   | Case of whnf * matchPat list
+  | IfExpr of whnf * term * term
+  | Equality of term * term
 
 let dataCName_of_string (s : string) : dataCName = s
 let typeCName_of_string (s : string) : typeCName = s

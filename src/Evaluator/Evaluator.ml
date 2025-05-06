@@ -148,6 +148,17 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.termEnv) : Core.term =
               nf_term)
       | _ ->
           failwith "RUNTIME ERROR while evaluating Case, scrutinee is not Neu.")
+  | IfExpr (t, b1, b2) -> (
+      match whnf_to_nf t env with
+      | BoolLit b -> if b then eval b1 env else eval b2 env
+      | _ as t ->
+          if TypeChecker.Equiv.equiv b1 b2 env then b1 else IfExpr (t, b1, b2))
+  | Equality (t1, t2) -> (
+      let t1 = eval t1 env in
+      let t2 = eval t2 env in
+      match TypeChecker.Equiv.equiv_optional t1 t2 env with
+      | Some b -> BoolLit b
+      | None -> Equality (t1, t2))
 
 and eval (t : Core.term) (env : Env.termEnv) : Core.term =
   let w = TypeChecker.Whnf.to_whnf t env in

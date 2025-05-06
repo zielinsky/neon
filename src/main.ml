@@ -36,6 +36,7 @@ let process_parsed_def env x =
 
   let _, termEnv, _ = env in
   let nf = Evaluator.eval inferred_term termEnv in
+  let nf_tp = Evaluator.eval inferred_ty termEnv in
   if !verbose_mode then (
     print_endline "----- NORMAL FORM -----";
     Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf))
@@ -45,7 +46,7 @@ let process_parsed_def env x =
   then
     Printf.printf "%s\n%s\n\n"
       (PrettyPrinter.term_to_string nf)
-      (PrettyPrinter.term_to_string inferred_ty)
+      (PrettyPrinter.term_to_string nf_tp)
 
 (** Recursively lists all .neon files in the given directory. *)
 let list_neon_files dir =
