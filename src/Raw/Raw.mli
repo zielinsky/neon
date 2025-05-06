@@ -26,12 +26,12 @@ and term_data =
   | Hole of string
   | TypeArrow of term * term
   | ADTSig of typeCName * telescope
-  | ADTDecl of typeCName * telescope * constructorDef list
+  | ADTDecl of typeCName * telescope * constructor_def list
   | Case of term * matchPat list
   | IfExpr of term * term * term
   | Equality of term * term
 
-and constructorDef = { cname : dataCName; telescope : telescope }
+and constructor_def = { cname : dataCName; telescope : telescope }
 and telescope = Empty | Cons of string * term * telescope
 and matchPat = pattern * term
 and pattern = PatWild | PatCon of dataCName * string list

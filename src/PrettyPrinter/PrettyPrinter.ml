@@ -153,7 +153,7 @@ let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
              (pp_telescope ts ^^ !^"=" ^-^ newline
              ^-^ nest
                    (List.fold_left
-                      (fun acc (con_def : Raw.constructorDef) ->
+                      (fun acc (con_def : Raw.constructor_def) ->
                         nest
                           (!^"|" ^^ !^(con_def.cname)
                           ^^ pp_telescope con_def.telescope))

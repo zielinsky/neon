@@ -41,7 +41,7 @@ type term =
   | IfExpr of term * term * term
   | Equality of term * term
 
-and constructorDef = { cname : string; telescope : telescope }
+and constructor_def = { cname : string; telescope : telescope }
 and telescope = Empty | Cons of string * Var.t * tp * telescope
 and matchPat = pattern * term
 and pattern = PatWild | PatCon of dataCName * (string * Var.t) list

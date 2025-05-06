@@ -276,7 +276,7 @@ let rec infer_type (env : Env.env)
       let _ = Env.rm_telescope_from_env env ts' in
       let cs =
         List.map
-          (fun (data_con : Core.constructorDef) ->
+          (fun (data_con : Core.constructor_def) ->
             build_adt_data env ts' data_con.telescope [] (nm, fresh_var))
           con_list
       in
@@ -285,7 +285,7 @@ let rec infer_type (env : Env.env)
           (fun (nmCon, tpCon) -> Env.add_to_env env nmCon (Opaque tpCon))
           (List.combine
              (List.map
-                (fun (data_con : Core.constructorDef) -> data_con.cname)
+                (fun (data_con : Core.constructor_def) -> data_con.cname)
                 con_list)
              cs)
       in
