@@ -7,7 +7,7 @@ let unpack (x : bool option) : bool = match x with Some b -> b | None -> false
     @param t2 The second term.
     @param env The environment containing variable and term bindings.
     @return [true] if [t1] and [t2] are equivalent; [false] otherwise. *)
-let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.termEnv) :
+let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.internal) :
     bool option =
   match (Whnf.to_whnf t1 env, Whnf.to_whnf t2 env) with
   | Type, Type ->
@@ -50,7 +50,7 @@ let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.termEnv) :
             ^ PrettyPrinter.term_to_string t2
             ^ "\n" ^ "Whnf_2 "
             ^ PrettyPrinter.whnf_to_string whnf_2
-            ^ "\nEnv at this moment:\n" ^ Env.termEnv_to_string env)
+            ^ "\nEnv at this moment:\n" ^ Env.internal_env_to_string env)
         in
         Some true (* Returning Some here might be specific to handling holes *)
   | Lambda (nm1, x1, x1_tp, body1), Lambda (nm2, x2, x2_tp, body2)
@@ -60,7 +60,7 @@ let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.termEnv) :
         (* If the parameter types are equivalent *)
         let fresh_var = Env.fresh_var () in
         (* Introduce a fresh variable to avoid variable capture *)
-        let _ = Env.add_to_termEnv env fresh_var (Opaque x1_tp) in
+        let _ = Env.add_to_internal_env env fresh_var (Opaque x1_tp) in
         (* Substitute both bodies with the fresh variable *)
         let body1' =
           Substitution.substitute body1
@@ -75,7 +75,7 @@ let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.termEnv) :
         (* Check if the bodies are equivalent *)
         let res = equiv_optional body1' body2' env in
         (* Remove the fresh variable from the environment *)
-        let _ = Env.rm_from_termEnv env fresh_var in
+        let _ = Env.rm_from_internal_env env fresh_var in
         res
       else
         (* Parameter types are not equivalent *)
@@ -93,12 +93,12 @@ let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.termEnv) :
           ^ PrettyPrinter.term_to_string t2
           ^ "\n" ^ "Whnf_2 "
           ^ PrettyPrinter.whnf_to_string whnf_2
-          ^ "\n Env at this moment:\n" ^ Env.termEnv_to_string env)
+          ^ "\n Env at this moment:\n" ^ Env.internal_env_to_string env)
       in
       Some true
   | _ ->
       (* Terms are not equivalent *)
       None
 
-and equiv (t1 : Core.term) (t2 : Core.term) (env : Env.termEnv) : bool =
+and equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
   unpack (equiv_optional t1 t2 env)

@@ -7,10 +7,11 @@ type adt_var =
   | AdtTSig of Core.telescope * Core.dataCName list
   | AdtDSig of Core.typeCName * Core.telescope
 
-type uTermEnv = Core.Var.t StringHashtbl.t
-type termEnv = env_var VarHashtbl.t
-type adtEnv = adt_var StringHashtbl.t
-type env = uTermEnv * termEnv * adtEnv
+type surface = Core.Var.t StringHashtbl.t
+type internal = env_var VarHashtbl.t
+type adt = adt_var StringHashtbl.t
+
+type env = {surface: surface; internal: internal; adt: adt}
 
 let counter = ref 0
 
@@ -20,40 +21,40 @@ let fresh_var () : Core.Var.t =
   Core.Var.of_int fresh_var
 
 let create_env () : env =
-  (StringHashtbl.create 10, VarHashtbl.create 10, StringHashtbl.create 10)
+  {surface = StringHashtbl.create 10; internal = VarHashtbl.create 10; adt = StringHashtbl.create 10}
 
-let add_to_env ((uTermEnv, termEnv, _) : env) (nm : string) (var : env_var) :
+let add_to_env (env : env) (nm : string) (var : env_var) :
     Core.Var.t =
   let y = fresh_var () in
-  let _ = StringHashtbl.add uTermEnv nm y in
-  let _ = VarHashtbl.add termEnv y var in
+  let _ = StringHashtbl.add env.surface nm y in
+  let _ = VarHashtbl.add env.internal y var in
   y
 
-let add_to_termEnv (termEnv : termEnv) (var : Core.Var.t) (env_var : env_var) :
+let add_to_internal_env (env : internal) (var : Core.Var.t) (env_var : env_var) :
     unit =
-  assert (not (VarHashtbl.mem termEnv var));
-  VarHashtbl.add termEnv var env_var
+  assert (not (VarHashtbl.mem env var));
+  VarHashtbl.add env var env_var
 
-let add_to_adtEnv (adtEnv : adtEnv) (nm : string) (adt_var : adt_var) : unit =
-  if StringHashtbl.mem adtEnv nm then failwith "ADT already exists in Env"
-  else StringHashtbl.add adtEnv nm adt_var
+let add_to_adt_env (env : adt) (nm : string) (adt_var : adt_var) : unit =
+  if StringHashtbl.mem env nm then failwith "ADT already exists in Env"
+  else StringHashtbl.add env nm adt_var
 
-let rec add_telescope_to_env ((uTermEnv, termEnv, _) as env : env)
+let rec add_telescope_to_env (env : env)
     (ts : Core.telescope) : unit =
   match ts with
   | Empty -> ()
   | Cons (nm, var, tp, ts) ->
-      let _ = StringHashtbl.add uTermEnv nm var in
-      let _ = VarHashtbl.add termEnv var (Opaque tp) in
+      let _ = StringHashtbl.add env.surface nm var in
+      let _ = VarHashtbl.add env.internal var (Opaque tp) in
       add_telescope_to_env env ts
 
-let rm_from_env ((uTermEnv, termEnv, _) : env) (nm : string) : unit =
-  let y = StringHashtbl.find uTermEnv nm in
-  let _ = StringHashtbl.remove uTermEnv nm in
-  VarHashtbl.remove termEnv y
+let rm_from_env (env : env) (nm : string) : unit =
+  let y = StringHashtbl.find env.surface nm in
+  let _ = StringHashtbl.remove env.surface nm in
+  VarHashtbl.remove env.internal y
 
-let rm_from_termEnv (termEnv : termEnv) (var : Core.Var.t) : unit =
-  VarHashtbl.remove termEnv var
+let rm_from_internal_env (env : internal) (var : Core.Var.t) : unit =
+  VarHashtbl.remove env var
 
 let rec rm_telescope_from_env (env : env) (ts : Core.telescope) : unit =
   match ts with
@@ -62,27 +63,27 @@ let rec rm_telescope_from_env (env : env) (ts : Core.telescope) : unit =
       let _ = rm_from_env env nm in
       rm_telescope_from_env env ts
 
-let rm_from_adtEnv (adtEnv : adtEnv) (nm : string) : unit =
-  StringHashtbl.remove adtEnv nm
+let rm_from_adt_env (env : adt) (nm : string) : unit =
+  StringHashtbl.remove env nm
 
-let rm_from_uTermEnv (uTermEnv : uTermEnv) (nm : string) : unit =
-  StringHashtbl.remove uTermEnv nm
+let rm_from_surface_env (env : surface) (nm : string) : unit =
+  StringHashtbl.remove env nm
 
-let find_opt_in_env ((uTermEnv, termEnv, _) : env) (nm : string) :
+let find_opt_in_env (env : env) (nm : string) :
     (Core.Var.t * env_var) option =
-  match StringHashtbl.find_opt uTermEnv nm with
+  match StringHashtbl.find_opt env.surface nm with
   | None -> None
   | Some var -> (
-      match VarHashtbl.find_opt termEnv var with
+      match VarHashtbl.find_opt env.internal var with
       | None -> None
       | Some env_var -> Some (var, env_var))
 
-let find_opt_in_termEnv (termEnv : termEnv) (var : Core.Var.t) : env_var option
+let find_opt_in_internal_env (env : internal) (var : Core.Var.t) : env_var option
     =
-  VarHashtbl.find_opt termEnv var
+  VarHashtbl.find_opt env var
 
-let find_opt_in_adtEnv (adtEnv : adtEnv) (nm : string) : adt_var option =
-  StringHashtbl.find_opt adtEnv nm
+let find_opt_in_adt_env (env : adt) (nm : string) : adt_var option =
+  StringHashtbl.find_opt env nm
 
 let env_var_to_string (env_var : env_var option) : string =
   match env_var with
@@ -96,22 +97,22 @@ let env_var_to_string (env_var : env_var option) : string =
       ^ PrettyPrinter.term_to_string tp
       ^ "\x1b[0m"
 
-let env_to_string ((uTermEnv, termEnv, _) : env) : string =
+let env_to_string (env : env) : string =
   StringHashtbl.fold
     (fun key v acc ->
       acc
       ^ Printf.sprintf "%s %s\n" key
-          (env_var_to_string (VarHashtbl.find_opt termEnv v)))
-    uTermEnv "\n"
+          (env_var_to_string (VarHashtbl.find_opt env.internal v)))
+    env.surface "\n"
   ^ "\n"
 
-let termEnv_to_string (termEnv : termEnv) : string =
+let internal_env_to_string (env : internal) : string =
   VarHashtbl.fold
     (fun key v acc ->
       acc
       ^ Printf.sprintf "%d %s\n" (Core.Var.to_int key)
           (env_var_to_string (Some v)))
-    termEnv "\n"
+    env "\n"
   ^ "\n"
 
 let generate_fresh_var_name (nm : string) : string =

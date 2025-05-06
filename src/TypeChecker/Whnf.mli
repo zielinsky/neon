@@ -1,1 +1,1 @@
-val to_whnf : Core.term -> Env.termEnv -> Core.whnf
+val to_whnf : Core.term -> Env.internal -> Core.whnf

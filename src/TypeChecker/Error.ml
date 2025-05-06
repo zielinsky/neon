@@ -75,7 +75,7 @@ let create_check_type_error (pos : Raw.position) (error_msg : string)
     @param env The term environment at the time of the error.
     @param error_msg A message describing the error.
     @raise Failure Always raises a [Failure] exception with an error message. *)
-let create_whnf_error (term : Core.term) (env : Env.termEnv)
+let create_whnf_error (term : Core.term) (env : Env.internal)
     (error_msg : string) : 'a =
   let _ =
     print_endline
@@ -83,6 +83,6 @@ let create_whnf_error (term : Core.term) (env : Env.termEnv)
       ^ PrettyPrinter.term_to_string term
       ^ "\nto WHNF" ^ "\n\nThe following error occurred:\n\t" ^ error_msg ^ "\n"
       ^ "\nThe state of the environment at that moment:\n"
-      ^ Env.termEnv_to_string env)
+      ^ Env.internal_env_to_string env)
   in
   failwith "Error when converting to WHNF"

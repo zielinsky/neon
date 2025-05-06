@@ -8,24 +8,24 @@ let find_matching_matchPat (nm : string) (patterns : Core.matchPat list) :
     patterns
 
 let add_pattern_vars_to_termEnv (vars : (string * Core.Var.t) list)
-    (values : Core.term list) (env : Env.termEnv) :
+    (values : Core.term list) (env : Env.internal) :
     (string * Core.Var.t * Core.Var.t) list =
   let _ = assert (List.length vars == List.length values) in
   List.fold_left
     (fun acc ((nm, var), term) ->
       let fresh_var = Env.fresh_var () in
-      let _ = Env.add_to_termEnv env fresh_var (Transparent (term, Type)) in
+      let _ = Env.add_to_internal_env env fresh_var (Transparent (term, Type)) in
       (nm, var, fresh_var) :: acc)
     [] (List.combine vars values)
 
 let rm_pattern_vars_to_termEnv
-    (bindings : (string * Core.Var.t * Core.Var.t) list) (env : Env.termEnv) :
+    (bindings : (string * Core.Var.t * Core.Var.t) list) (env : Env.internal) :
     unit =
-  List.iter (fun (_, _, x) -> Env.rm_from_termEnv env x) bindings
+  List.iter (fun (_, _, x) -> Env.rm_from_internal_env env x) bindings
 
 (** [whnf_to_nf w env] fully normalizes a [whnf] node [w] in context [env],
     producing a [term] in normal form. *)
-let rec whnf_to_nf (w : Core.whnf) (env : Env.termEnv) : Core.term =
+let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
   match w with
   | Type ->
       (* Already a normal form. *)
@@ -74,7 +74,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.termEnv) : Core.term =
       (* Generate a fresh variable identifier *)
       let fresh_var = Env.fresh_var () in
       (* Add the definition of 'tp' to the environment with the fresh variable *)
-      Env.add_to_termEnv env fresh_var (Opaque tp);
+      Env.add_to_internal_env env fresh_var (Opaque tp);
       (* Evaluate type and body *)
       let nf_tp =
         eval
@@ -91,7 +91,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.termEnv) : Core.term =
           env
       in
       (* Remove the fresh variable from the environment *)
-      Env.rm_from_termEnv env fresh_var;
+      Env.rm_from_internal_env env fresh_var;
       (* Return the normalized lambda *)
       Lambda (nm, fresh_var, nf_tp, nf_body)
   | Product (nm, x, tp, body) ->
@@ -103,7 +103,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.termEnv) : Core.term =
         (* Generate a fresh variable identifier *)
         let fresh_var = Env.fresh_var () in
         (* Add the definition of 'tp' to the environment with the fresh variable *)
-        Env.add_to_termEnv env fresh_var (Opaque tp);
+        Env.add_to_internal_env env fresh_var (Opaque tp);
         (* Evaluate type and body *)
         let nf_tp =
           eval
@@ -120,7 +120,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.termEnv) : Core.term =
             env
         in
         (* Remove the fresh variable from the environment *)
-        Env.rm_from_termEnv env fresh_var;
+        Env.rm_from_internal_env env fresh_var;
         (* Return the normalized product *)
         Product (nm, fresh_var, nf_tp, nf_body)
   | Case (scrutinee, patterns) -> (
@@ -160,6 +160,6 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.termEnv) : Core.term =
       | Some b -> BoolLit b
       | None -> Equality (t1, t2))
 
-and eval (t : Core.term) (env : Env.termEnv) : Core.term =
+and eval (t : Core.term) (env : Env.internal) : Core.term =
   let w = TypeChecker.Whnf.to_whnf t env in
   whnf_to_nf w env

@@ -7,7 +7,7 @@
     @raise Failure
       If an error occurs during conversion, raises a failure with an appropriate
       error message. *)
-let rec to_whnf (t : Core.term) (env : Env.termEnv) : Core.whnf =
+let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
   match t with
   | Type ->
       (* 'Type' is already in WHNF *)
@@ -35,7 +35,7 @@ let rec to_whnf (t : Core.term) (env : Env.termEnv) : Core.whnf =
       BoolLit s
   | Var (nm, x) -> (
       (* Variable 'x' with name 'nm' *)
-      match Env.find_opt_in_termEnv env x with
+      match Env.find_opt_in_internal_env env x with
       | Some (Opaque _) ->
           (* Variable is opaque (e.g., a constant or parameter); cannot reduce further *)
           Neu (nm, x, [])
@@ -84,7 +84,7 @@ let rec to_whnf (t : Core.term) (env : Env.termEnv) : Core.whnf =
       (* Introduce a fresh variable to avoid capture *)
       let fresh_var = Env.fresh_var () in
       (* Add the definition of 't1' to the environment as transparent *)
-      let _ = Env.add_to_termEnv env fresh_var (Transparent (t1, tp_t1)) in
+      let _ = Env.add_to_internal_env env fresh_var (Transparent (t1, tp_t1)) in
       (* Substitute 'var' with the fresh variable in 't2' and reduce *)
       let t2_whnf =
         to_whnf
@@ -98,7 +98,7 @@ let rec to_whnf (t : Core.term) (env : Env.termEnv) : Core.whnf =
           (Substitution.singleton_sub_map fresh_var t1)
       in
       (* Remove the fresh variable from the environment *)
-      let _ = Env.rm_from_termEnv env fresh_var in
+      let _ = Env.rm_from_internal_env env fresh_var in
       (* Return the reduced term *)
       t2_whnf_substituted
   | Case (term, patterns) ->

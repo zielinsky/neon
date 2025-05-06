@@ -65,7 +65,7 @@ let rec build_adt_data (env : Env.env) (tsType : Core.telescope)
     @raise Failure
       If type inference fails, raises an exception with an appropriate error
       message. *)
-let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
+let rec infer_type (env : Env.env)
     ({ pos; data = t } as term : Raw.uTerm) : Core.term * Core.tp =
   match t with
   | Type ->
@@ -170,7 +170,7 @@ let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
       (* Infer the type of 't1' *)
       let t1, t1_tp = infer_type env t1 in
       (* Reduce 't1_tp' to weak head normal form *)
-      match Whnf.to_whnf t1_tp termEnv with
+      match Whnf.to_whnf t1_tp env.internal with
       | Product (_, x, x_tp, tp_body) ->
           (* The type of 't1' is a function type with parameter 'x' of type 'x_tp' *)
           (* Check that 't2' has type 'x_tp' *)
@@ -246,7 +246,7 @@ let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
         term env
   | ADTSig (nm, ts) ->
       let ts' = telescope_check_type_and_extend_env env ts in
-      let _ = Env.add_to_adtEnv adtEnv nm (AdtTSig (ts', [])) in
+      let _ = Env.add_to_adt_env env.adt nm (AdtTSig (ts', [])) in
       let adt_sig_tp = build_adt_sig env ts' in
       let fresh_var = Env.add_to_env env nm (Opaque adt_sig_tp) in
       let _ = Env.rm_telescope_from_env env ts' in
@@ -258,7 +258,7 @@ let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
           (fun { Raw.cname = nmCon; _ } -> Core.dataCName_of_string nmCon)
           cs
       in
-      let _ = Env.add_to_adtEnv adtEnv nm (AdtTSig (ts', dataCNames)) in
+      let _ = Env.add_to_adt_env env.adt nm (AdtTSig (ts', dataCNames)) in
       let adt_sig_tp = build_adt_sig env ts' in
       let fresh_var = Env.add_to_env env nm (Opaque adt_sig_tp) in
       let con_list =
@@ -266,7 +266,7 @@ let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
           (fun { Raw.cname = nmCon; Raw.telescope = tsCon } ->
             let tsCon' = telescope_check_type_and_extend_env env tsCon in
             let _ =
-              Env.add_to_adtEnv adtEnv nmCon
+              Env.add_to_adt_env env.adt nmCon
                 (AdtDSig (Core.typeCName_of_string nm, tsCon'))
             in
             let _ = Env.rm_telescope_from_env env tsCon' in
@@ -292,10 +292,10 @@ let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
       (Var (nm, fresh_var), adt_sig_tp)
   | Case (scrut, ps) -> (
       let scrut', tp' = infer_type env scrut in
-      match Whnf.to_whnf tp' termEnv with
+      match Whnf.to_whnf tp' env.internal with
       | Neu (nm, _, tsT_args) -> (
           let tsT_args = List.rev tsT_args in
-          match Env.find_opt_in_adtEnv adtEnv nm with
+          match Env.find_opt_in_adt_env env.adt nm with
           | Some (AdtTSig (tsT, dataCNames)) ->
               if telescope_length tsT = List.length tsT_args then
                 let patterns, result_type =
@@ -320,11 +320,11 @@ let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
             "Scrutinee's type whnf form should be a neutral term" term env)
   | IfExpr (t, b, c) -> (
       let t, tp = infer_type env t in
-      match Whnf.to_whnf tp termEnv with
+      match Whnf.to_whnf tp env.internal with
       | BoolType ->
           let b, b_tp = infer_type env b in
           let c, c_tp = infer_type env c in
-          if Equiv.equiv b_tp c_tp termEnv then (IfExpr (t, b, c), b_tp)
+          if Equiv.equiv b_tp c_tp env.internal then (IfExpr (t, b, c), b_tp)
           else (IfExpr (t, b, c), IfExpr (t, b_tp, c_tp))
       | _ ->
           Error.create_infer_type_error pos
@@ -332,7 +332,7 @@ let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
   | Equality (t1, t2) ->
       let t1, t1_tp = infer_type env t1 in
       let t2, t2_tp = infer_type env t2 in
-      if Equiv.equiv t1_tp t2_tp termEnv then (Equality (t1, t2), BoolType)
+      if Equiv.equiv t1_tp t2_tp env.internal then (Equality (t1, t2), BoolType)
       else (BoolLit false, BoolType)
 
 (** [check_type env term tp] checks whether the term [term] has the expected
@@ -345,7 +345,7 @@ let rec infer_type ((_, termEnv, adtEnv) as env : Env.env)
     @raise Failure
       If type checking fails, raises an exception with an appropriate error
       message. *)
-and check_type ((_, termEnv, _) as env : Env.env)
+and check_type (env : Env.env)
     ({ pos; data = t } as term : Raw.uTerm) (tp : Core.term) : Core.term =
   match t with
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
@@ -353,7 +353,7 @@ and check_type ((_, termEnv, _) as env : Env.env)
   | ADTSig _ | ADTDecl _ | Case _ | Equality _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
-      if Equiv.equiv tp t_tp termEnv then t
+      if Equiv.equiv tp t_tp env.internal then t
       else
         (* Types are not equivalent; report an error *)
         Error.create_check_type_error pos
@@ -362,7 +362,7 @@ and check_type ((_, termEnv, _) as env : Env.env)
   | Lambda (x, None, body) -> (
       (* Lambda with omitted argument type *)
       (* Reduce the expected type 'tp' to WHNF to check if it's a function type *)
-      match Whnf.to_whnf tp termEnv with
+      match Whnf.to_whnf tp env.internal with
       | Product (_, y, y_tp, body_tp) ->
           (* The expected type is a function type with parameter 'y' of type 'y_tp' *)
           (* Add 'x' to the environment with type 'y_tp' *)
@@ -390,7 +390,7 @@ and check_type ((_, termEnv, _) as env : Env.env)
       | Lambda (_, _, arg_tp, _) as lambda ->
           (* Infer the type of the provided argument type 'x_tp' *)
           let x_tp, _ = infer_type env x_tp in
-          if Equiv.equiv x_tp arg_tp termEnv then
+          if Equiv.equiv x_tp arg_tp env.internal then
             (* The provided argument type matches the expected argument type *)
             lambda
           else
@@ -453,7 +453,7 @@ and check_type ((_, termEnv, _) as env : Env.env)
       t
   | IfExpr (t, b, c) -> (
       let t, t_tp = infer_type env t in
-      match Whnf.to_whnf t_tp termEnv with
+      match Whnf.to_whnf t_tp env.internal with
       | BoolType -> (
           match t with
           | Var (nm, var) ->
@@ -499,7 +499,7 @@ and telescope_check_type_and_extend_env (env : Env.env)
 and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
     (tsT : Core.telescope) (tsT_types : Core.tp list)
     (dataCNames : Core.dataCName list) : Core.matchPat list * Core.tp =
-  let infer_branch_and_extend_env ((uTermEnv, _, _) as env : Env.env)
+  let infer_branch_and_extend_env (env : Env.env)
       (tsT : Core.telescope) (tsT_types : Core.tp list) (tsD : Core.telescope)
       (args : string list) ({ pos; _ } as term : Raw.uTerm) :
       Core.term * Core.tp * (string * Core.Var.t) list =
@@ -555,17 +555,17 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
       let ts_names, ts_vars = List.split (snd (List.split ts_all_vars)) in
       (* We need to remove the names from the env as the branches could over shadow each others variables but
        we need to keep the internal representation in order to check if all branches have matching types *)
-      let _ = List.iter (fun nm -> Env.rm_from_uTermEnv uTermEnv nm) ts_names in
+      let _ = List.iter (fun nm -> Env.rm_from_surface_env env.surface nm) ts_names in
       (term, tp', List.combine ts_names ts_vars)
     else
       Error.create_infer_type_error pos
         "The number of arguments in branch's pattern must match the telescope"
         term env
   in
-  let infer_and_check_all_branches ((_, termEnv, _) as env : Env.env)
+  let infer_and_check_all_branches (env : Env.env)
       (ps : Raw.matchPat list) (tsT : Core.telescope) (tsT_types : Core.tp list)
       (dataCNames : Core.dataCName list) : (Core.matchPat * Core.tp) list =
-    let rec loop_over_branches ((_, _, adtEnv) as env : Env.env)
+    let rec loop_over_branches (env : Env.env)
         (ps : Raw.matchPat list) (tsT : Core.telescope)
         (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
         ((Core.matchPat * Core.tp) * (string * Core.Var.t) list) list =
@@ -575,7 +575,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
           | PatCon (raw_dataCName, args) ->
               let dataCName = Core.dataCName_of_string raw_dataCName in
               if List.mem dataCName dataCNames then
-                match Env.find_opt_in_adtEnv adtEnv raw_dataCName with
+                match Env.find_opt_in_adt_env env.adt raw_dataCName with
                 | Some (AdtDSig (_, tsD)) ->
                     let term, tp', ts_names_and_vars =
                       infer_branch_and_extend_env env tsT tsT_types tsD args
@@ -601,7 +601,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
           | PatCon (raw_dataCName, args) ->
               let dataCName = Core.dataCName_of_string raw_dataCName in
               if List.mem dataCName dataCNames then
-                match Env.find_opt_in_adtEnv adtEnv raw_dataCName with
+                match Env.find_opt_in_adt_env env.adt raw_dataCName with
                 | Some (AdtDSig (_, tsD)) ->
                     let term, tp', ts_names_and_vars =
                       infer_branch_and_extend_env env tsT tsT_types tsD args
@@ -638,13 +638,13 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
                    extend the environment")
       | [] -> failwith "There are no branches to check"
     in
-    let check_branch_types (termEnv : Env.termEnv) (branch_types : Core.tp list)
+    let check_branch_types (env : Env.env) (branch_types : Core.tp list)
         : unit =
       let hd = List.hd branch_types in
       let _, isSameType =
         List.fold_left
           (fun (prev_tp, cond) tp ->
-            (tp, cond && Equiv.equiv prev_tp tp termEnv))
+            (tp, cond && Equiv.equiv prev_tp tp env.internal))
           (hd, true) (List.tl branch_types)
       in
       if isSameType then ()
@@ -654,10 +654,10 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
     let result, tp_names_and_vars =
       List.split (loop_over_branches env ps tsT tsT_types dataCNames)
     in
-    let _ = check_branch_types termEnv (snd (List.split result)) in
+    let _ = check_branch_types env (snd (List.split result)) in
     let all_ts_vars = snd (List.split (List.flatten tp_names_and_vars)) in
     let _ =
-      List.iter (fun var -> Env.rm_from_termEnv termEnv var) all_ts_vars
+      List.iter (fun var -> Env.rm_from_internal_env env.internal var) all_ts_vars
     in
     result
   in

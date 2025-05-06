@@ -12,4 +12,4 @@ val create_infer_type_error :
 val create_check_type_error :
   Raw.position -> string -> Raw.uTerm -> Core.tp -> Env.env -> 'a
 
-val create_whnf_error : Core.term -> Env.termEnv -> string -> 'a
+val create_whnf_error : Core.term -> Env.internal -> string -> 'a
