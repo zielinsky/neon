@@ -98,8 +98,8 @@ let pp_telescope (ts : Core.telescope) : SmartPrint.t =
 let telescope_to_string (ts : Core.telescope) : string =
   to_string 40 2 (pp_telescope ts)
 
-let rec pp_uterm ({ data = e; pos } : Raw.uTerm) : SmartPrint.t =
-  let parens_if_app ({ data; pos } as t : Raw.uTerm) =
+let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
+  let parens_if_app ({ data; pos } as t : Raw.term) =
     match data with App (_, _) -> parens (pp_uterm t) | _ -> pp_uterm t
   in
   match e with
@@ -171,7 +171,7 @@ and pp_telescope (ts : Raw.telescope) : SmartPrint.t =
       parens (!^x ^-^ !^":" ^^ pp_uterm t) ^^ pp_telescope ts
   | Cons (x, t, Empty) -> parens (!^x ^-^ !^":" ^^ pp_uterm t)
 
-let rec uterm_to_string (t : Raw.uTerm) : string = to_string 40 2 (pp_uterm t)
+let rec uterm_to_string (t : Raw.term) : string = to_string 40 2 (pp_uterm t)
 
 let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
   match e with
@@ -215,7 +215,7 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
 
 let rec whnf_to_string (t : Core.whnf) : string = to_string 40 2 (pp_whnf t)
 
-let print_def ({ pos; data } : Raw.uTerm) : unit =
+let print_def ({ pos; data } : Raw.term) : unit =
   match data with
   | LetDef (nm, _)
   | LemmaDef (nm, _)

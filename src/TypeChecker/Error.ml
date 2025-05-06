@@ -19,7 +19,7 @@ exception Type_error of type_checker_reason
       Always raises a [Failure] exception with an error message including the
       line and column number. *)
 let create_infer_type_error (pos : Raw.position) (error_msg : string)
-    (term : Raw.uTerm) (env : Env.env) : 'a =
+    (term : Raw.term) (env : Env.env) : 'a =
   let _ =
     print_endline
       ("While inferring the type of term: "
@@ -48,7 +48,7 @@ let create_infer_type_error (pos : Raw.position) (error_msg : string)
       Always raises a [Failure] exception with an error message including the
       line and column number. *)
 let create_check_type_error (pos : Raw.position) (error_msg : string)
-    (term : Raw.uTerm) (tp : Core.tp) (env : Env.env) : 'a =
+    (term : Raw.term) (tp : Core.tp) (env : Env.env) : 'a =
   let _ =
     print_endline
       ("While checking the type of term: "

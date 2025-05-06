@@ -3,7 +3,7 @@ type 'a node = { pos : position; data : 'a }
 type typeCName = string
 type dataCName = string
 
-type uTerm = term_data node
+type term = term_data node
 
 and term_data =
   | Type
@@ -15,25 +15,25 @@ and term_data =
   | StringLit of string
   | BoolLit of bool
   | Var of string
-  | Lambda of string * uTerm option * uTerm
-  | Product of string * uTerm * uTerm
-  | App of uTerm * uTerm
-  | TermWithTypeAnno of uTerm * uTerm
-  | Let of string * uTerm * uTerm
-  | LetDef of string * uTerm
-  | Lemma of string * uTerm * uTerm
-  | LemmaDef of string * uTerm
+  | Lambda of string * term option * term
+  | Product of string * term * term
+  | App of term * term
+  | TermWithTypeAnno of term * term
+  | Let of string * term * term
+  | LetDef of string * term
+  | Lemma of string * term * term
+  | LemmaDef of string * term
   | Hole of string
-  | TypeArrow of uTerm * uTerm
+  | TypeArrow of term * term
   | ADTSig of typeCName * telescope
   | ADTDecl of typeCName * telescope * constructorDef list
-  | Case of uTerm * matchPat list
-  | IfExpr of uTerm * uTerm * uTerm
-  | Equality of uTerm * uTerm
+  | Case of term * matchPat list
+  | IfExpr of term * term * term
+  | Equality of term * term
 
 and constructorDef = { cname : dataCName; telescope : telescope }
-and telescope = Empty | Cons of string * uTerm * telescope
-and matchPat = pattern * uTerm
+and telescope = Empty | Cons of string * term * telescope
+and matchPat = pattern * term
 and pattern = PatWild | PatCon of dataCName * string list
 
-type program = uTerm list
+type program = term list

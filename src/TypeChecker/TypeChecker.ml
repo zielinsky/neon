@@ -66,7 +66,7 @@ let rec build_adt_data (env : Env.env) (tsType : Core.telescope)
       If type inference fails, raises an exception with an appropriate error
       message. *)
 let rec infer_type (env : Env.env)
-    ({ pos; data = t } as term : Raw.uTerm) : Core.term * Core.tp =
+    ({ pos; data = t } as term : Raw.term) : Core.term * Core.tp =
   match t with
   | Type ->
       (* The type of 'Type' is 'Kind' *)
@@ -346,7 +346,7 @@ let rec infer_type (env : Env.env)
       If type checking fails, raises an exception with an appropriate error
       message. *)
 and check_type (env : Env.env)
-    ({ pos; data = t } as term : Raw.uTerm) (tp : Core.term) : Core.term =
+    ({ pos; data = t } as term : Raw.term) (tp : Core.term) : Core.term =
   match t with
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
   | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _
@@ -501,7 +501,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
     (dataCNames : Core.dataCName list) : Core.matchPat list * Core.tp =
   let infer_branch_and_extend_env (env : Env.env)
       (tsT : Core.telescope) (tsT_types : Core.tp list) (tsD : Core.telescope)
-      (args : string list) ({ pos; _ } as term : Raw.uTerm) :
+      (args : string list) ({ pos; _ } as term : Raw.term) :
       Core.term * Core.tp * (string * Core.Var.t) list =
     let rec add_tsT_to_env (env : Env.env) (tsT : Core.telescope)
         (tsT_types : Core.tp list) (argsT : string list) :
@@ -570,7 +570,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
         (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
         ((Core.matchPat * Core.tp) * (string * Core.Var.t) list) list =
       match ps with
-      | (pattern, uTerm) :: (_ :: _ as ps) -> (
+      | (pattern, term) :: (_ :: _ as ps) -> (
           match pattern with
           | PatCon (raw_dataCName, args) ->
               let dataCName = Core.dataCName_of_string raw_dataCName in
@@ -579,7 +579,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
                 | Some (AdtDSig (_, tsD)) ->
                     let term, tp', ts_names_and_vars =
                       infer_branch_and_extend_env env tsT tsT_types tsD args
-                        uTerm
+                        term
                     in
                     let dataCNames =
                       List.filter (fun x -> not (x = dataCName)) dataCNames
@@ -596,7 +596,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
                 failwith
                   "Pattern's constructor name not found in constructor list"
           | PatWild -> failwith "Wildcard pattern must be at the end")
-      | (pattern, uTerm) :: [] -> (
+      | (pattern, term) :: [] -> (
           match pattern with
           | PatCon (raw_dataCName, args) ->
               let dataCName = Core.dataCName_of_string raw_dataCName in
@@ -605,7 +605,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
                 | Some (AdtDSig (_, tsD)) ->
                     let term, tp', ts_names_and_vars =
                       infer_branch_and_extend_env env tsT tsT_types tsD args
-                        uTerm
+                        term
                     in
                     let dataCNames =
                       List.filter (fun x -> not (x = dataCName)) dataCNames
@@ -628,7 +628,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
                   "Pattern's constructor name not found in constructor list"
           | PatWild ->
               let term, tp', ts_names_and_vars =
-                infer_branch_and_extend_env env Empty [] Empty [] uTerm
+                infer_branch_and_extend_env env Empty [] Empty [] term
               in
               if List.is_empty ts_names_and_vars then
                 (((Core.PatWild, term), tp'), ts_names_and_vars) :: []

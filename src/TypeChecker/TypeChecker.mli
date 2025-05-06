@@ -4,5 +4,5 @@ module Substitution = Substitution
 module Whnf = Whnf
 module Equiv = Equiv
 
-val infer_type : Env.env -> Raw.uTerm -> Core.term * Core.tp
-val check_type : Env.env -> Raw.uTerm -> Core.term -> Core.tp
+val infer_type : Env.env -> Raw.term -> Core.term * Core.tp
+val check_type : Env.env -> Raw.term -> Core.term -> Core.tp
