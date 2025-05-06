@@ -496,9 +496,9 @@ and telescope_check_type_and_extend_env (env : Env.env)
       in
       res
 
-and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
+and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
     (tsT : Core.telescope) (tsT_types : Core.tp list)
-    (dataCNames : Core.dataCName list) : Core.matchPat list * Core.tp =
+    (dataCNames : Core.dataCName list) : Core.branch list * Core.tp =
   let infer_branch_and_extend_env (env : Env.env)
       (tsT : Core.telescope) (tsT_types : Core.tp list) (tsD : Core.telescope)
       (args : string list) ({ pos; _ } as term : Raw.term) :
@@ -563,12 +563,12 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
         term env
   in
   let infer_and_check_all_branches (env : Env.env)
-      (ps : Raw.matchPat list) (tsT : Core.telescope) (tsT_types : Core.tp list)
-      (dataCNames : Core.dataCName list) : (Core.matchPat * Core.tp) list =
+      (ps : Raw.branch list) (tsT : Core.telescope) (tsT_types : Core.tp list)
+      (dataCNames : Core.dataCName list) : (Core.branch * Core.tp) list =
     let rec loop_over_branches (env : Env.env)
-        (ps : Raw.matchPat list) (tsT : Core.telescope)
+        (ps : Raw.branch list) (tsT : Core.telescope)
         (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
-        ((Core.matchPat * Core.tp) * (string * Core.Var.t) list) list =
+        ((Core.branch * Core.tp) * (string * Core.Var.t) list) list =
       match ps with
       | (pattern, term) :: (_ :: _ as ps) -> (
           match pattern with
@@ -661,9 +661,9 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.matchPat list)
     in
     result
   in
-  let check_constructor_names (ps : Raw.matchPat list)
+  let check_constructor_names (ps : Raw.branch list)
       (dataCNames : Core.dataCName list) : bool =
-    let rec collect_constructor_names (ps : Raw.matchPat list) :
+    let rec collect_constructor_names (ps : Raw.branch list) :
         Core.dataCName list * bool =
       match ps with
       | (PatCon (dataCName, _), _) :: ps ->

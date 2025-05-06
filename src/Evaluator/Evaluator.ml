@@ -1,5 +1,5 @@
-let find_matching_matchPat (nm : string) (patterns : Core.matchPat list) :
-    Core.matchPat =
+let find_matching_matchPat (nm : string) (patterns : Core.branch list) :
+    Core.branch =
   List.find
     (fun (pattern, _) ->
       match pattern with

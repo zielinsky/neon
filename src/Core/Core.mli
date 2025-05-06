@@ -28,13 +28,13 @@ type term =
   | Hole of string * tp
   | Let of string * Var.t * term * tp * term
   | TypeArrow of tp * tp
-  | Case of term * matchPat list
+  | Case of term * branch list
   | IfExpr of term * term * term
   | Equality of term * term
 
 and constructor_def = { cname : string; telescope : telescope }
 and telescope = Empty | Cons of string * Var.t * tp * telescope
-and matchPat = pattern * term
+and branch = pattern * term
 and pattern = PatWild | PatCon of dataCName * (string * Var.t) list
 and tp = term
 
@@ -52,7 +52,7 @@ type whnf =
   | BoolLit of bool
   | Lambda of string * Var.t * tp * term
   | Product of string * Var.t * tp * tp
-  | Case of whnf * matchPat list
+  | Case of whnf * branch list
   | IfExpr of whnf * term * term
   | Equality of term * term
 

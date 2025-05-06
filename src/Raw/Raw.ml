@@ -27,13 +27,13 @@ and term_data =
   | TypeArrow of term * term
   | ADTSig of typeCName * telescope
   | ADTDecl of typeCName * telescope * constructor_def list
-  | Case of term * matchPat list
+  | Case of term * branch list
   | IfExpr of term * term * term
   | Equality of term * term
 
 and constructor_def = { cname : dataCName; telescope : telescope }
 and telescope = Empty | Cons of string * term * telescope
-and matchPat = pattern * term
+and branch = pattern * term
 and pattern = PatWild | PatCon of dataCName * string list
 
 type program = term list
