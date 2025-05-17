@@ -11,6 +11,7 @@ let raise_error (lexbuf : Lexing.lexbuf) reason =
 
 let whitespace = ['\011'-'\r' '\t' ' ']
 let var_char  =  ['a'-'z' 'A'-'Z' '_']
+let op_char = ['!' '$' '%' '&' '*' '+' '-' '/' ':' '<' '>' '?' '@' '^' '|' '~' '#']
 
 rule token = parse
     whitespace+ { token lexbuf }  (* Skip whitespace *)
@@ -57,7 +58,9 @@ rule token = parse
       let content     = String.sub strlit 1 content_len in
       YaccParser.STRING_LIT content
     }
-
+  | op_char+ as op {
+    YaccParser.OPERATOR op
+  }
   | eof    { YaccParser.EOF }
   | _ as x {
       raise_error lexbuf (InvalidChar x)

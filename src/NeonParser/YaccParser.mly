@@ -12,6 +12,11 @@
 %token MATCH WITH WILDCARD
 %token IF THEN ELSE
 %token EQUALITY
+%token <string> OPERATOR
+
+%left           OPERATOR
+%right          TYPE_ARROW 
+%nonassoc       EQUALITY
 
 %type<Raw.program> program
 %start program
@@ -75,6 +80,7 @@ multi_arg_product
 
 application
 : expression BR_OPN application_args BR_CLS { makeApp $1 $3 }
+| expression OPERATOR expression { make (App (make (App (make (Var $2), $1)), $3)) }
 ;
 
 application_args
@@ -143,6 +149,9 @@ let_def
 | VAR let_args  { make (LetDef ($1, $2)) }
 | VAR COLON expression EQUAL expression { make (TermWithTypeAnno(make (LetDef ($1, $5)), $3)) }
 | BR_OPN VAR COLON expression BR_CLS EQUAL expression { make (TermWithTypeAnno(make (LetDef ($2, $7)), $4)) }
+| BR_OPN OPERATOR BR_CLS EQUAL expression                         { make (LetDef ($2, $5)) }
+| BR_OPN OPERATOR BR_CLS let_args                                 { make (LetDef ($2, $4)) }
+| BR_OPN OPERATOR BR_CLS COLON expression EQUAL expression        { make (TermWithTypeAnno (make (LetDef ($2, $7)), $5)) }
 ;
 
 let_in

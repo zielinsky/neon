@@ -1,0 +1,3 @@
+data list (A: Type) = 
+| Nil
+| Cons (x: A) (xs: list(A))
