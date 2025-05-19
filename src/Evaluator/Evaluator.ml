@@ -14,7 +14,9 @@ let add_pattern_vars_to_termEnv (vars : (string * Core.Var.t) list)
   List.fold_left
     (fun acc ((nm, var), term) ->
       let fresh_var = Env.fresh_var () in
-      let _ = Env.add_to_internal_env env fresh_var (Transparent (term, Type)) in
+      let _ =
+        Env.add_to_internal_env env fresh_var (Transparent (term, Type))
+      in
       (nm, var, fresh_var) :: acc)
     [] (List.combine vars values)
 
@@ -127,7 +129,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
       match scrutinee with
       | Neu (nm, _, rev_args) -> (
           let pattern, term = find_matching_matchPat nm patterns in
-          match pattern with
+                    match pattern with
           | PatWild -> eval term env
           | PatCon (_, args) ->
               let bindings =

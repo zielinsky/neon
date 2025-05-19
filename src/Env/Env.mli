@@ -7,7 +7,7 @@ type adt_var =
 type surface
 type internal
 type adt
-type env = {surface: surface; internal: internal; adt: adt}
+type env = { surface : surface; internal : internal; adt : adt }
 
 val fresh_var : unit -> Core.Var.t
 val create_env : unit -> env

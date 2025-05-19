@@ -50,7 +50,8 @@ let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.internal) :
             ^ PrettyPrinter.term_to_string t2
             ^ "\n" ^ "Whnf_2 "
             ^ PrettyPrinter.whnf_to_string whnf_2
-            ^ "\nEnv at this moment:\n" ^ Env.internal_env_to_string env)
+            ^ "\nEnv at this moment:\n"
+            ^ Env.internal_env_to_string env)
         in
         Some true (* Returning Some here might be specific to handling holes *)
   | Lambda (nm1, x1, x1_tp, body1), Lambda (nm2, x2, x2_tp, body2)
@@ -93,7 +94,8 @@ let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.internal) :
           ^ PrettyPrinter.term_to_string t2
           ^ "\n" ^ "Whnf_2 "
           ^ PrettyPrinter.whnf_to_string whnf_2
-          ^ "\n Env at this moment:\n" ^ Env.internal_env_to_string env)
+          ^ "\n Env at this moment:\n"
+          ^ Env.internal_env_to_string env)
       in
       Some true
   | _ ->

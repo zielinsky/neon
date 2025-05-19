@@ -10,8 +10,7 @@ type adt_var =
 type surface = Core.Var.t StringHashtbl.t
 type internal = env_var VarHashtbl.t
 type adt = adt_var StringHashtbl.t
-
-type env = {surface: surface; internal: internal; adt: adt}
+type env = { surface : surface; internal : internal; adt : adt }
 
 let counter = ref 0
 
@@ -21,17 +20,20 @@ let fresh_var () : Core.Var.t =
   Core.Var.of_int fresh_var
 
 let create_env () : env =
-  {surface = StringHashtbl.create 10; internal = VarHashtbl.create 10; adt = StringHashtbl.create 10}
+  {
+    surface = StringHashtbl.create 10;
+    internal = VarHashtbl.create 10;
+    adt = StringHashtbl.create 10;
+  }
 
-let add_to_env (env : env) (nm : string) (var : env_var) :
-    Core.Var.t =
+let add_to_env (env : env) (nm : string) (var : env_var) : Core.Var.t =
   let y = fresh_var () in
   let _ = StringHashtbl.add env.surface nm y in
   let _ = VarHashtbl.add env.internal y var in
   y
 
-let add_to_internal_env (env : internal) (var : Core.Var.t) (env_var : env_var) :
-    unit =
+let add_to_internal_env (env : internal) (var : Core.Var.t) (env_var : env_var)
+    : unit =
   assert (not (VarHashtbl.mem env var));
   VarHashtbl.add env var env_var
 
@@ -39,8 +41,7 @@ let add_to_adt_env (env : adt) (nm : string) (adt_var : adt_var) : unit =
   if StringHashtbl.mem env nm then failwith "ADT already exists in Env"
   else StringHashtbl.add env nm adt_var
 
-let rec add_telescope_to_env (env : env)
-    (ts : Core.telescope) : unit =
+let rec add_telescope_to_env (env : env) (ts : Core.telescope) : unit =
   match ts with
   | Empty -> ()
   | Cons (nm, var, tp, ts) ->
@@ -69,8 +70,7 @@ let rm_from_adt_env (env : adt) (nm : string) : unit =
 let rm_from_surface_env (env : surface) (nm : string) : unit =
   StringHashtbl.remove env nm
 
-let find_opt_in_env (env : env) (nm : string) :
-    (Core.Var.t * env_var) option =
+let find_opt_in_env (env : env) (nm : string) : (Core.Var.t * env_var) option =
   match StringHashtbl.find_opt env.surface nm with
   | None -> None
   | Some var -> (
@@ -78,8 +78,8 @@ let find_opt_in_env (env : env) (nm : string) :
       | None -> None
       | Some env_var -> Some (var, env_var))
 
-let find_opt_in_internal_env (env : internal) (var : Core.Var.t) : env_var option
-    =
+let find_opt_in_internal_env (env : internal) (var : Core.Var.t) :
+    env_var option =
   VarHashtbl.find_opt env var
 
 let find_opt_in_adt_env (env : adt) (nm : string) : adt_var option =
@@ -101,7 +101,7 @@ let env_to_string (env : env) : string =
   StringHashtbl.fold
     (fun key v acc ->
       acc
-      ^ Printf.sprintf "%s %s\n" key
+      ^ Printf.sprintf "%s@%d %s\n" key (Core.Var.to_int v)
           (env_var_to_string (VarHashtbl.find_opt env.internal v)))
     env.surface "\n"
   ^ "\n"

@@ -11,12 +11,16 @@ let verbose_mode = ref false
 
 (* A reference to track whether we should load the prelude *)
 let load_prelude_mode = ref true
+let load_builtins_mode = ref true
 
 (* A specification list for possible command line options *)
 let speclist =
   [
     ("-verbose", Set verbose_mode, "Enable verbose printing of definitions");
     ("-no-prelude", Clear load_prelude_mode, "Do not load the prelude");
+    ( "-no-builtin",
+      Clear load_builtins_mode,
+      "Do not load the built in functions" );
   ]
 
 (* Usage message that will be displayed if the user does not provide valid arguments *)
@@ -35,7 +39,7 @@ let process_parsed_def env x =
     print_endline "-------------------");
 
   let nf = Evaluator.eval inferred_term env.internal in
-  let nf_tp = Evaluator.eval inferred_ty env.internal in
+  (* let nf_tp = Evaluator.eval inferred_ty env.internal in *)
   if !verbose_mode then (
     print_endline "----- NORMAL FORM -----";
     Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf))
@@ -43,9 +47,9 @@ let process_parsed_def env x =
     not
       (String.starts_with ~prefix:"_builtin_" (PrettyPrinter.term_to_string nf))
   then
-    Printf.printf "%s\n%s\n\n"
+    Printf.printf "%s\n\n"
       (PrettyPrinter.term_to_string nf)
-      (PrettyPrinter.term_to_string nf_tp)
+      (* (PrettyPrinter.term_to_string nf_tp) *)
 
 (** Recursively lists all .neon files in the given directory. *)
 let list_neon_files dir =
@@ -120,7 +124,7 @@ let main () =
   let env = Env.create_env () in
 
   (* Load built-in functions into the environment *)
-  let _ = load_builtins env in
+  if !load_builtins_mode then load_builtins env;
 
   (* Load the prelude *)
   (if !load_prelude_mode then

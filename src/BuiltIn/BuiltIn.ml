@@ -76,7 +76,7 @@ let () =
     (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_div);
   Hashtbl.add builtIn_functions "_builtin_eq"
     (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_eq);
-Hashtbl.add builtIn_functions "_builtin_g"
+  Hashtbl.add builtIn_functions "_builtin_g"
     (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_greater);
   Hashtbl.add builtIn_functions "_builtin_ge"
     (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_greater_or_eq);
@@ -85,15 +85,14 @@ Hashtbl.add builtIn_functions "_builtin_g"
   Hashtbl.add builtIn_functions "_builtin_le"
     (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_less_or_eq)
 
-let load_builtins env =
+let load_builtins env : unit =
   let add_builtin name (ty, _) env =
     let _ = Env.add_to_env env name (Opaque ty) in
     ()
   in
   Hashtbl.iter
     (fun name ty_func -> add_builtin name ty_func env)
-    builtIn_functions;
-  env
+    builtIn_functions
 
 let eval_builtin (name : name) (w : Core.whnf) : Core.term option =
   let f = Hashtbl.find_opt builtIn_functions name in
