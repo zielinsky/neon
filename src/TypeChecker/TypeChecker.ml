@@ -54,8 +54,8 @@ let rec build_adt_data (env : Env.env) (tsType : Core.telescope)
       in
       res
 
-let check_branches_and_constructor_names (ps : Raw.branch list)
-    (dataCNames : Core.dataCName list) : bool =
+let check_exhaustivity_and_constructor_names (ps : Raw.branch list)
+    (dataCNames : Core.dataCName list) : unit =
   let rec collect_constructor_names (ps : Raw.branch list) :
       Core.dataCName list * bool =
     match ps with
@@ -72,17 +72,14 @@ let check_branches_and_constructor_names (ps : Raw.branch list)
     | [] -> ([], false)
   in
   let cs, containsWild = collect_constructor_names ps in
-  if
-    containsWild
-    && List.compare_lengths cs dataCNames < 0
-    && List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs
-  then true
+  (* Check that all collected constructors belong to this ADT and check exhaustivity *)
+  if not (List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs)
+  then failwith "Constructor names mismatch in pattern matching branches"
   else if
-    (not containsWild)
-    && List.compare_lengths cs dataCNames == 0
-    && List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs
-  then true
-  else false
+    not
+      ((containsWild && List.compare_lengths cs dataCNames <= 0)
+      || ((not containsWild) && List.compare_lengths cs dataCNames == 0))
+  then failwith "Exhaustivity check for pattern matching branches failed"
 
 let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit =
   let hd = List.hd branch_types in
@@ -569,11 +566,10 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
     result
   in
 
-  if check_branches_and_constructor_names ps dataCNames then
-    let branches, tps =
-      List.split (infer_and_check_all_branches env ps tsT tsT_types)
-    in
-    if List.is_empty tps then
-      failwith "List of inferred types of branches is empty"
-    else (branches, List.hd tps)
-  else failwith "Branches' pattern constructors mismatch"
+  let _ = check_exhaustivity_and_constructor_names ps dataCNames in
+  let branches, tps =
+    List.split (infer_and_check_all_branches env ps tsT tsT_types)
+  in
+  if List.is_empty tps then
+    failwith "List of inferred types of branches is empty"
+  else (branches, List.hd tps)
