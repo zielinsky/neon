@@ -129,7 +129,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
       match scrutinee with
       | Neu (nm, _, rev_args) -> (
           let pattern, term = find_matching_matchPat nm patterns in
-                    match pattern with
+          match pattern with
           | PatWild -> eval term env
           | PatCon (_, args) ->
               let bindings =

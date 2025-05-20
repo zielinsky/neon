@@ -46,10 +46,8 @@ let process_parsed_def env x =
   else if
     not
       (String.starts_with ~prefix:"_builtin_" (PrettyPrinter.term_to_string nf))
-  then
-    Printf.printf "%s\n\n"
-      (PrettyPrinter.term_to_string nf)
-      (* (PrettyPrinter.term_to_string nf_tp) *)
+  then Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf)
+(* (PrettyPrinter.term_to_string nf_tp) *)
 
 (** Recursively lists all .neon files in the given directory. *)
 let list_neon_files dir =

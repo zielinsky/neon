@@ -561,80 +561,35 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
         term env
   in
   let infer_and_check_all_branches (env : Env.env) (ps : Raw.branch list)
-      (tsT : Core.telescope) (tsT_types : Core.tp list)
-      (dataCNames : Core.dataCName list) : (Core.branch * Core.tp) list =
+      (tsT : Core.telescope) (tsT_types : Core.tp list) :
+      (Core.branch * Core.tp) list =
     let rec loop_over_branches (env : Env.env) (ps : Raw.branch list)
-        (tsT : Core.telescope) (tsT_types : Core.tp list)
-        (dataCNames : Core.dataCName list) :
+        (tsT : Core.telescope) (tsT_types : Core.tp list) :
         ((Core.branch * Core.tp) * (string * Core.Var.t) list) list =
       match ps with
-      | (pattern, term) :: (_ :: _ as ps) -> (
+      | (pattern, term) :: ps -> (
           match pattern with
-          | PatCon (raw_dataCName, args) ->
+          | PatCon (raw_dataCName, args) -> (
               let dataCName = Core.dataCName_of_string raw_dataCName in
-              if List.mem dataCName dataCNames then
-                match Env.find_opt_in_adt_env env.adt raw_dataCName with
-                | Some (AdtDSig (_, tsD)) ->
-                    let term, tp', ts_names_and_vars =
-                      infer_branch_and_extend_env env tsT tsT_types tsD args
-                        term
-                    in
-                    let dataCNames =
-                      List.filter (fun x -> not (x = dataCName)) dataCNames
-                    in
-                    ( ((Core.PatCon (dataCName, ts_names_and_vars), term), tp'),
-                      ts_names_and_vars )
-                    :: loop_over_branches env ps tsT tsT_types dataCNames
-                | Some (AdtTSig _) ->
-                    failwith
-                      "Branch's pattern must be an ADT contructor. Found ADT \
-                       type signature instead"
-                | None -> failwith "Branch's pattern must be an ADT constructor"
-              else
-                failwith
-                  "Pattern's constructor name not found in constructor list"
-          | PatWild -> failwith "Wildcard pattern must be at the end")
-      | (pattern, term) :: [] -> (
-          match pattern with
-          | PatCon (raw_dataCName, args) ->
-              let dataCName = Core.dataCName_of_string raw_dataCName in
-              if List.mem dataCName dataCNames then
-                match Env.find_opt_in_adt_env env.adt raw_dataCName with
-                | Some (AdtDSig (_, tsD)) ->
-                    let term, tp', ts_names_and_vars =
-                      infer_branch_and_extend_env env tsT tsT_types tsD args
-                        term
-                    in
-                    let dataCNames =
-                      List.filter (fun x -> not (x = dataCName)) dataCNames
-                    in
-                    if List.is_empty dataCNames then
-                      ( ((Core.PatCon (dataCName, ts_names_and_vars), term), tp'),
-                        ts_names_and_vars )
-                      :: []
-                    else
-                      failwith
-                        "Expected list of constructor names to be empty, \
-                         looped over all branches"
-                | Some (AdtTSig _) ->
-                    failwith
-                      "Branch's pattern must be an ADT contructor. Found ADT \
-                       type signature instead"
-                | None -> failwith "Branch's pattern must be an ADT constructor"
-              else
-                failwith
-                  "Pattern's constructor name not found in constructor list"
+              match Env.find_opt_in_adt_env env.adt raw_dataCName with
+              | Some (AdtDSig (_, tsD)) ->
+                  let term, tp', ts_names_and_vars =
+                    infer_branch_and_extend_env env tsT tsT_types tsD args term
+                  in
+                  ( ((Core.PatCon (dataCName, ts_names_and_vars), term), tp'),
+                    ts_names_and_vars )
+                  :: loop_over_branches env ps tsT tsT_types
+              | Some (AdtTSig _) ->
+                  failwith
+                    "Branch's pattern must be an ADT contructor. Found ADT \
+                     type signature instead"
+              | None -> failwith "Branch's pattern must be an ADT constructor")
           | PatWild ->
-              let term, tp', ts_names_and_vars =
+              let term, tp', _ =
                 infer_branch_and_extend_env env Empty [] Empty [] term
               in
-              if List.is_empty ts_names_and_vars then
-                (((Core.PatWild, term), tp'), ts_names_and_vars) :: []
-              else
-                failwith
-                  "Type inferences of branch with wildcard pattern shouldn't \
-                   extend the environment")
-      | [] -> failwith "There are no branches to check"
+              (((Core.PatWild, term), tp'), []) :: [])
+      | [] -> []
     in
     let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit
         =
@@ -650,7 +605,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
     in
 
     let result, tp_names_and_vars =
-      List.split (loop_over_branches env ps tsT tsT_types dataCNames)
+      List.split (loop_over_branches env ps tsT tsT_types)
     in
     let _ = check_branch_types env (snd (List.split result)) in
     let all_ts_vars = snd (List.split (List.flatten tp_names_and_vars)) in
@@ -661,7 +616,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
     in
     result
   in
-  let check_constructor_names (ps : Raw.branch list)
+  let check_branches_and_constructor_names (ps : Raw.branch list)
       (dataCNames : Core.dataCName list) : bool =
     let rec collect_constructor_names (ps : Raw.branch list) :
         Core.dataCName list * bool =
@@ -669,11 +624,13 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
       | (PatCon (dataCName, _), _) :: ps ->
           let cs, contaisWild = collect_constructor_names ps in
           (Core.dataCName_of_string dataCName :: cs, contaisWild)
-      | (PatWild, _) :: ps ->
+      | (PatWild, _) :: [] ->
           let cs, contaisWild = collect_constructor_names ps in
           if contaisWild then
             failwith "There can't be more than 1 wildcard branch"
           else (cs, true)
+      | (PatWild, _) :: _ ->
+          failwith "Wild card must be the last branch in pattern matching"
       | [] -> ([], false)
     in
     let cs, containsWild = collect_constructor_names ps in
@@ -690,9 +647,9 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
     else false
   in
 
-  if check_constructor_names ps dataCNames then
+  if check_branches_and_constructor_names ps dataCNames then
     let branches, tps =
-      List.split (infer_and_check_all_branches env ps tsT tsT_types dataCNames)
+      List.split (infer_and_check_all_branches env ps tsT tsT_types)
     in
     if List.is_empty tps then
       failwith "List of inferred types of branches is empty"
