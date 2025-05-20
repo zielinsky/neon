@@ -1,0 +1,7 @@
+data DepPair (A: Type) (P: (A -> Type)) =
+| MakeDepPair (x: A) (y: P(x))
+
+let depType (n: Int) = if eq(n, 0) then Int else String
+
+let depIntPair = MakeDepPair(Int, depType, 0, 42)
+let depStringPair = MakeDepPair(Int, depType, 1, "abc")
