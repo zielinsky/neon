@@ -1,0 +1,7 @@
+data list (A: Type) = 
+| Nil
+| Cons (x: A) (xs: list(A))
+
+let (::) (x: Int) (xs: list(Int)) = Cons(Int, x, xs)
+
+let y = 5 :: (10 :: Nil(Int))

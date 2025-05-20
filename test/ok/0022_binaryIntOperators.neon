@@ -1,0 +1,23 @@
+let (+) = _builtin_add
+let x = 5 + 3 + 4
+
+let (-) = _builtin_sub
+let x = 5 - 3 - 4
+
+let (*) = _builtin_mul
+let x = 5 * 3 * 4
+
+let (/) = _builtin_div
+let x = 5 / 3 / 4
+
+let (>) = _builtin_g
+let x = 5 > 3
+
+let (>=) = _builtin_ge
+let x = 5 >= 3
+
+let (<) = _builtin_l
+let x = 5 < 3
+
+let (<=) = _builtin_le
+let x = 5 <= 3
