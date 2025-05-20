@@ -141,11 +141,8 @@ let rec subs_and_add_tsD_to_env (env : Env.env) (tsD : Core.telescope)
 let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
     Core.term * Core.tp =
   match t with
-  | Type ->
-      (* The type of 'Type' is 'Kind' *)
-      (Type, Kind)
+  | Type -> (Type, Kind)
   | Kind ->
-      (* Cannot infer the type of 'Kind' *)
       Error.create_infer_type_error pos "Can't infer the type of Kind" term env
   | IntType -> (IntType, Type)
   | StringType -> (StringType, Type)
@@ -154,131 +151,89 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
   | StringLit s -> (StringLit s, StringType)
   | BoolLit b -> (BoolLit b, BoolType)
   | Var x -> (
-      (* If the term is a variable, look up its type in the environment *)
       match Env.find_opt_in_env env x with
-      | Some (y, (Opaque tp | Transparent (_, tp))) ->
-          (* Variable 'x' is found with identifier 'y' and type 'tp' *)
-          (Var (x, y), tp)
+      | Some (y, (Opaque tp | Transparent (_, tp))) -> (Var (x, y), tp)
       | None ->
           Error.create_infer_type_error pos
             ("Variable " ^ x ^ " not found")
             term env)
   | Lambda (_, None, _) ->
       (* Lambda expression with omitted argument type *)
-      (* Cannot infer the type of a lambda without knowing the type of its argument *)
       Error.create_infer_type_error pos
         "Can't infer the type of lambda with omitted argument type" term env
   | Lambda (x, Some tp, t) -> (
       (* Lambda with argument name 'x', argument type 'tp', and body 't' *)
-      (* First, infer the type of the argument type 'tp' *)
       let tp, tp_of_tp = infer_type env tp in
       match tp_of_tp with
       | Type | Kind ->
-          (* The type of the argument type 'tp' must be 'Type' or 'Kind' *)
-          (* Add 'x' to the environment with type 'tp' *)
           let fresh_var = Env.add_to_env env x (Opaque tp) in
-          (* Infer the type of the body 't' *)
           let body, body_tp = infer_type env t in
-          (* Remove 'x' from the environment after processing the body *)
           let _ = Env.rm_from_env env x in
-          (* The type of the lambda is a dependent function type 'Product' *)
           (Lambda (x, fresh_var, tp, body), Product (x, fresh_var, tp, body_tp))
       | _ ->
-          (* The argument type 'tp' must be of type 'Type' or 'Kind' *)
           Error.create_infer_type_error pos
             "The type of Lambda argument type must be either Type or Kind" term
             env)
   | Product (x, tp, t) -> (
       (* Product type with parameter 'x', parameter type 'tp', and body 't' *)
-      (* First, infer the type of the parameter type 'tp' *)
       let tp, tp_of_tp = infer_type env tp in
       match tp_of_tp with
       | Type | Kind -> (
-          (* The type of 'tp' must be 'Type' or 'Kind' *)
-          (* Add 'x' to the environment with type 'tp' *)
           let fresh_var = Env.add_to_env env x (Opaque tp) in
-          (* Infer the type of the body 't' *)
           let body, body_tp = infer_type env t in
-          (* Remove 'x' from the environment after processing the body *)
           let _ = Env.rm_from_env env x in
           match body_tp with
-          | Type | Kind ->
-              (* The type of the body 't' must be 'Type' or 'Kind' *)
-              (Product (x, fresh_var, tp, body), body_tp)
+          | Type | Kind -> (Product (x, fresh_var, tp, body), body_tp)
           | _ ->
-              (* The body type is not 'Type' or 'Kind' *)
               Error.create_infer_type_error pos
                 "The type of Product body type must be either Type or Kind" term
                 env)
       | _ ->
-          (* The parameter type 'tp' must be 'Type' or 'Kind' *)
           Error.create_infer_type_error pos
             "The type of Product argument type must be either Type or Kind" term
             env)
   | TypeArrow (tp1, tp2) -> (
       (* Function type arrow from 'tp1' to 'tp2' *)
-      (* First, infer the type of the domain type 'tp1' *)
       let tp1, tp_of_tp1 = infer_type env tp1 in
       match tp_of_tp1 with
       | Type | Kind -> (
-          (* The type of 'tp1' must be 'Type' or 'Kind' *)
-          (* Infer the type of the codomain type 'tp2' *)
           let tp2, tp_of_tp2 = infer_type env tp2 in
           match tp_of_tp2 with
-          | Type | Kind ->
-              (* The type of 'tp2' must be 'Type' or 'Kind' *)
-              (TypeArrow (tp1, tp2), tp_of_tp2)
+          | Type | Kind -> (TypeArrow (tp1, tp2), tp_of_tp2)
           | _ ->
-              (* The codomain type is not 'Type' or 'Kind' *)
               Error.create_infer_type_error pos
                 "The type of Type Arrow body type must be either Type or Kind"
                 term env)
       | _ ->
-          (* The domain type 'tp1' must be 'Type' or 'Kind' *)
           Error.create_infer_type_error pos
             "The type of Type Arrow argument type must be either Type or Kind"
             term env)
   | App (t1, t2) -> (
       (* Application of function 't1' to argument 't2' *)
-      (* Infer the type of 't1' *)
       let t1, t1_tp = infer_type env t1 in
-      (* Reduce 't1_tp' to weak head normal form *)
       match Whnf.to_whnf t1_tp env.internal with
       | Product (_, x, x_tp, tp_body) ->
-          (* The type of 't1' is a function type with parameter 'x' of type 'x_tp' *)
-          (* Check that 't2' has type 'x_tp' *)
           let t2 = check_type env t2 x_tp in
-          (* The result type is 'tp_body' with 'x' substituted by 't2' *)
           ( App (t1, t2),
             Substitution.substitute tp_body
               (Substitution.singleton_sub_map x t2) )
       | _ ->
-          (* The type of 't1' is not a function type *)
           Error.create_infer_type_error pos
             "The type of Application's first argument must be a Product" term
             env)
   | TermWithTypeAnno (t, tp) -> (
       (* Term 't' with type annotation 'tp' *)
-      (* Infer the type of the type annotation 'tp' *)
       let tp, tp_of_tp = infer_type env tp in
       match tp_of_tp with
-      | Type | Kind ->
-          (* The type annotation 'tp' must be of type 'Type' or 'Kind' *)
-          (* Check that 't' has type 'tp' *)
-          (check_type env t tp, tp)
+      | Type | Kind -> (check_type env t tp, tp)
       | _ ->
-          (* The type annotation 'tp' is not of type 'Type' or 'Kind' *)
           Error.create_infer_type_error pos
             "Type annotation must be a Type or Kind" term env)
   | Let (x, t1, t2) ->
       (* Let-binding 'let x = t1 in t2' *)
-      (* Infer the type of 't1' *)
       let t1, tp_t1 = infer_type env t1 in
-      (* Add 'x' to the environment with value 't1' and type 'tp_t1' *)
       let fresh_var = Env.add_to_env env x (Transparent (t1, tp_t1)) in
-      (* Infer the type of 't2' *)
       let t2, tp_t2 = infer_type env t2 in
-      (* Remove 'x' from the environment *)
       let _ = Env.rm_from_env env x in
       (* The type of the let-binding is 'tp_t2' with 'x' substituted by 't1' *)
       ( Let (x, fresh_var, t1, tp_t1, t2),
@@ -286,20 +241,14 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
           (Substitution.singleton_sub_map fresh_var t1) )
   | LetDef (x, t1) ->
       (* Let-definition 'let x = t1' *)
-      (* Infer the type of 't1' *)
       let t1, tp_t1 = infer_type env t1 in
-      (* Add 'x' to the environment with value 't1' and type 'tp_t1' *)
       let _ = Env.add_to_env env x (Transparent (t1, tp_t1)) in
       (t1, tp_t1)
   | Lemma (x, t1, t2) ->
       (* Lemma 'lemma x = t1 in t2' *)
-      (* Infer the type of the proof 't1' *)
       let t1, tp_t1 = infer_type env t1 in
-      (* Add 'x' to the environment as an opaque binding with type 'tp_t1' *)
       let fresh_var = Env.add_to_env env x (Opaque tp_t1) in
-      (* Infer the type of 't2' *)
       let t2, tp_t2 = infer_type env t2 in
-      (* Remove 'x' from the environment *)
       let _ = Env.rm_from_env env x in
       (* Apply the lemma by constructing 'App (Lambda (x, tp_t1, t2), t1)' *)
       ( App (Lambda (x, fresh_var, tp_t1, t2), t1),
@@ -307,13 +256,10 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
           (Substitution.singleton_sub_map fresh_var t1) )
   | LemmaDef (x, t1) ->
       (* Lemma definition 'lemma x = t1' *)
-      (* Infer the type of the proof 't1' *)
       let t1, tp_t1 = infer_type env t1 in
-      (* Add 'x' to the environment as an opaque binding with type 'tp_t1' *)
       let _ = Env.add_to_env env x (Opaque tp_t1) in
       (t1, tp_t1)
   | Hole x ->
-      (* Cannot infer the type of a hole *)
       Error.create_infer_type_error pos
         ("Trying to infer the type of a Hole " ^ x)
         term env
@@ -428,17 +374,13 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
       let t, t_tp = infer_type env term in
       if Equiv.equiv tp t_tp env.internal then t
       else
-        (* Types are not equivalent; report an error *)
         Error.create_check_type_error pos
           ("Instead got:\n" ^ PrettyPrinter.term_to_string t_tp)
           term tp env
   | Lambda (x, None, body) -> (
       (* Lambda with omitted argument type *)
-      (* Reduce the expected type 'tp' to WHNF to check if it's a function type *)
       match Whnf.to_whnf tp env.internal with
       | Product (_, y, y_tp, body_tp) ->
-          (* The expected type is a function type with parameter 'y' of type 'y_tp' *)
-          (* Add 'x' to the environment with type 'y_tp' *)
           let fresh_var = Env.add_to_env env x (Opaque y_tp) in
           (* Check the body against the expected body type with 'y' substituted by 'x' *)
           let body' =
@@ -446,12 +388,9 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
               (Substitution.substitute body_tp
                  (Substitution.singleton_sub_map y (Core.Var (x, fresh_var))))
           in
-          (* Remove 'x' from the environment *)
           let _ = Env.rm_from_env env x in
-          (* Return the lambda term with the inferred argument type *)
           Lambda (x, fresh_var, y_tp, body')
       | _ as whnf ->
-          (* The expected type is not a function type *)
           Error.create_check_type_error pos
             ("The type of Lambda must be a Product. Instead got "
             ^ PrettyPrinter.whnf_to_string whnf)
@@ -463,11 +402,8 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
       | Lambda (_, _, arg_tp, _) as lambda ->
           (* Infer the type of the provided argument type 'x_tp' *)
           let x_tp, _ = infer_type env x_tp in
-          if Equiv.equiv x_tp arg_tp env.internal then
-            (* The provided argument type matches the expected argument type *)
-            lambda
+          if Equiv.equiv x_tp arg_tp env.internal then lambda
           else
-            (* Argument types do not match; report an error *)
             Error.create_check_type_error pos
               ("Got:\n"
               ^ PrettyPrinter.term_to_string x_tp
@@ -475,32 +411,21 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
               ^ PrettyPrinter.term_to_string arg_tp)
               term tp env
       | _ ->
-          (* Not a lambda term; report an error *)
           Error.create_check_type_error pos "Lambda must be lambda" term tp env)
   | Kind ->
-      (* 'Kind' does not have a type; report an error *)
       Error.create_check_type_error pos "Kind doesn't have a type" term tp env
   | Let (x, t1, t2) ->
       (* Let-binding 'let x = t1 in t2' *)
-      (* Infer the type of 't1' *)
       let t1, tp_t1 = infer_type env t1 in
-      (* Add 'x' to the environment with value 't1' and type 'tp_t1' *)
       let fresh_var = Env.add_to_env env x (Transparent (t1, tp_t1)) in
-      (* Check that 't2' has the expected type 'tp' *)
       let t2 = check_type env t2 tp in
-      (* Remove 'x' from the environment *)
       let _ = Env.rm_from_env env x in
-      (* Return the let-binding term *)
       Let (x, fresh_var, t1, tp_t1, t2)
   | Lemma (x, t1, t2) ->
       (* Lemma 'lemma x = t1 in t2' *)
-      (* Infer the type of the proof 't1' *)
       let t1, tp_t1 = infer_type env t1 in
-      (* Add 'x' to the environment as an opaque binding with type 'tp_t1' *)
       let fresh_var = Env.add_to_env env x (Opaque tp_t1) in
-      (* Check that 't2' has the expected type 'tp' *)
       let t2 = check_type env t2 tp in
-      (* Remove 'x' from the environment *)
       let _ = Env.rm_from_env env x in
       (* Apply the lemma by constructing 'App (Lambda (x, tp_t1, t2), t1)' *)
       App (Lambda (x, fresh_var, tp_t1, t2), t1)
@@ -513,7 +438,6 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
           ^ "\nThe state of the environment at that moment:\n"
           ^ Env.env_to_string env)
       in
-      (* Return the hole with its type *)
       Hole (nm, tp)
   (* For lemma or let definitions, check that 't' has the expected type 'tp' *)
   | LemmaDef (x, t) ->

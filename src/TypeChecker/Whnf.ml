@@ -9,32 +9,15 @@
       error message. *)
 let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
   match t with
-  | Type ->
-      (* 'Type' is already in WHNF *)
-      Type
-  | Kind ->
-      (* 'Kind' is already in WHNF *)
-      Kind
-  | IntType ->
-      (* 'IntType' is already in WHNF *)
-      IntType
-  | StringType ->
-      (* 'StringType' is already in WHNF *)
-      StringType
-  | BoolType ->
-      (* 'BoolType' is already in WHNF *)
-      BoolType
-  | IntLit n ->
-      (* Integer literal is already in WHNF *)
-      IntLit n
-  | StringLit s ->
-      (* String literal is already in WHNF *)
-      StringLit s
-  | BoolLit s ->
-      (* Boolean literal is already in WHNF *)
-      BoolLit s
+  | Type -> Type
+  | Kind -> Kind
+  | IntType -> IntType
+  | StringType -> StringType
+  | BoolType -> BoolType
+  | IntLit n -> IntLit n
+  | StringLit s -> StringLit s
+  | BoolLit s -> BoolLit s
   | Var (nm, x) -> (
-      (* Variable 'x' with name 'nm' *)
       match Env.find_opt_in_internal_env env x with
       | Some (Opaque _) ->
           (* Variable is opaque (e.g., a constant or parameter); cannot reduce further *)
@@ -43,16 +26,11 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
           (* Variable is transparent (e.g., a let-bound variable); expand its definition *)
           to_whnf body env
       | None ->
-          (* Variable not found in the environment; report an error *)
           Error.create_whnf_error t env
             ("Couldn't find Variable " ^ nm ^ " " ^ Core.Var.to_string x
            ^ " in environment"))
-  | Lambda (nm, x, x_tp, body) ->
-      (* Lambda abstraction is already in WHNF *)
-      Lambda (nm, x, x_tp, body)
-  | Product (nm, x, x_tp, body) ->
-      (* Product type is already in WHNF *)
-      Product (nm, x, x_tp, body)
+  | Lambda (nm, x, x_tp, body) -> Lambda (nm, x, x_tp, body)
+  | Product (nm, x, x_tp, body) -> Product (nm, x, x_tp, body)
   | TypeArrow (tp1, tp2) ->
       (* Type arrow is syntactic sugar for a product type without a parameter name *)
       Product ("", Core.Var.of_int (-1), tp1, tp2)
@@ -71,7 +49,6 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
             (Substitution.substitute body (Substitution.singleton_sub_map x t2))
             env
       | whnf_term ->
-          (* 't1' is not a function; cannot apply 't2'; report an error *)
           Error.create_whnf_error t env
             ("When reducing Application expected Neu or Lambda\n" ^ "Got "
             ^ PrettyPrinter.whnf_to_string whnf_term
@@ -83,7 +60,6 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       (* Let-binding 'let nm = t1 in t2' *)
       (* Introduce a fresh variable to avoid capture *)
       let fresh_var = Env.fresh_var () in
-      (* Add the definition of 't1' to the environment as transparent *)
       let _ = Env.add_to_internal_env env fresh_var (Transparent (t1, tp_t1)) in
       (* Substitute 'var' with the fresh variable in 't2' and reduce *)
       let t2_whnf =
@@ -97,9 +73,7 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
         Substitution.substitute_whnf t2_whnf
           (Substitution.singleton_sub_map fresh_var t1)
       in
-      (* Remove the fresh variable from the environment *)
       let _ = Env.rm_from_internal_env env fresh_var in
-      (* Return the reduced term *)
       t2_whnf_substituted
   | Case (term, patterns) ->
       let term_whnf = to_whnf term env in
