@@ -54,6 +54,79 @@ let rec build_adt_data (env : Env.env) (tsType : Core.telescope)
       in
       res
 
+let check_branches_and_constructor_names (ps : Raw.branch list)
+    (dataCNames : Core.dataCName list) : bool =
+  let rec collect_constructor_names (ps : Raw.branch list) :
+      Core.dataCName list * bool =
+    match ps with
+    | (PatCon (dataCName, _), _) :: ps ->
+        let cs, contaisWild = collect_constructor_names ps in
+        (Core.dataCName_of_string dataCName :: cs, contaisWild)
+    | (PatWild, _) :: [] ->
+        let cs, contaisWild = collect_constructor_names ps in
+        if contaisWild then
+          failwith "There can't be more than 1 wildcard branch"
+        else (cs, true)
+    | (PatWild, _) :: _ ->
+        failwith "Wild card must be the last branch in pattern matching"
+    | [] -> ([], false)
+  in
+  let cs, containsWild = collect_constructor_names ps in
+  if
+    containsWild
+    && List.compare_lengths cs dataCNames < 0
+    && List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs
+  then true
+  else if
+    (not containsWild)
+    && List.compare_lengths cs dataCNames == 0
+    && List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs
+  then true
+  else false
+
+let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit =
+  let hd = List.hd branch_types in
+  let _, isSameType =
+    List.fold_left
+      (fun (prev_tp, cond) tp ->
+        (tp, cond && Equiv.equiv prev_tp tp env.internal))
+      (hd, true) (List.tl branch_types)
+  in
+  if isSameType then ()
+  else failwith "Pattern matching branches have different types"
+
+let rec subst_and_add_tsT_to_env (env : Env.env) (tsT : Core.telescope)
+    (tsT_types : Core.tp list) (argsT : string list) :
+    (Core.Var.t * (string * Core.Var.t)) list =
+  match tsT with
+  | Empty -> []
+  | Cons (_, var, tp, tsT) ->
+      let concrete_tp = List.hd tsT_types in
+      let new_nm = List.hd argsT in
+      let fresh_var =
+        Env.add_to_env env new_nm (Transparent (concrete_tp, tp))
+      in
+      let tsT =
+        Substitution.substitute_in_telescope tsT
+          (Substitution.singleton_sub_map var concrete_tp)
+      in
+      (var, (new_nm, fresh_var))
+      :: subst_and_add_tsT_to_env env tsT (List.tl tsT_types) (List.tl argsT)
+
+let rec subs_and_add_tsD_to_env (env : Env.env) (tsD : Core.telescope)
+    (argsD : string list) : (Core.Var.t * (string * Core.Var.t)) list =
+  match tsD with
+  | Empty -> []
+  | Cons (_, var, tp, tsD) ->
+      let new_nm = List.hd argsD in
+      let fresh_var = Env.add_to_env env new_nm (Opaque tp) in
+      let tsD =
+        Substitution.substitute_in_telescope tsD
+          (Substitution.singleton_sub_map var (Core.Var (new_nm, fresh_var)))
+      in
+      (var, (new_nm, fresh_var))
+      :: subs_and_add_tsD_to_env env tsD (List.tl argsD)
+
 (** [infer_type env term] infers the type of the given term [term] in the
     context of environment [env].
 
@@ -503,49 +576,15 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
       (tsT_types : Core.tp list) (tsD : Core.telescope) (args : string list)
       ({ pos; _ } as term : Raw.term) :
       Core.term * Core.tp * (string * Core.Var.t) list =
-    let rec add_tsT_to_env (env : Env.env) (tsT : Core.telescope)
-        (tsT_types : Core.tp list) (argsT : string list) :
-        (Core.Var.t * (string * Core.Var.t)) list =
-      match tsT with
-      | Empty -> []
-      | Cons (_, var, tp, tsT) ->
-          let concrete_tp = List.hd tsT_types in
-          let new_nm = List.hd argsT in
-          let fresh_var =
-            Env.add_to_env env new_nm (Transparent (concrete_tp, tp))
-          in
-          let tsT =
-            Substitution.substitute_in_telescope tsT
-              (Substitution.singleton_sub_map var concrete_tp)
-          in
-          (var, (new_nm, fresh_var))
-          :: add_tsT_to_env env tsT (List.tl tsT_types) (List.tl argsT)
-    in
-
-    let rec add_tsD_to_env (env : Env.env) (tsD : Core.telescope)
-        (argsD : string list) : (Core.Var.t * (string * Core.Var.t)) list =
-      match tsD with
-      | Empty -> []
-      | Cons (_, var, tp, tsD) ->
-          let new_nm = List.hd argsD in
-          let fresh_var = Env.add_to_env env new_nm (Opaque tp) in
-          let tsD =
-            Substitution.substitute_in_telescope tsD
-              (Substitution.singleton_sub_map var
-                 (Core.Var (new_nm, fresh_var)))
-          in
-          (var, (new_nm, fresh_var)) :: add_tsD_to_env env tsD (List.tl argsD)
-    in
-
     if telescope_length tsT + telescope_length tsD = List.length args then
       let argsT, argsD = split_pattern_args (telescope_length tsT) args in
-      let tsT_all_vars = add_tsT_to_env env tsT tsT_types argsT in
+      let tsT_all_vars = subst_and_add_tsT_to_env env tsT tsT_types argsT in
       let tsD =
         Substitution.substitute_in_telescope tsD
           (Substitution.of_list_sub_map
              (List.combine (fst (List.split tsT_all_vars)) tsT_types))
       in
-      let tsD_all_vars = add_tsD_to_env env tsD argsD in
+      let tsD_all_vars = subs_and_add_tsD_to_env env tsD argsD in
       let ts_all_vars = tsT_all_vars @ tsD_all_vars in
       let term, tp' = infer_type env term in
       let ts_names, ts_vars = List.split (snd (List.split ts_all_vars)) in
@@ -560,6 +599,7 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
         "The number of arguments in branch's pattern must match the telescope"
         term env
   in
+
   let infer_and_check_all_branches (env : Env.env) (ps : Raw.branch list)
       (tsT : Core.telescope) (tsT_types : Core.tp list) :
       (Core.branch * Core.tp) list =
@@ -591,18 +631,6 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
               (((Core.PatWild, term), tp'), []) :: [])
       | [] -> []
     in
-    let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit
-        =
-      let hd = List.hd branch_types in
-      let _, isSameType =
-        List.fold_left
-          (fun (prev_tp, cond) tp ->
-            (tp, cond && Equiv.equiv prev_tp tp env.internal))
-          (hd, true) (List.tl branch_types)
-      in
-      if isSameType then ()
-      else failwith "Pattern matching branches have different types"
-    in
 
     let result, tp_names_and_vars =
       List.split (loop_over_branches env ps tsT tsT_types)
@@ -615,36 +643,6 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
         all_ts_vars
     in
     result
-  in
-  let check_branches_and_constructor_names (ps : Raw.branch list)
-      (dataCNames : Core.dataCName list) : bool =
-    let rec collect_constructor_names (ps : Raw.branch list) :
-        Core.dataCName list * bool =
-      match ps with
-      | (PatCon (dataCName, _), _) :: ps ->
-          let cs, contaisWild = collect_constructor_names ps in
-          (Core.dataCName_of_string dataCName :: cs, contaisWild)
-      | (PatWild, _) :: [] ->
-          let cs, contaisWild = collect_constructor_names ps in
-          if contaisWild then
-            failwith "There can't be more than 1 wildcard branch"
-          else (cs, true)
-      | (PatWild, _) :: _ ->
-          failwith "Wild card must be the last branch in pattern matching"
-      | [] -> ([], false)
-    in
-    let cs, containsWild = collect_constructor_names ps in
-    if
-      containsWild
-      && List.compare_lengths cs dataCNames < 0
-      && List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs
-    then true
-    else if
-      (not containsWild)
-      && List.compare_lengths cs dataCNames == 0
-      && List.fold_left (fun acc x -> acc && List.mem x dataCNames) true cs
-    then true
-    else false
   in
 
   if check_branches_and_constructor_names ps dataCNames then
