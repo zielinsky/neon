@@ -29,7 +29,7 @@ let makeApp exp arg_list =
 %token <int>    INT_LIT
 %token <string> STRING_LIT
 %token <bool>   BOOL_LIT
-%token <string> VAR HOLE
+%token <string> VAR HOLE ADTCON
 %token BR_OPN BR_CLS
 %token ASTERISK COLON EQUAL
 %token EOF
@@ -102,7 +102,7 @@ telescopes
 
 /* ─────────────────────────  Algebraic data types  ──────────────────────── */
 constructor_def
-: VAR telescopes { { cname = $1; telescope = $2 } }
+: ADTCON telescopes { { cname = $1; telescope = $2 } }
 ;
 
 constructor_def_list
@@ -111,8 +111,8 @@ constructor_def_list
 ;
 
 adt_def
-: ADTDEF VAR telescopes EQUAL constructor_def_list { make (ADTDecl ($2, $3, $5)) }
-| ADTDEF VAR telescopes                            { make (ADTSig ($2, $3)) }
+: ADTDEF ADTCON telescopes EQUAL constructor_def_list { make (ADTDecl ($2, $3, $5)) }
+| ADTDEF ADTCON telescopes                            { make (ADTSig ($2, $3)) }
 ;
 
 /* ─────────────────────────  Patterns  ───────────────────────────────────── */
@@ -123,7 +123,7 @@ pattern_var_list
 
 pattern
 : BAR WILDCARD TYPE_ARROW expression                           { PatWild, $4 }
-| BAR VAR BR_OPN pattern_var_list BR_CLS TYPE_ARROW expression { PatCon ($2, $4), $7 }
+| BAR ADTCON BR_OPN pattern_var_list BR_CLS TYPE_ARROW expression { PatCon ($2, $4), $7 }
 ;
 
 pattern_list
@@ -133,7 +133,7 @@ pattern_list
 
 /* ─────────────────────────  Application argument list  ─────────────────── */
 app_args
-: expression                                 { [$1] }
+: expression                         { [$1] }
 | expression COMMA app_args          { $1 :: $3 }
 ;
 
@@ -152,6 +152,7 @@ atom
 | STRING_LIT               { make (StringLit $1) }
 | BOOL_LIT                 { make (BoolLit $1) }
 | VAR                      { make (Var $1) }
+| ADTCON                   { make (Var $1) }
 | HOLE                     { make (Hole $1) }
 | BR_OPN expression BR_CLS { $2 }
 ;

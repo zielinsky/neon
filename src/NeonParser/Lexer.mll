@@ -10,6 +10,8 @@ let raise_error (lexbuf : Lexing.lexbuf) reason =
 }
 
 let whitespace = ['\011'-'\r' '\t' ' ']
+let var_start = ['a'-'z' '_']
+let con_start = ['A' - 'Z']
 let var_char = ['a'-'z' 'A'-'Z' '_']
 let op_char = ['!' '$' '%' '&' '*' '+' '-' '/' ':' '<' '>' '?' '@' '^' '|' '~' '#' '=']
 
@@ -46,7 +48,11 @@ rule token = parse
   | "if" { YaccParser.IF }
   | "then" { YaccParser.THEN }
   | "else" { YaccParser.ELSE }
-  | var_char* as x { YaccParser.VAR x }
+  | var_start var_char* as x { YaccParser.VAR x }
+  | con_start as x {
+     YaccParser.VAR (String.make 1 x)
+     }
+  | con_start var_char+ as x { YaccParser.ADTCON x }
   (* Integer literals *)
   | ['0'-'9']+ as digits {
       let n = int_of_string digits in

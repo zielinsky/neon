@@ -1,1 +1,1 @@
-data emptyData (A: Type) (x: A)
+data EmptyData (A: Type) (x: A)
