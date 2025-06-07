@@ -27,3 +27,4 @@ val env_var_to_string : env_var option -> string
 val env_to_string : env -> string
 val internal_env_to_string : internal -> string
 val generate_fresh_var_name : string -> string
+val copy : env -> env

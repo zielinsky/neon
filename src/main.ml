@@ -45,7 +45,8 @@ let process_parsed_def env x =
     Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf))
   else if
     not
-      (String.starts_with ~prefix:"_builtin_" (PrettyPrinter.term_to_string nf))
+      (String.starts_with ~prefix:"(_builtin_"
+         (PrettyPrinter.term_to_string nf))
   then Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf)
 (* (PrettyPrinter.term_to_string nf_tp) *)
 
@@ -89,6 +90,7 @@ let load_prelude env prelude_dir =
 
 (* The REPL loop. Reads lines, parses them, infers their type, and prints (if verbose). *)
 let rec repl env =
+  flush stderr;
   print_string "> ";
   flush stdout;
   match input_line stdin with
@@ -104,40 +106,60 @@ let rec repl env =
        else if String.trim line = "clear" then Sys.command "clear" |> ignore
        else
          try
-           let parsed = NeonParser.Parser.parse_string line in
-           List.iter (fun x -> process_parsed_def env x) parsed
+           let parsed_program = NeonParser.Parser.parse_string line in
+           repl_process_parsed_def env parsed_program
          with
-         | NeonParser.Error.Parse_error _ ->
+         | NeonParser.Error.Parse_error _ as exn-> (
              let wrapped_line = "let _last = " ^ line in
-             let parsed = NeonParser.Parser.parse_string wrapped_line in
-             List.iter (fun x -> process_parsed_def env x) parsed
-         | ex -> Printf.printf "Unexpected error: %s\n" (Printexc.to_string ex));
+             try
+               let parsed_program =
+                 NeonParser.Parser.parse_string wrapped_line
+               in
+               repl_process_parsed_def env parsed_program;
+               Env.rm_from_env env "_last"
+             with
+             | NeonParser.Error.Parse_error _ ->
+                 let _ = Printf.eprintf "%s\n" (Printexc.to_string exn) in
+                 repl env
+             | exn -> Printf.eprintf "%s\n" (Printexc.to_string exn))
+         | exn -> Printf.eprintf "%s\n" (Printexc.to_string exn));
       repl env
 
+and repl_process_parsed_def (env : Env.env) (program : Raw.program) : unit =
+  let env_copy = Env.copy env in
+  try List.iter (fun x -> process_parsed_def env x) program
+  with exn ->
+    let _ = Printf.eprintf "%s\n" (Printexc.to_string exn) in
+    repl env_copy
+
 let main () =
-  (* Parse the command line arguments *)
-  Arg.parse speclist (fun s -> file := s) usage_msg;
+  try
+    (* Parse the command line arguments *)
+    Arg.parse speclist (fun s -> file := s) usage_msg;
 
-  (* Create an empty environment *)
-  let env = Env.create_env () in
+    (* Create an empty environment *)
+    let env = Env.create_env () in
 
-  (* Load built-in functions into the environment *)
-  if !load_builtins_mode then load_builtins env;
+    (* Load built-in functions into the environment *)
+    if !load_builtins_mode then load_builtins env;
 
-  (* Load the prelude *)
-  (if !load_prelude_mode then
-     let prelude_dir = "stdlib/prelude" in
-     load_prelude env prelude_dir);
+    (* Load the prelude *)
+    (if !load_prelude_mode then
+       let prelude_dir = "stdlib/prelude" in
+       load_prelude env prelude_dir);
 
-  (* If a file is NOT provided, enter REPL mode. *)
-  if !file = "" then (
-    print_endline
-      "No file specified. Starting REPL mode (type \"exit\" to quit).";
-    repl env)
-  else
-    (* Otherwise, process the file in batch mode *)
-    let parsed = NeonParser.Parser.parse_file !file in
-    List.iter (fun x -> process_parsed_def env x) parsed
+    (* If a file is NOT provided, enter REPL mode. *)
+    if !file = "" then (
+      print_endline
+        "No file specified. Starting REPL mode (type \"exit\" to quit).";
+      repl env)
+    else
+      (* Otherwise, process the file in batch mode *)
+      let parsed = NeonParser.Parser.parse_file !file in
+      List.iter (fun x -> process_parsed_def env x) parsed
+  with exn ->
+    Printf.eprintf "%s\n" (Printexc.to_string exn);
+    exit 1
 
 (* Entry point *)
 let () = main ()

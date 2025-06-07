@@ -118,3 +118,10 @@ let internal_env_to_string (env : internal) : string =
 let generate_fresh_var_name (nm : string) : string =
   let fresh_var = fresh_var () in
   nm ^ "$" ^ Core.Var.to_string fresh_var
+
+let copy (env : env) : env =
+  {
+    surface = StringHashtbl.copy env.surface;
+    internal = VarHashtbl.copy env.internal;
+    adt = StringHashtbl.copy env.adt;
+  }
