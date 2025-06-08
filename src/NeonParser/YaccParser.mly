@@ -204,21 +204,23 @@ let_args
 ;
 
 let_def
-: VAR EQUAL expression                                    { make (LetDef ($1, $3)) }
-| VAR let_args                                            { make (LetDef ($1, $2)) }
-| VAR COLON expression EQUAL expression                   { make (TermWithTypeAnno (make (LetDef ($1, $5)), $3)) }
-| BR_OPN VAR COLON expression BR_CLS EQUAL expression     { make (TermWithTypeAnno (make (LetDef ($2, $7)), $4)) }
+: VAR EQUAL expression                                     { make (LetDef ($1, $3)) }
+| VAR let_args                                             { make (LetDef ($1, $2)) }
+| VAR COLON expression EQUAL expression                    { make (TermWithTypeAnno (make (LetDef ($1, $5)), $3)) }
+| BR_OPN VAR COLON expression BR_CLS EQUAL expression      { make (TermWithTypeAnno (make (LetDef ($2, $7)), $4)) }
+| BR_OPN VAR COLON expression BR_CLS let_args              { make (TermWithTypeAnno (make (LetDef ($2, $6)), $4)) }
 /* operator heads */
-| BR_OPN OPERATOR BR_CLS EQUAL expression                 { make (LetDef ($2, $5)) }
-| BR_OPN OPERATOR BR_CLS let_args                         { make (LetDef ($2, $4)) }
+| BR_OPN OPERATOR BR_CLS EQUAL expression                  { make (LetDef ($2, $5)) }
+| BR_OPN OPERATOR BR_CLS let_args                          { make (LetDef ($2, $4)) }
 | BR_OPN OPERATOR BR_CLS COLON expression EQUAL expression { make (TermWithTypeAnno (make (LetDef ($2, $7)), $5)) }
 ;
 
 let_in
-: VAR EQUAL expression IN expression                      { make (Let ($1, $3, $5)) }
-| VAR let_args IN expression                              { make (Let ($1, $2, $4)) }
-| VAR COLON expression EQUAL expression IN expression     { make (TermWithTypeAnno (make (Let ($1, $5, $7)), $3)) }
-| BR_OPN VAR COLON expression BR_CLS EQUAL expression IN expression { make (TermWithTypeAnno (make (Let ($2, $7, $9)), $4)) }
+: VAR EQUAL expression IN expression                                   { make (Let ($1, $3, $5)) }
+| VAR let_args IN expression                                           { make (Let ($1, $2, $4)) }
+| VAR COLON expression EQUAL expression IN expression                  { make (TermWithTypeAnno (make (Let ($1, $5, $7)), $3)) }
+| BR_OPN VAR COLON expression BR_CLS EQUAL expression IN expression    { make (TermWithTypeAnno (make (Let ($2, $7, $9)), $4)) }
+| BR_OPN VAR COLON expression BR_CLS let_args IN expression            { make (TermWithTypeAnno (make (Let ($2, $6, $8)), $4)) }
 /* operator heads */
 | BR_OPN OPERATOR BR_CLS EQUAL expression IN expression   { make (Let ($2, $5, $7)) }
 | BR_OPN OPERATOR BR_CLS let_args IN expression           { make (Let ($2, $4, $6)) }
@@ -237,6 +239,7 @@ lemma_def
 | VAR lemma_args                                          { make (LemmaDef ($1, $2)) }
 | VAR COLON expression EQUAL expression                   { make (TermWithTypeAnno (make (LemmaDef ($1, $5)), $3)) }
 | BR_OPN VAR COLON expression BR_CLS EQUAL expression     { make (TermWithTypeAnno (make (LemmaDef ($2, $7)), $4)) }
+| BR_OPN VAR COLON expression BR_CLS lemma_args           { make (TermWithTypeAnno (make (LemmaDef ($2, $6)), $4)) }
 ;
 
 /* ========================================================================= */

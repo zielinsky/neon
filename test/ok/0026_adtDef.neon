@@ -1,0 +1,12 @@
+data Empty
+
+data Option (A: Type) = 
+| Some (x: A)
+| None
+
+data List (A: Type) = 
+| Nil
+| Cons (x: A) (xs: List(A))
+
+data Sigma (A: Type) (P: (A -> Type)) =
+| Pair (x: A) (y: P(x))

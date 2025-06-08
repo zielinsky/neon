@@ -110,13 +110,13 @@ let rec repl env =
            repl_process_parsed_def env parsed_program
          with
          | NeonParser.Error.Parse_error _ as exn-> (
-             let wrapped_line = "let _last = " ^ line in
+             let wrapped_line = "let $last = " ^ line in
              try
                let parsed_program =
                  NeonParser.Parser.parse_string wrapped_line
                in
                repl_process_parsed_def env parsed_program;
-               Env.rm_from_env env "_last"
+               Env.rm_from_env env "$last"
              with
              | NeonParser.Error.Parse_error _ ->
                  let _ = Printf.eprintf "%s\n" (Printexc.to_string exn) in

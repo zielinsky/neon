@@ -1,0 +1,15 @@
+let x = 5
+
+let variable_name = "variable"
+
+let A = Type
+
+data Option (A: Type) = 
+| Some (x: A)
+| None
+
+let some_int = Some(Int, 42)
+
+let function (x: Int) = 42
+
+lemma proof (x : Int) = 42
