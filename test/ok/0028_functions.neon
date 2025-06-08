@@ -13,3 +13,7 @@ let (+) = _builtin_add
 let bar (x: Int) (y: Int) (z: Int) =
     let add (x: Int) (y: Int) = x + y in
         x + y + z
+
+let y = int_id(42)
+
+let z = id(String, "A")
