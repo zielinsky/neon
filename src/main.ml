@@ -109,7 +109,7 @@ let rec repl env =
            let parsed_program = NeonParser.Parser.parse_string line in
            repl_process_parsed_def env parsed_program
          with
-         | NeonParser.Error.Parse_error _ as exn-> (
+         | NeonParser.Error.Parse_error _ as exn -> (
              let wrapped_line = "let $last = " ^ line in
              try
                let parsed_program =
