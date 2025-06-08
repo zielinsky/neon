@@ -1,0 +1,5 @@
+let int_fun = Int -> Int
+
+let id_type = forall (A: Type) => A -> A
+
+let composition_type = forall (A: Type) (B: Type) (C: Type) (f: A -> B) (g: B -> C) => A -> C
