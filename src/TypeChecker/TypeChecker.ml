@@ -1,6 +1,7 @@
 module Substitution = Substitution
 module Whnf = Whnf
 module Equiv = Equiv
+module OccursCheck = OccursCheck
 
 let telescope_length (ts : Core.telescope) : int =
   let rec tele_len (ts : Core.telescope) (acc : int) =
@@ -166,7 +167,15 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
           let fresh_var = Env.add_to_env env x (Opaque tp) in
           let body, body_tp = infer_type env t in
           let _ = Env.rm_from_env env x in
-          (Lambda (x, fresh_var, tp, body), Product (x, fresh_var, tp, body_tp))
+          (* Normalize to WHNF before dependency check *)
+          let body_tp_whnf = Whnf.to_whnf body_tp env.internal in
+          let is_dependent =
+            OccursCheck.occurs_check_whnf fresh_var body_tp_whnf
+          in
+          if is_dependent then
+            ( Lambda (x, fresh_var, tp, body),
+              Product (x, fresh_var, tp, body_tp) )
+          else (Lambda (x, fresh_var, tp, body), TypeArrow (tp, body_tp))
       | _ ->
           Error.create_infer_type_error pos
             "The type of Lambda argument type must be either Type or Kind" term
