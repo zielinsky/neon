@@ -1,4 +1,15 @@
-let foo : Int -> Type = fun n => if eq(n, 0) then Int else String
-let fooz (n: Int) = if eq(n, 0) then Int else String
-let fuz (b: Bool) = if b then 3 else "a"
-let x = fuz(true)
+data Flag =
+  | On  (n:Int)
+  | Off (n:Int)
+
+
+let flagTy (f: Flag) = 
+    match f with
+    | On(n)   -> Int
+    | Off(n)  -> Bool
+
+
+let choose (f: Flag) = 
+    match f with
+    | On(n)   -> 0
+    | Off(n)  -> 15 

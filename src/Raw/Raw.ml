@@ -27,7 +27,7 @@ and term_data =
   | TypeArrow of term * term
   | ADTSig of typeCName * telescope
   | ADTDecl of typeCName * telescope * constructor_def list
-  | Case of term * branch list
+  | Case of term * string option * term option * branch list
   | IfExpr of term * term * term
   | Equality of term * term
 

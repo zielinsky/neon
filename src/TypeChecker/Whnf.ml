@@ -75,9 +75,9 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       in
       let _ = Env.rm_from_internal_env env fresh_var in
       t2_whnf_substituted
-  | Case (term, patterns) ->
+  | Case (term, var, tp, patterns) ->
       let term_whnf = to_whnf term env in
-      Case (term_whnf, patterns)
+      Case (term_whnf, var, tp, patterns)
   | IfExpr (t, b1, b2) -> (
       let t = to_whnf t env in
       match t with

@@ -72,13 +72,13 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
       let nf_args = List.map (fun arg -> eval arg env) (List.rev rev_args) in
       let hole = Core.Hole (nm, nf_tp) in
       List.fold_left (fun acc arg -> Core.App (acc, arg)) hole nf_args
-  | Lambda (nm, x, tp, body) ->
+  | Lambda (nm, _, tp, body) ->
       (* Generate a fresh variable identifier *)
       let fresh_var = Env.fresh_var () in
       (* Add the definition of 'tp' to the environment with the fresh variable *)
       Env.add_to_internal_env env fresh_var (Opaque tp);
       (* Evaluate type and body *)
-      let nf_tp =
+      (* let nf_tp =
         eval
           (TypeChecker.Substitution.substitute tp
              (TypeChecker.Substitution.singleton_sub_map x
@@ -91,11 +91,11 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
              (TypeChecker.Substitution.singleton_sub_map x
                 (Core.Var (nm, fresh_var))))
           env
-      in
+      in *)
       (* Remove the fresh variable from the environment *)
       Env.rm_from_internal_env env fresh_var;
       (* Return the normalized lambda *)
-      Lambda (nm, fresh_var, nf_tp, nf_body)
+      Lambda (nm, fresh_var, tp, body)
   | Product (nm, x, tp, body) ->
       if Core.Var.equal x (Core.Var.of_int (-1)) then
         let nf_tp = eval tp env in
@@ -107,7 +107,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
         (* Add the definition of 'tp' to the environment with the fresh variable *)
         Env.add_to_internal_env env fresh_var (Opaque tp);
         (* Evaluate type and body *)
-        let nf_tp =
+        (* let nf_tp =
           eval
             (TypeChecker.Substitution.substitute tp
                (TypeChecker.Substitution.singleton_sub_map x
@@ -120,12 +120,12 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
                (TypeChecker.Substitution.singleton_sub_map x
                   (Core.Var (nm, fresh_var))))
             env
-        in
+        in *)
         (* Remove the fresh variable from the environment *)
         Env.rm_from_internal_env env fresh_var;
         (* Return the normalized product *)
-        Product (nm, fresh_var, nf_tp, nf_body)
-  | Case (scrutinee, patterns) -> (
+        Product (nm, fresh_var, tp, body)
+  | Case (scrutinee, _, _, patterns) -> (
       match scrutinee with
       | Neu (nm, _, rev_args) -> (
           let pattern, term = find_matching_matchPat nm patterns in

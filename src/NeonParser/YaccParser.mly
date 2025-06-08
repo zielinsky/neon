@@ -35,7 +35,7 @@ let makeApp exp arg_list =
 %token EOF
 %token ADTDEF
 %token BAR
-%token MATCH WITH WILDCARD
+%token MATCH WITH WILDCARD AS RETURN
 %token IF THEN ELSE
 %token EQUALITY
 %token <string> OPERATOR
@@ -183,13 +183,16 @@ typearrow_expr
 
 /*  top layer */
 expression
-: typearrow_expr                                         { $1 }
-| LAMBDA functions                                       { $2 }
-| PRODUCT products                                       { $2 }
-| LET let_in                                             { $2 }
-| LEMMA VAR EQUAL expression IN expression               { make (Lemma ($2, $4, $6)) }
-| MATCH expression WITH pattern_list                     { make (Case ($2, $4)) }
-| IF expression THEN expression ELSE expression          { make (IfExpr ($2, $4, $6)) }
+: typearrow_expr                                                  { $1 }
+| LAMBDA functions                                                { $2 }
+| PRODUCT products                                                { $2 }
+| LET let_in                                                      { $2 }
+| LEMMA VAR EQUAL expression IN expression                        { make (Lemma ($2, $4, $6)) }
+| MATCH expression WITH pattern_list                              { make (Case ($2, None, None, $4)) }
+| MATCH expression AS VAR WITH pattern_list                       { make (Case ($2, Some($4), None, $6)) }
+| MATCH expression RETURN expression WITH pattern_list            { make (Case ($2, None, Some($4), $6)) }
+| MATCH expression AS VAR RETURN expression WITH pattern_list     { make (Case ($2, Some($4), Some($6), $8)) }
+| IF expression THEN expression ELSE expression                   { make (IfExpr ($2, $4, $6)) }
 ;
 
 /* ========================================================================= */

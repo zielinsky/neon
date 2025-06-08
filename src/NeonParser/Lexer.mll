@@ -43,6 +43,8 @@ rule token = parse
   | "data" { YaccParser.ADTDEF }
   | "match" { YaccParser.MATCH }
   | "with" { YaccParser.WITH }
+  | "as" { YaccParser.AS }
+  | "return" { YaccParser.RETURN }
   | '|' { YaccParser.BAR }
   | '_' { YaccParser.WILDCARD }
   | "if" { YaccParser.IF }
