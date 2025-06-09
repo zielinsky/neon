@@ -60,23 +60,28 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
   | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _
   | StringLit _ | BoolLit _ ->
       t
-  | Case (scrutinee, var, tp, matchPats) ->
-    let scrutinee' = substitute scrutinee sub in
-    let var_sub, var' = begin match var with
-      | Some(nm, var) -> 
-          let fresh_var = Env.fresh_var () in 
-          singleton_sub_map var (Core.Var (nm, fresh_var)), Some (nm, fresh_var)
-      | None -> empty_sub_map, None
-    end in
-    let tp' = begin match tp with
-    | Some tp -> Some (substitute tp (merge_sub_maps sub var_sub))
-    | None -> None 
-    end in
+  | Case (scrutinee, scrutinee_tp, var, tp, matchPats) ->
+      let scrutinee' = substitute scrutinee sub in
+      let scrutinee_tp' = substitute scrutinee_tp sub in
+      let var_sub, var' =
+        match var with
+        | Some (nm, var) ->
+            let fresh_var = Env.fresh_var () in
+            ( singleton_sub_map var (Core.Var (nm, fresh_var)),
+              Some (nm, fresh_var) )
+        | None -> (empty_sub_map, None)
+      in
+      let tp' =
+        match tp with
+        | Some tp -> Some (substitute tp (merge_sub_maps sub var_sub))
+        | None -> None
+      in
       let matchPats' =
         List.map
           (fun (pattern, t) ->
             match pattern with
-            | Core.PatWild -> (Core.PatWild, substitute t (merge_sub_maps sub var_sub))
+            | Core.PatWild ->
+                (Core.PatWild, substitute t (merge_sub_maps sub var_sub))
             | Core.PatCon (con_nm, vars) ->
                 let sub, rev_vars =
                   List.fold_left
@@ -86,10 +91,11 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
                         (nm, fresh_var) :: new_vars ))
                     (sub, []) vars
                 in
-                (Core.PatCon (con_nm, List.rev rev_vars), substitute t (merge_sub_maps sub var_sub)))
+                ( Core.PatCon (con_nm, List.rev rev_vars),
+                  substitute t (merge_sub_maps sub var_sub) ))
           matchPats
       in
-      Case (scrutinee', var', tp', matchPats')
+      Case (scrutinee', scrutinee_tp', var', tp', matchPats')
   | IfExpr (t, b1, b2) ->
       IfExpr (substitute t sub, substitute b1 sub, substitute b2 sub)
   | Equality (t1, t2) -> Equality (substitute t1 sub, substitute t2 sub)

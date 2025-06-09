@@ -7,24 +7,6 @@ let find_matching_matchPat (nm : string) (patterns : Core.branch list) :
       | Core.PatWild -> true)
     patterns
 
-let add_pattern_vars_to_termEnv (vars : (string * Core.Var.t) list)
-    (values : Core.term list) (env : Env.internal) :
-    (string * Core.Var.t * Core.Var.t) list =
-  let _ = assert (List.length vars == List.length values) in
-  List.fold_left
-    (fun acc ((nm, var), term) ->
-      let fresh_var = Env.fresh_var () in
-      let _ =
-        Env.add_to_internal_env env fresh_var (Transparent (term, Type))
-      in
-      (nm, var, fresh_var) :: acc)
-    [] (List.combine vars values)
-
-let rm_pattern_vars_to_termEnv
-    (bindings : (string * Core.Var.t * Core.Var.t) list) (env : Env.internal) :
-    unit =
-  List.iter (fun (_, _, x) -> Env.rm_from_internal_env env x) bindings
-
 (** [whnf_to_nf w env] fully normalizes a [whnf] node [w] in context [env],
     producing a [term] in normal form. *)
 let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
@@ -125,7 +107,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
         Env.rm_from_internal_env env fresh_var;
         (* Return the normalized product *)
         Product (nm, fresh_var, tp, body)
-  | Case (scrutinee, _, _, patterns) -> (
+  | Case (scrutinee, _, _, _, patterns) -> (
       match scrutinee with
       | Neu (nm, _, rev_args) -> (
           let pattern, term = find_matching_matchPat nm patterns in
@@ -133,7 +115,8 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
           | PatWild -> eval term env
           | PatCon (_, args) ->
               let bindings =
-                add_pattern_vars_to_termEnv args (List.rev rev_args) env
+                Env.add_pattern_vars_to_internal_env args (List.rev rev_args)
+                  env
               in
               let sub_map =
                 List.fold_left
@@ -146,7 +129,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
               let nf_term =
                 eval (TypeChecker.Substitution.substitute term sub_map) env
               in
-              let _ = rm_pattern_vars_to_termEnv bindings env in
+              let _ = Env.rm_pattern_vars_from_internal_env bindings env in
               nf_term)
       | _ ->
           failwith "RUNTIME ERROR while evaluating Case, scrutinee is not Neu.")

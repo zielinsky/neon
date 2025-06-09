@@ -11,17 +11,13 @@ let rec occurs_check_whnf (var : Core.Var.t) (whnf_term : Core.whnf) : bool =
       occurs_check_term var x_tp || occurs_check_term var body
   | Product (_, _, x_tp, body_tp) ->
       occurs_check_term var x_tp || occurs_check_term var body_tp
-  | Case (scrutinee, as_var, tp, branches) ->
-      occurs_check_whnf var scrutinee || (
-        match as_var with
-        | Some (_, x) -> Core.Var.equal var x
-        | None -> false
-      )
-      || (
-        match tp with
-        | Some tp -> occurs_check_term var tp
-        | None -> false
-      )
+  | Case (scrutinee, scrutinee_tp, as_var, tp, branches) ->
+      occurs_check_whnf var scrutinee
+      || occurs_check_term var scrutinee_tp
+      || (match as_var with
+         | Some (_, x) -> Core.Var.equal var x
+         | None -> false)
+      || (match tp with Some tp -> occurs_check_term var tp | None -> false)
       || List.exists (fun (_, body) -> occurs_check_term var body) branches
   | IfExpr (t, b1, b2) ->
       occurs_check_whnf var t || occurs_check_term var b1
@@ -45,17 +41,13 @@ and occurs_check_term (var : Core.Var.t) (term : Core.term) : bool =
       || occurs_check_term var t2
   | TypeArrow (tp1, tp2) ->
       occurs_check_term var tp1 || occurs_check_term var tp2
-  | Case (scrutinee, as_var, tp, branches) ->
-      occurs_check_term var scrutinee || (
-        match as_var with
-        | Some (_, x) -> Core.Var.equal var x
-        | None -> false
-      )
-      || (
-        match tp with
-        | Some tp -> occurs_check_term var tp
-        | None -> false
-      )
+  | Case (scrutinee, scrutinee_tp, as_var, tp, branches) ->
+      occurs_check_term var scrutinee
+      || occurs_check_term var scrutinee_tp
+      || (match as_var with
+         | Some (_, x) -> Core.Var.equal var x
+         | None -> false)
+      || (match tp with Some tp -> occurs_check_term var tp | None -> false)
       || List.exists (fun (_, body) -> occurs_check_term var body) branches
   | IfExpr (t, b1, b2) ->
       occurs_check_term var t || occurs_check_term var b1

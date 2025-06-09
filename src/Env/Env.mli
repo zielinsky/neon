@@ -28,3 +28,12 @@ val env_to_string : env -> string
 val internal_env_to_string : internal -> string
 val generate_fresh_var_name : string -> string
 val copy : env -> env
+
+val add_pattern_vars_to_internal_env :
+  (string * Core.Var.t) list ->
+  Core.term list ->
+  internal ->
+  (string * Core.Var.t * Core.Var.t) list
+
+val rm_pattern_vars_from_internal_env :
+  (string * Core.Var.t * Core.Var.t) list -> internal -> unit

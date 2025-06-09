@@ -75,9 +75,59 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       in
       let _ = Env.rm_from_internal_env env fresh_var in
       t2_whnf_substituted
-  | Case (term, var, tp, patterns) ->
-      let term_whnf = to_whnf term env in
-      Case (term_whnf, var, tp, patterns)
+  | Case (scrut, scrut_tp, maybe_var, tp, branches) -> (
+      let scrut_whnf = to_whnf scrut env in
+      match scrut_whnf with
+      | Neu (nm, _, rev_args) -> (
+          match
+            List.find_opt
+              (function
+                | Core.PatCon (dataCName, _), _ ->
+                    Core.dataCName_to_string dataCName = nm
+                | PatWild, _ -> false)
+              branches
+          with
+          | Some (pattern, term) -> (
+              match pattern with
+              | PatWild -> failwith "Impossible"
+              | PatCon (_, args) ->
+                  let bindings =
+                    Env.add_pattern_vars_to_internal_env args
+                      (List.rev rev_args) env
+                  in
+                  let sub_map =
+                    List.fold_left
+                      (fun acc (nm, var, fresh_var) ->
+                        Substitution.add_to_sub_map var
+                          (Var (nm, fresh_var))
+                          acc)
+                      Substitution.empty_sub_map bindings
+                  in
+                  let term = Substitution.substitute term sub_map in
+
+                  let whnf_term =
+                    match maybe_var with
+                    | Some (nm, var) ->
+                        let fresh_var = Env.fresh_var () in
+                        let _ =
+                          Env.add_to_internal_env env fresh_var
+                            (Transparent (scrut, scrut_tp))
+                        in
+                        let term_whnf =
+                          to_whnf
+                            (Substitution.substitute term
+                               (Substitution.singleton_sub_map var
+                                  (Core.Var (nm, fresh_var))))
+                            env
+                        in
+                        let _ = Env.rm_from_internal_env env fresh_var in
+                        term_whnf
+                    | None -> to_whnf term env
+                  in
+                  let _ = Env.rm_pattern_vars_from_internal_env bindings env in
+                  whnf_term)
+          | None -> Case (scrut_whnf, scrut_tp, maybe_var, tp, branches))
+      | _ -> Case (scrut_whnf, scrut_tp, maybe_var, tp, branches))
   | IfExpr (t, b1, b2) -> (
       let t = to_whnf t env in
       match t with

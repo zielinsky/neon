@@ -122,8 +122,9 @@ pattern_var_list
 ;
 
 pattern
-: BAR WILDCARD TYPE_ARROW expression                           { PatWild, $4 }
+: BAR WILDCARD TYPE_ARROW expression                              { PatWild, $4 }
 | BAR ADTCON BR_OPN pattern_var_list BR_CLS TYPE_ARROW expression { PatCon ($2, $4), $7 }
+| BAR ADTCON TYPE_ARROW expression                                { PatCon ($2, []), $4 }
 ;
 
 pattern_list

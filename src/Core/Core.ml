@@ -37,7 +37,7 @@ type term =
   | Hole of string * tp
   | Let of string * Var.t * term * tp * term
   | TypeArrow of tp * tp
-  | Case of term * (string * Var.t) option * tp option * branch list
+  | Case of term * tp * (string * Var.t) option * tp option * branch list
   | IfExpr of term * term * term
   | Equality of term * term
 
@@ -61,8 +61,8 @@ type whnf =
   | BoolLit of bool
   | Lambda of string * Var.t * tp * term
   | Product of string * Var.t * tp * tp
-  | Case of whnf * (string * Var.t) option * tp option * branch list
-  | IfExpr of whnf  * term * term
+  | Case of whnf * tp * (string * Var.t) option * tp option * branch list
+  | IfExpr of whnf * term * term
   | Equality of term * term
 
 let dataCName_of_string (s : string) : dataCName = s

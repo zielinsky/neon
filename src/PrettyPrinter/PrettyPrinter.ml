@@ -65,19 +65,19 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
         ^^ nest (pp_term t2))
   | Hole (nm, tp) -> !^nm ^-^ !^":" ^^ pp_term tp
   | TypeArrow (tp1, tp2) -> pp_term tp1 ^^ !^"->" ^^ pp_term tp2
-  | Case (t, var, tp, cases) ->
+  | Case (scrut, scrut_tp, var, tp, cases) ->
       let var_str =
         match var with
-        | Some (nm, var) -> !^" as " ^-^ !^nm ^-^ !^"@" ^-^ !^(string_of_var var)
-        | None -> !^""
-      in 
-      let tp_str =
-        match tp with
-        | Some tp -> !^" return" ^^ pp_term tp
+        | Some (nm, var) ->
+            !^" as " ^-^ !^nm ^-^ !^"@" ^-^ !^(string_of_var var)
         | None -> !^""
       in
+      let tp_str =
+        match tp with Some tp -> !^" return" ^^ pp_term tp | None -> !^""
+      in
       nest
-        (!^"match" ^^ pp_term t ^^ var_str ^^ tp_str ^^ !^" with" ^^ newline
+        (!^"match" ^^ pp_term scrut ^-^ !^":" ^^ pp_term scrut_tp ^^ var_str
+       ^^ tp_str ^^ !^" with" ^^ newline
         ^^ nest
              (List.fold_left
                 (fun acc ((pattern : Core.pattern), body) ->
@@ -147,16 +147,12 @@ let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
   | TermWithTypeAnno (t1, t2) ->
       nest (parens (pp_uterm t1 ^^ !^":" ^^ pp_uterm t2))
   | Case (t, var, tp, cases) ->
-    let var_str =
-      match var with
-      | Some (nm) -> !^" as " ^-^ !^nm
-      | None -> !^""
-    in 
-    let tp_str =
-      match tp with
-      | Some tp -> !^" return" ^^ pp_uterm tp
-      | None -> !^""
-    in
+      let var_str =
+        match var with Some nm -> !^" as " ^-^ !^nm | None -> !^""
+      in
+      let tp_str =
+        match tp with Some tp -> !^" return" ^^ pp_uterm tp | None -> !^""
+      in
       nest
         (!^"match" ^^ pp_uterm t ^^ var_str ^^ tp_str ^^ !^"with" ^-^ newline
         ^-^ nest
@@ -219,19 +215,19 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
         ^^ List.fold_left
              (fun acc term -> parens (pp_term term) ^^ acc)
              !^"" term_list)
-  | Case (t, var, tp, cases) ->
-    let var_str =
-      match var with
-      | Some (nm, var) -> !^" as " ^-^ !^nm ^-^ !^"@" ^-^ !^(string_of_var var)
-      | None -> !^""
-    in 
-    let tp_str =
-      match tp with
-      | Some tp -> !^" return" ^^ pp_term tp
-      | None -> !^""
-    in
+  | Case (scrut, scrut_tp, var, tp, cases) ->
+      let var_str =
+        match var with
+        | Some (nm, var) ->
+            !^" as " ^-^ !^nm ^-^ !^"@" ^-^ !^(string_of_var var)
+        | None -> !^""
+      in
+      let tp_str =
+        match tp with Some tp -> !^" return" ^^ pp_term tp | None -> !^""
+      in
       nest
-        (!^"match" ^^ pp_whnf t ^^ var_str ^^ tp_str ^^ !^"with" ^^ newline
+        (!^"match" ^^ pp_whnf scrut ^-^ !^":" ^^ pp_term scrut_tp ^^ var_str
+       ^^ tp_str ^^ !^"with" ^^ newline
         ^^ nest
              (List.fold_left
                 (fun acc ((pattern : Core.pattern), body) ->
