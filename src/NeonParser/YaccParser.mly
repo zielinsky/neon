@@ -37,7 +37,7 @@ let makeApp exp arg_list =
 %token BAR
 %token MATCH WITH WILDCARD AS RETURN
 %token IF THEN ELSE
-%token EQUALITY
+%token EQUALITY EQUALTYPE REFLTYPE
 %token <string> OPERATOR
 
 /* ------------------------------------------------------------------------- */
@@ -172,8 +172,9 @@ op_expr
 
 /*  equality, non-assoc */
 eq_expr
-: op_expr                                { $1 }
-| op_expr EQUALITY op_expr               { make (Equality ($1, $3)) }
+: op_expr                                      { $1 }
+| REFLTYPE op_expr                             { make (ReflType ($2)) }
+| op_expr EQUALITY op_expr EQUALTYPE op_expr   { make (EqType ($1, $3, $5)) }
 ;
 
 /*  type arrow, right-assoc */

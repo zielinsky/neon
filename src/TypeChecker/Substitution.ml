@@ -98,7 +98,8 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
       Case (scrutinee', scrutinee_tp', var', tp', matchPats')
   | IfExpr (t, b1, b2) ->
       IfExpr (substitute t sub, substitute b1 sub, substitute b2 sub)
-  | Equality (t1, t2) -> Equality (substitute t1 sub, substitute t2 sub)
+  | EqType (t1, t2, tp) -> EqType (substitute t1 sub, substitute t2 sub, substitute tp sub)
+  | ReflType t -> ReflType (substitute t sub)
 
 (** [substitute_whnf t sub] performs substitution on a term in weak head normal
     form (WHNF) [t] using the substitution map [sub].
@@ -121,7 +122,9 @@ let rec substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
       Product (nm, var, substitute tp sub, substitute body sub)
   | IfExpr (t, b1, b2) ->
       IfExpr (substitute_whnf t sub, substitute b1 sub, substitute b2 sub)
-  | Equality (t1, t2) -> Equality (substitute t1 sub, substitute t2 sub)
+  | EqType (t1, t2, tp) -> EqType (substitute t1 sub, substitute t2 sub, substitute tp sub)
+  | ReflType (t) ->
+      ReflType (substitute t sub)
 
 let rec substitute_in_telescope (ts : Core.telescope) (sub : sub_map) :
     Core.telescope =

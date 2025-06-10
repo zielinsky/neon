@@ -386,11 +386,26 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       | _ ->
           Error.create_infer_type_error pos
             "The condition's type must be a Bool type" term env)
-  | Equality (t1, t2) ->
-      let t1, t1_tp = infer_type env t1 in
-      let t2, t2_tp = infer_type env t2 in
-      if Equiv.equiv t1_tp t2_tp env.internal then (Equality (t1, t2), BoolType)
-      else (BoolLit false, BoolType)
+  | EqType (t1, t2, tp) ->
+      let tp, tp_of_tp = infer_type env tp in
+      begin match tp_of_tp with
+      | Type | Kind ->
+          let t1 = check_type env t1 tp in
+          let t2 = check_type env t2 tp in
+            (EqType (t1, t2, tp), Type)
+      | _ ->
+          Error.create_infer_type_error pos
+            "The type of EqType must be either Type or Kind" term env
+      end
+  | ReflType (t1) -> 
+      let t1, tp = infer_type env t1 in
+      begin match Whnf.to_whnf tp env.internal with
+      | Type | Kind ->
+          (ReflType t1, EqType (t1, t1, tp))
+      | _ ->
+          Error.create_infer_type_error pos
+            "The type of ReflType must be either Type or Kind" term env
+      end
 
 (** [check_type env term tp] checks whether the term [term] has the expected
     type [tp] in the context of environment [env].
@@ -407,7 +422,7 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
   match t with
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
   | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _
-  | ADTSig _ | ADTDecl _ | Case _ | Equality _ ->
+  | ADTSig _ | ADTDecl _ | Case _ | ReflType _ | EqType _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
       if Equiv.equiv tp t_tp env.internal then t

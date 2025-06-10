@@ -21,12 +21,15 @@ rule token = parse
   | "/*" { block_comment lexbuf;   token lexbuf }
   | '('  { YaccParser.BR_OPN    }
   | ')'  { YaccParser.BR_CLS    }
+  | ':' '>'  { YaccParser.EQUALTYPE     }
+  | ':'  { YaccParser.COLON     }
   | ':'  { YaccParser.COLON     }
   | "==" { YaccParser.EQUALITY }
   | '='  { YaccParser.EQUAL     }
   | ','  { YaccParser.COMMA     }
   | "in"  { YaccParser.IN     }
   | "=>" { YaccParser.ARROW     }
+  | "refl" { YaccParser.REFLTYPE }
   | "->" { YaccParser.TYPE_ARROW }
   | "Type" { YaccParser.TYPE }
   | "Kind" { YaccParser.KIND }

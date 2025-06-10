@@ -39,7 +39,8 @@ type term =
   | TypeArrow of tp * tp
   | Case of term * tp * (string * Var.t) option * tp option * branch list
   | IfExpr of term * term * term
-  | Equality of term * term
+  | EqType of term * term * tp
+  | ReflType of term
 
 and constructor_def = { cname : string; telescope : telescope }
 and telescope = Empty | Cons of string * Var.t * tp * telescope
@@ -63,7 +64,8 @@ type whnf =
   | Product of string * Var.t * tp * tp
   | Case of whnf * tp * (string * Var.t) option * tp option * branch list
   | IfExpr of whnf * term * term
-  | Equality of term * term
+  | EqType of term * term * tp
+  | ReflType of term
 
 let dataCName_of_string (s : string) : dataCName = s
 let typeCName_of_string (s : string) : typeCName = s

@@ -1,7 +1,7 @@
 let rec occurs_check_whnf (var : Core.Var.t) (whnf_term : Core.whnf) : bool =
   match whnf_term with
   | Type | Kind | IntType | StringType | BoolType | IntLit _ | StringLit _
-  | BoolLit _ | Equality _ ->
+  | BoolLit _ ->
       false
   | Neu (_, x, args) ->
       Core.Var.equal var x || List.exists (occurs_check_term var) args
@@ -22,11 +22,16 @@ let rec occurs_check_whnf (var : Core.Var.t) (whnf_term : Core.whnf) : bool =
   | IfExpr (t, b1, b2) ->
       occurs_check_whnf var t || occurs_check_term var b1
       || occurs_check_term var b2
+  | EqType (t1, t2, tp) -> 
+      occurs_check_term var t1 || occurs_check_term var t2
+      || occurs_check_term var tp
+  | ReflType t ->
+      occurs_check_term var t
 
 and occurs_check_term (var : Core.Var.t) (term : Core.term) : bool =
   match term with
   | Type | Kind | IntType | StringType | BoolType | IntLit _ | StringLit _
-  | BoolLit _ | Equality _ ->
+  | BoolLit _ ->
       false
   | Var (_, x) -> Core.Var.equal var x
   | Lambda (_, _, x_tp, body) ->
@@ -52,3 +57,8 @@ and occurs_check_term (var : Core.Var.t) (term : Core.term) : bool =
   | IfExpr (t, b1, b2) ->
       occurs_check_term var t || occurs_check_term var b1
       || occurs_check_term var b2
+  | EqType (t1, t2, tp) ->
+      occurs_check_term var t1 || occurs_check_term var t2
+      || occurs_check_term var tp
+  | ReflType t ->
+      occurs_check_term var t

@@ -29,7 +29,8 @@ and term_data =
   | ADTDecl of typeCName * telescope * constructor_def list
   | Case of term * string option * term option * branch list
   | IfExpr of term * term * term
-  | Equality of term * term
+  | EqType of term * term * term
+  | ReflType of term
 
 and constructor_def = { cname : dataCName; telescope : telescope }
 and telescope = Empty | Cons of string * term * telescope
