@@ -1,0 +1,4 @@
+let eqProof = refl 1 :> Int
+
+let result : Int = 
+  subst x. (fun (y : Int) => Int)(x) using eqProof in 7

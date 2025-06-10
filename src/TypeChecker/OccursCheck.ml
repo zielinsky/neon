@@ -25,8 +25,14 @@ let rec occurs_check_whnf (var : Core.Var.t) (whnf_term : Core.whnf) : bool =
   | EqType (t1, t2, tp) -> 
       occurs_check_term var t1 || occurs_check_term var t2
       || occurs_check_term var tp
-  | ReflType t ->
+  | Refl (t, tp) ->
       occurs_check_term var t
+        || occurs_check_term var tp
+  | Subst (_, x, t1, t2, t3) ->
+      Core.Var.equal var x
+      || occurs_check_term var t1
+      || occurs_check_whnf var t2
+      || occurs_check_term var t3
 
 and occurs_check_term (var : Core.Var.t) (term : Core.term) : bool =
   match term with
@@ -60,5 +66,11 @@ and occurs_check_term (var : Core.Var.t) (term : Core.term) : bool =
   | EqType (t1, t2, tp) ->
       occurs_check_term var t1 || occurs_check_term var t2
       || occurs_check_term var tp
-  | ReflType t ->
+  | Refl (t, tp) ->
       occurs_check_term var t
+        || occurs_check_term var tp
+  | Subst (_, x, t1, t2, t3) ->
+      Core.Var.equal var x
+      || occurs_check_term var t1
+      || occurs_check_term var t2
+      || occurs_check_term var t3

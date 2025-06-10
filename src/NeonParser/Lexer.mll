@@ -30,6 +30,9 @@ rule token = parse
   | "in"  { YaccParser.IN     }
   | "=>" { YaccParser.ARROW     }
   | "refl" { YaccParser.REFLTYPE }
+  | "subst" { YaccParser.SUBST }
+  | "." { YaccParser.DOT }
+  | "using" { YaccParser.USING }
   | "->" { YaccParser.TYPE_ARROW }
   | "Type" { YaccParser.TYPE }
   | "Kind" { YaccParser.KIND }

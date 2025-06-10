@@ -4,5 +4,5 @@ let eq (A : Type) (x : A) (y : A) =
 let subst_type = 
     forall (A: Type) (P: A -> Type) (x: A) (y: A) => eq(A,x,y) -> P(x) -> P(y)
 
-lemma subst : subst_type = 
+lemma mysubst : subst_type = 
     fun A P x y xy => xy(P)

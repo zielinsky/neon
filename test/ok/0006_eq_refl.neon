@@ -4,5 +4,5 @@ let eq (A : Type) (x : A) (y : A) =
 let refl_type = 
     forall (A: Type) (a: A) => eq(A, a, a)
 
-lemma refl : refl_type = 
+lemma myrefl : refl_type = 
     fun A x P px => px

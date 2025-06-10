@@ -37,7 +37,7 @@ let makeApp exp arg_list =
 %token BAR
 %token MATCH WITH WILDCARD AS RETURN
 %token IF THEN ELSE
-%token EQUALITY EQUALTYPE REFLTYPE
+%token EQUALITY EQUALTYPE REFLTYPE SUBST USING DOT
 %token <string> OPERATOR
 
 /* ------------------------------------------------------------------------- */
@@ -173,7 +173,7 @@ op_expr
 /*  equality, non-assoc */
 eq_expr
 : op_expr                                      { $1 }
-| REFLTYPE op_expr                             { make (ReflType ($2)) }
+| REFLTYPE op_expr EQUALTYPE op_expr           { make (Refl ($2, $4)) }
 | op_expr EQUALITY op_expr EQUALTYPE op_expr   { make (EqType ($1, $3, $5)) }
 ;
 
@@ -189,6 +189,7 @@ expression
 | LAMBDA functions                                                { $2 }
 | PRODUCT products                                                { $2 }
 | LET let_in                                                      { $2 }
+| SUBST VAR DOT expression USING expression IN expression         { make (Subst ($2, $4, $6, $8)) }
 | LEMMA VAR EQUAL expression IN expression                        { make (Lemma ($2, $4, $6)) }
 | MATCH expression WITH pattern_list                              { make (Case ($2, None, None, $4)) }
 | MATCH expression AS VAR WITH pattern_list                       { make (Case ($2, Some($4), None, $6)) }

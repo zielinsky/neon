@@ -31,7 +31,8 @@ type term =
   | Case of term * tp * (string * Var.t) option * tp option * branch list
   | IfExpr of term * term * term
   | EqType of term * term * tp
-  | ReflType of term
+  | Refl of term * tp
+  | Subst of string * Var.t * term * term * term
 
 and constructor_def = { cname : string; telescope : telescope }
 and telescope = Empty | Cons of string * Var.t * tp * telescope
@@ -56,7 +57,8 @@ type whnf =
   | Case of whnf * tp * (string * Var.t) option * tp option * branch list
   | IfExpr of whnf * term * term
   | EqType of term * term * tp
-  | ReflType of term
+  | Refl of term * tp
+  | Subst of string * Var.t * term * whnf * term
 
 val dataCName_of_string : string -> dataCName
 val typeCName_of_string : string -> typeCName

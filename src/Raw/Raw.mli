@@ -30,7 +30,8 @@ and term_data =
   | Case of term * string option * term option * branch list
   | IfExpr of term * term * term
   | EqType of term * term * term
-  | ReflType of term
+  | Refl of term * term
+  | Subst of string * term * term * term
 
 and constructor_def = { cname : dataCName; telescope : telescope }
 and telescope = Empty | Cons of string * term * telescope

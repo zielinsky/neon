@@ -98,7 +98,21 @@ let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.internal) :
           ^ Env.internal_env_to_string env)
       in
       Some true
-  | _ ->
+    | Refl (t1, t1_tp), Refl (t2, t2_tp) ->
+      (* Both terms are reflexive equalities *)
+      if equiv t1 t2 env && equiv t1_tp t2_tp env then
+        (* If the terms and their types are equivalent *)
+        Some true
+      else
+        None
+    | EqType (t1, t2, tp1), EqType (t3, t4, tp2) ->
+      (* Both terms are equality types *)
+      if equiv t1 t3 env && equiv t2 t4 env && equiv tp1 tp2 env then
+        (* If the terms and their types are equivalent *)
+        Some true
+      else
+        None
+      | _ ->
       (* Terms are not equivalent *)
       None
 

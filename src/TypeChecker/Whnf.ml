@@ -134,4 +134,9 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       | BoolLit b -> if b then to_whnf b1 env else to_whnf b2 env
       | _ -> IfExpr (t, b1, b2))
   | EqType (t1, t2, tp) -> EqType (t1, t2, tp)
-  | ReflType (t) -> ReflType (t)
+  | Refl (t, tp) -> Refl (t, tp)
+  | Subst (nm, var, t1, t2, t3) -> 
+    let t2 = to_whnf t2 env in
+    match t2 with
+    | Refl _ -> to_whnf t3 env
+    | _ ->  Subst (nm, var, t1, t2, t3)

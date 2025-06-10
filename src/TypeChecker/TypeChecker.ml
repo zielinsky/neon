@@ -397,15 +397,37 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
           Error.create_infer_type_error pos
             "The type of EqType must be either Type or Kind" term env
       end
-  | ReflType (t1) -> 
-      let t1, tp = infer_type env t1 in
-      begin match Whnf.to_whnf tp env.internal with
+  | Refl (t1, tp) -> 
+      let tp, tp_of_tp = infer_type env tp in
+      let t1 = check_type env t1 tp in
+      begin match tp_of_tp with
       | Type | Kind ->
-          (ReflType t1, EqType (t1, t1, tp))
+          (Refl (t1, tp), EqType (t1, t1, tp))
       | _ ->
           Error.create_infer_type_error pos
-            "The type of ReflType must be either Type or Kind" term env
+            "The type of Refl must be either Type or Kind" term env
       end
+  | Subst (x, t1, t2, t3) -> 
+    let t2, t2_tp = infer_type env t2 in
+    begin match Whnf.to_whnf t2_tp env.internal with
+    | EqType (a, b, t) ->  
+      let fresh_var = Env.add_to_env env x (Opaque(t)) in
+      let t1, t1_tp = infer_type env t1 in
+      (* let test = Core.App(t1_tp, Core.Var (x, fresh_var)) in *)
+      begin match Whnf.to_whnf t1_tp env.internal with
+      | Type | Kind -> 
+        let t3 = check_type env t3 (Substitution.substitute t1 (Substitution.singleton_sub_map fresh_var a)) in
+        let ret_type = Substitution.substitute t1 (Substitution.singleton_sub_map fresh_var b) in
+        let _ = Env.rm_from_env env x in
+        (Subst(x, fresh_var, t1, t2, t3), ret_type)
+      | _ -> 
+        Error.create_infer_type_error pos
+          "The type of Subst first argument must be either Type or Kind" term env;
+      end
+    | _ -> 
+      Error.create_infer_type_error pos
+        "The type of Subst must be an EqType" term env
+    end
 
 (** [check_type env term tp] checks whether the term [term] has the expected
     type [tp] in the context of environment [env].
@@ -422,7 +444,7 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
   match t with
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
   | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _
-  | ADTSig _ | ADTDecl _ | Case _ | ReflType _ | EqType _ ->
+  | ADTSig _ | ADTDecl _ | Case _ | Refl _ | EqType _ | Subst _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
       if Equiv.equiv tp t_tp env.internal then t

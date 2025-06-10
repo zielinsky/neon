@@ -99,7 +99,15 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
   | IfExpr (t, b1, b2) ->
       IfExpr (substitute t sub, substitute b1 sub, substitute b2 sub)
   | EqType (t1, t2, tp) -> EqType (substitute t1 sub, substitute t2 sub, substitute tp sub)
-  | ReflType t -> ReflType (substitute t sub)
+  | Refl (t, tp) -> Refl (substitute t sub, substitute tp sub)
+  | Subst (nm, var, t1, t2, t3) ->
+      let y = Env.fresh_var () in
+      Subst
+        ( nm,
+          y,
+          substitute t1 (add_to_sub_map var (Core.Var (nm, y)) sub),
+          substitute t2 (add_to_sub_map var (Core.Var (nm, y)) sub),
+          substitute t3 (add_to_sub_map var (Core.Var (nm, y)) sub))
 
 (** [substitute_whnf t sub] performs substitution on a term in weak head normal
     form (WHNF) [t] using the substitution map [sub].
@@ -123,8 +131,16 @@ let rec substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
   | IfExpr (t, b1, b2) ->
       IfExpr (substitute_whnf t sub, substitute b1 sub, substitute b2 sub)
   | EqType (t1, t2, tp) -> EqType (substitute t1 sub, substitute t2 sub, substitute tp sub)
-  | ReflType (t) ->
-      ReflType (substitute t sub)
+  | Refl (t, tp) ->
+      Refl (substitute t sub, substitute tp sub)
+  | Subst (nm, var, t1, t2, t3) ->
+      let y = Env.fresh_var () in
+      Subst
+        ( nm,
+          y,
+          substitute t1 (add_to_sub_map var (Core.Var (nm, y)) sub),
+          substitute_whnf t2 (add_to_sub_map var (Core.Var (nm, y)) sub),
+          substitute t3 (add_to_sub_map var (Core.Var (nm, y)) sub))
 
 let rec substitute_in_telescope (ts : Core.telescope) (sub : sub_map) :
     Core.telescope =
