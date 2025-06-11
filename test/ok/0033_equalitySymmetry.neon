@@ -1,3 +1,3 @@
 let (sym : forall (T:Type) (a: T) (b: T) => (a == b :> T) -> (b == a :> T)) T a b p = 
-  subst x. (fun (x : T) => (x == a :> T))(x) using p in
+  subst x. x == a :> T using p in
     refl a :> T
