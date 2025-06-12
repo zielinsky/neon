@@ -1,3 +1,0 @@
-(library
- (name parser)
- (libraries parserAst errors lexer yaccParser))

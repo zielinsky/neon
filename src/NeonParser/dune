@@ -1,0 +1,7 @@
+(library
+ (name neonParser)
+ (libraries raw))
+
+(ocamllex Lexer)
+
+(ocamlyacc YaccParser)

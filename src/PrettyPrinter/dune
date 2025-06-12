@@ -1,0 +1,5 @@
+(library
+ (name prettyPrinter)
+ (flags
+  (-warn-error -A))
+ (libraries core raw smart-print))

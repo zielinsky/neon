@@ -1,0 +1,8 @@
+let eq (A : Type) (x : A) (y : A) = 
+    forall P : (A -> Type) => P(x) -> P(y)
+
+let refl_type = 
+    forall (A: Type) (a: A) => eq(A, a, a)
+
+lemma (myrefl : refl_type) A x = 
+    fun P px => px

@@ -1,0 +1,13 @@
+(executable
+ (public_name neon)
+ (name main)
+ (libraries
+  core
+  env
+  neonParser
+  typeChecker
+  prettyPrinter
+  smart-print
+  unix
+  evaluator
+  builtIn))

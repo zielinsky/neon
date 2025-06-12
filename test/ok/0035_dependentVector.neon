@@ -1,0 +1,25 @@
+data Nat =
+| Zero
+| Succ (k : Nat)
+
+data Vec (A : Type) (n : Nat) =
+| VNil (p : n == Zero :> Nat)
+| VCons (m  : Nat)
+        (p  : n == Succ(m) :> Nat)
+        (hd : A)
+        (tl : Vec(A , m))
+
+let two : Vec(Int , Succ(Succ(Zero))) =
+  VCons( Int
+       , Succ(Succ(Zero)) 
+       , Succ(Zero) 
+       , (refl (Succ(Succ(Zero))) :> Nat)
+       , 1
+       , VCons( Int       
+              , Succ(Zero)  
+              , Zero        
+              , (refl (Succ(Zero)) :> Nat)
+              , 2
+              , VNil( Int
+                    , Zero
+                    , (refl Zero :> Nat))))

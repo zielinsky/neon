@@ -1,0 +1,8 @@
+let bar : Bool -> Type = fun b => if b then Int else String
+let baz : forall (b: Bool) => bar(b)
+    = fun b => if b then 3 else "a"
+
+let x = baz(true)
+let y = baz(false)
+
+let fooz (n: Int) = if eq(n, 0) then Int else String

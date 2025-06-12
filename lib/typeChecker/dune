@@ -1,3 +1,0 @@
-(library
- (name typeChecker)
- (libraries ast env parserAst prettyPrinter errors))

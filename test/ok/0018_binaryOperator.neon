@@ -1,0 +1,3 @@
+let (+) = _builtin_add
+
+let x = 5 + 3 + 4

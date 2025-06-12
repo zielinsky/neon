@@ -1,0 +1,19 @@
+data Flag =
+  | On  (n:Int)
+  | Off (n:Int)
+
+
+let flagTy (f: Flag) = 
+    match f with
+    | On(n)   -> Int
+    | Off(n)  -> Bool
+
+
+let choose (f: Flag) = 
+    match f as x return flagTy(x) with
+    | On(n)   -> 0
+    | Off(n)  -> true
+
+let x : Int = choose (On(4))
+
+let y : Bool = choose (Off(42))

@@ -1,0 +1,3 @@
+data Vec (A: Type) (n: Int) =
+| vnil : Vec(A, 0)
+| vcons (head: A) (tail: Vec(A, n)) : Vec(A, n+1)

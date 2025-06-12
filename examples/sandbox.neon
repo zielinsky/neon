@@ -1,0 +1,5 @@
+let (trans : forall (T:Type) (a: T) (b: T) (c: T) =>
+             (a == b :> T) -> (b == c :> T) -> (a == c :> T))
+    T a b c p q =
+  subst x. (fun (x : T) => (a == x :> T))(x) using q in
+    p

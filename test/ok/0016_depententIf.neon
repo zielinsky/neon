@@ -1,0 +1,13 @@
+let foo : Int -> Type = fun n => if _builtin_eq(n, 0) then Int else String
+
+let x = foo(0)
+let y = foo(1)
+
+let bar : Bool -> Type = fun b => if b then Int else String
+let baz : forall (b: Bool) => bar(b)
+    = fun b => if b then 3 else "a"
+
+let x = baz(true)
+let y = baz(false)
+
+let fooz (n: Int) = if _builtin_eq(n, 0) then Int else String

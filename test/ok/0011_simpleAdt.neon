@@ -1,0 +1,3 @@
+data Option (A: Type) = 
+| Some (x: A)
+| None

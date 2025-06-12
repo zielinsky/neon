@@ -1,0 +1,35 @@
+type fname = string
+type input = string
+
+let run_parser parse (lexbuf : Lexing.lexbuf) =
+  try parse Lexer.token lexbuf
+  with Parsing.Parse_error ->
+    let pos =
+      {
+        Raw.start = lexbuf.lex_start_p;
+        Raw.length = lexbuf.lex_curr_p.pos_cnum - lexbuf.lex_start_p.pos_cnum;
+      }
+    in
+    raise (Error.Parse_error (pos, UnexpectedToken (Lexing.lexeme lexbuf)))
+
+let parse_file fname =
+  match open_in fname with
+  | chan -> (
+      match
+        let lexbuf = Lexing.from_channel chan in
+        lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = fname };
+        run_parser YaccParser.program lexbuf
+      with
+      | result ->
+          close_in chan;
+          result
+      | exception exn ->
+          close_in_noerr chan;
+          raise exn)
+  | exception Sys_error message ->
+      raise (Error.Cannot_open_file { fname; message })
+
+let parse_string input =
+  let lexbuf = Lexing.from_string input in
+  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = "<repl>" };
+  run_parser YaccParser.program lexbuf

@@ -1,0 +1,11 @@
+data List (A: Type) =
+| Nil
+| Cons (x: A) (xs: List(A))
+
+let id (A: Type) (xs: List(A)) = xs
+
+let nums = Cons(Int, 1, Cons(Int, 2, Nil(Int)))
+
+let x = match nums with
+| Cons(A, x, xs) -> fun (y: A) => x
+| Nil(A) -> fun (y: A) => y

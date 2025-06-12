@@ -1,0 +1,19 @@
+let foo (x: Int) = 42
+
+let int_id_type = Int -> Int
+
+let (int_id : int_id_type) x = x
+
+let id_type = forall (A: Type) => A -> A
+
+let id : id_type = fun A x => x
+
+let (+) = _builtin_add
+
+let bar (x: Int) (y: Int) (z: Int) =
+    let add (x: Int) (y: Int) = x + y in
+        x + y + z
+
+let y = int_id(42)
+
+let z = id(String, "A")

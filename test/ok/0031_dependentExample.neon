@@ -1,0 +1,13 @@
+data MyBool =
+| True
+| False
+
+let depType (n: MyBool) = match n with
+    | True  -> Int
+    | False -> String
+
+data DepPair (A: Type) (P: (A -> Type)) =
+| MakeDepPair (x: A) (y: P(x))
+
+let depIntPair = MakeDepPair(MyBool, depType, True, 42)
+let depStringPair = MakeDepPair(MyBool, depType, False, "abc")

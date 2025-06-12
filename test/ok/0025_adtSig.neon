@@ -1,0 +1,5 @@
+data Empty
+
+data Option (A: Type)
+
+data Sigma (A: Type) (P: (A -> Type))
