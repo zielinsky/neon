@@ -112,7 +112,7 @@ let rec equiv_optional (t1 : Core.term) (t2 : Core.term) (env : Env.internal) :
         Some true
       else
         None
-      | _ ->
+    | _ ->
       (* Terms are not equivalent *)
       None
 

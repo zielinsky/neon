@@ -428,22 +428,55 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       Error.create_infer_type_error pos
         "The type of Subst must be an EqType" term env
     end
-  | FixDef(nm, arg, arg_tp, body_tp, body) ->
+  | FixDef(nm, dep_args, arg, arg_tp, pure_args, body_tp, body) ->
+      let dep_args = List.map(
+        fun (nm, tp) ->
+          let tp, tp_of_tp = infer_type env tp in
+          match tp_of_tp with
+          | Type | Kind -> 
+              let fresh_var = Env.add_to_env env nm (Opaque tp) in
+              (nm, fresh_var, tp)
+          | _ ->
+              Error.create_infer_type_error pos
+                "The type of FixDef dependent arguments must be either Type or Kind"
+                term env
+      ) dep_args in
       let arg_tp, arg_tp_of_tp = infer_type env arg_tp in
+      let pure_args = List.map(
+        fun (nm, tp) ->
+          let tp, tp_of_tp = infer_type env tp in
+          match tp_of_tp with
+          | Type | Kind ->  (nm, tp)
+          | _ ->
+              Error.create_infer_type_error pos
+                "The type of FixDef pure arguments must be either Type or Kind"
+                term env
+      ) pure_args in
       let body_tp, body_tp_of_tp = infer_type env body_tp in
+      let pure_args = List.map (fun (nm, tp) -> (nm, Env.add_to_env env nm (Opaque tp), tp)) pure_args in
       begin match arg_tp_of_tp, body_tp_of_tp with
       | (Type | Kind), (Type | Kind) ->
-          let nm_fresh_var = Env.add_to_env env nm (Opaque (TypeArrow (arg_tp, body_tp))) in
           let arg_fresh_var = Env.add_to_env env arg (Opaque arg_tp) in
+          let fix_pure_args_tp = 
+            List.fold_left (fun acc (_, _, tp) -> Core.TypeArrow (tp, acc)) body_tp (List.rev ((arg, arg_fresh_var, arg_tp) :: pure_args)) in
+          let fix_tp = 
+            List.fold_left (fun (acc: Core.term) (nm, var, tp) -> Core.Product(nm, var, tp, acc)) fix_pure_args_tp (List.rev dep_args) in
+          let nm_fresh_var = Env.add_to_env env nm (Opaque fix_tp) in
           let body = check_type env body body_tp in
           let _ = Env.rm_from_env env nm in
           let _ = Env.rm_from_env env arg in
-
+          let _ = List.iter (fun (nm, _, _) -> Env.rm_from_env env nm) dep_args in
+          let _ = List.iter (fun (nm, _, _) -> Env.rm_from_env env nm) pure_args in
           let nm_fresh_var' = Env.fresh_var () in
           let body = Substitution.substitute body
             (Substitution.singleton_sub_map nm_fresh_var (Core.Var (nm, nm_fresh_var'))) in
-          let _ = Env.add_to_env_with_var env nm (Transparent(Lambda(arg, arg_fresh_var, arg_tp, body), (TypeArrow (arg_tp, body_tp)))) nm_fresh_var' in
-          (Lambda(arg, arg_fresh_var, arg_tp, body), TypeArrow (arg_tp, body_tp))
+          let fix_pure_args_body = 
+            List.fold_left (fun (acc: Core.term) (nm, var, tp) -> Core.Lambda(nm, var, tp, acc)) body (List.rev ((arg, arg_fresh_var, arg_tp) :: pure_args)) in
+          let fix_body = List.fold_left (
+            fun (acc: Core.term)(nm, var, tp) -> Core.Lambda(nm, var, tp, acc)
+          ) fix_pure_args_body (List.rev dep_args) in
+          let _ = Env.add_to_env_with_var env nm (Transparent(fix_body, fix_tp)) nm_fresh_var' in
+          (fix_body, fix_tp)
       | _ ->
           Error.create_infer_type_error pos
             "The type of FixDef arguments must be either Type or Kind" term env

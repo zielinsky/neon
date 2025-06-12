@@ -6,14 +6,13 @@ data List (A: Type) =
 | Nil
 | Cons (x: A) (tl: List(A))
 
-fix map (xs: List(Int)) : ((Int -> Int) -> Option(List(Int))) = 
-  fun (f: Int -> Int) =>
+fix map (A: Type) {xs: List(A)} (f: A -> A) : Option(List(A)) = 
     match xs with
     | Nil(A)              -> None(List(A))
     | Cons(A, elem, tail) -> Some(List(A), Cons(A, f(elem), 
-      match map(tail)(f) with
+      match map(A)(tail)(f) with
       | None(B)    -> Nil(A)
       | Some(B, x) -> x
     ))
 
-let test = map(Cons(Int, 10, Cons(Int, 20, Nil(Int))))(fun (x: Int) => x * 15)
+let test = map(Int)(Cons(Int, 10, Cons(Int, 20, Nil(Int))))(fun (x: Int) => x * 15)

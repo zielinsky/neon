@@ -6,7 +6,9 @@ data List (A: Type) =
 | Nil
 | Cons (x: A) (tl: List(A))
 
-fix map (xs: List(Int)) : ((Int -> Int) -> Option(List(Int))) = 
+let (*) = _builtin_mul
+
+fix map {xs: List(Int)} : ((Int -> Int) -> Option(List(Int))) = 
   fun (f: Int -> Int) =>
     match xs with
     | Nil(A)              -> None(List(A))

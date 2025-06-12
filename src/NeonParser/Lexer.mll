@@ -21,6 +21,8 @@ rule token = parse
   | "/*" { block_comment lexbuf;   token lexbuf }
   | '('  { YaccParser.BR_OPN    }
   | ')'  { YaccParser.BR_CLS    }
+  | '{'  { YaccParser.BR_OPN2    }
+  | '}'  { YaccParser.BR_CLS2    }
   | ':' '>'  { YaccParser.EQUALTYPE     }
   | ':'  { YaccParser.COLON     }
   | ':'  { YaccParser.COLON     }

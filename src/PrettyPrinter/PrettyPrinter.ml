@@ -191,10 +191,28 @@ let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
       nest
         (!^"subst" ^^ !^nm ^^ !^"(" ^^ pp_uterm t1 ^-^ !^"," ^^ pp_uterm t2
        ^-^ !^"," ^^ pp_uterm t3 ^-^ !^")")
-  | FixDef(nm, arg, arg_tp, body_tp, body) ->
+  | FixDef(nm, dep_args, arg, arg_tp, pure_args, body_tp, body) ->
+      let pp_dep_args =
+        List.fold_left
+          (fun acc (nm, tp) ->
+            acc ^-^ !^nm ^-^ !^":" ^^ pp_uterm tp ^-^ !^",")
+          !^"" dep_args
+      in
+      let pp_pure_args =
+        List.fold_left
+          (fun acc (nm, tp) ->
+            acc ^-^ !^nm ^-^ !^":" ^^ pp_uterm tp ^-^ !^",")
+          !^"" pure_args
+      in
       nest
-        (!^"fix" ^^ !^nm ^-^ !^"(" ^-^ !^arg ^-^ !^":" ^^ pp_uterm arg_tp
-        ^-^ !^")" ^^ !^"(" ^-^ pp_uterm body_tp ^-^ !^")" ^^ !^"=>" ^^ pp_uterm body)
+        (!^"fix" ^^ !^nm
+        ^^ !^"(" ^-^ pp_dep_args ^-^ !^")"
+        ^^ !^arg ^-^ !^":" ^^ pp_uterm arg_tp
+        ^^ !^"("
+        ^-^ pp_pure_args
+        ^-^ !^")"
+        ^^ !^":" ^^ pp_uterm body_tp
+        ^^ !^"=" ^^ pp_uterm body)
 
 and pp_telescope (ts : Raw.telescope) : SmartPrint.t =
   match ts with

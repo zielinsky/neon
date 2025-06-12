@@ -30,7 +30,7 @@ let makeApp exp arg_list =
 %token <string> STRING_LIT
 %token <bool>   BOOL_LIT
 %token <string> VAR HOLE ADTCON
-%token BR_OPN BR_CLS
+%token BR_OPN BR_CLS BR_OPN2 BR_CLS2
 %token ASTERISK COLON EQUAL
 %token EOF
 %token ADTDEF
@@ -202,13 +202,16 @@ expression
 /*  LET / LEMMA / OPERATOR-LET / FIX definitions                                    */
 /* ========================================================================= */
 
+fix_args
+  :                                             { [] }
+  | BR_OPN VAR COLON expression BR_CLS fix_args
+                                                { ($2, $4) :: $6 }
+;
+
+
 fix_def
-: VAR                           /* f            */
-  BR_OPN VAR COLON expression   /* (x : A)      */
-  BR_CLS
-  COLON expression              /* : B          */
-  EQUAL expression              /* := body      */
-    { make (FixDef ($1, $3, $5, $8, $10)) }
+: VAR fix_args BR_OPN2 VAR COLON expression BR_CLS2 fix_args COLON expression EQUAL expression
+                                              { make (FixDef ($1, $2, $4, $6, $8, $10, $12)) }
 ;
 
 let_args
