@@ -38,6 +38,7 @@ rule token = parse
   | "Kind" { YaccParser.KIND }
   | "fun" { YaccParser.LAMBDA }
   | "forall" { YaccParser.PRODUCT }
+  | "fix" { YaccParser.FIX }
   | "let" { YaccParser.LET }
   | "lemma" { YaccParser.LEMMA }
   | "?" var_char* as x { YaccParser.HOLE x }

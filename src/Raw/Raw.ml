@@ -32,6 +32,11 @@ and term_data =
   | EqType of term * term * term
   | Refl of term * term
   | Subst of string * term * term * term
+  | FixDef of string                (* nazwa funkcji        *)
+             * string               (* nazwa parametru      *)
+             * term                 (* typ parametru        *)
+             * term                 (* typ wyniku           *)
+             * term                 (* ciało                *)
 
 and constructor_def = { cname : dataCName; telescope : telescope }
 and telescope = Empty | Cons of string * term * telescope

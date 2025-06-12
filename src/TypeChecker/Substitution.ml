@@ -118,8 +118,44 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
 let rec substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
   match t with
   | Type | Kind | IntType | StringType | BoolType | IntLit _ | StringLit _
-  | BoolLit _ | Case _ ->
+  | BoolLit _ ->
       t
+  | Case (scrutinee, scrutinee_tp, var, tp, matchPats) ->
+        let scrutinee' = substitute_whnf scrutinee sub in
+        let scrutinee_tp' = substitute scrutinee_tp sub in
+        let var_sub, var' =
+          match var with
+          | Some (nm, var) ->
+              let fresh_var = Env.fresh_var () in
+              ( singleton_sub_map var (Core.Var (nm, fresh_var)),
+                Some (nm, fresh_var) )
+          | None -> (empty_sub_map, None)
+        in
+        let tp' =
+          match tp with
+          | Some tp -> Some (substitute tp (merge_sub_maps sub var_sub))
+          | None -> None
+        in
+        let matchPats' =
+          List.map
+            (fun (pattern, t) ->
+              match pattern with
+              | Core.PatWild ->
+                  (Core.PatWild, substitute t (merge_sub_maps sub var_sub))
+              | Core.PatCon (con_nm, vars) ->
+                  let sub, rev_vars =
+                    List.fold_left
+                      (fun (sub_map, new_vars) (nm, var) ->
+                        let fresh_var = Env.fresh_var () in
+                        ( add_to_sub_map var (Core.Var (nm, fresh_var)) sub_map,
+                          (nm, fresh_var) :: new_vars ))
+                      (sub, []) vars
+                  in
+                  ( Core.PatCon (con_nm, List.rev rev_vars),
+                    substitute t (merge_sub_maps sub var_sub) ))
+            matchPats
+        in
+        Case (scrutinee', scrutinee_tp', var', tp', matchPats')
   | Neu (nm, var, term_list) ->
       Neu (nm, var, List.map (fun t -> substitute t sub) term_list)
   | Neu_with_Hole (nm, tp, term_list) ->

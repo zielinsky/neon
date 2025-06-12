@@ -24,7 +24,7 @@ let makeApp exp arg_list =
 /* ------------------------------------------------------------------------- */
 /*  Tokens                                                                   */
 /* ------------------------------------------------------------------------- */
-%token TYPE KIND LAMBDA PRODUCT APP TERMWITHYPEANNO LET LEMMA EQUAL IN ARROW TYPE_ARROW COMMA
+%token TYPE KIND LAMBDA PRODUCT APP TERMWITHYPEANNO LET LEMMA EQUAL IN ARROW TYPE_ARROW COMMA FIX
 %token INT_TYPE STRING_TYPE BOOL_TYPE
 %token <int>    INT_LIT
 %token <string> STRING_LIT
@@ -199,8 +199,17 @@ expression
 ;
 
 /* ========================================================================= */
-/*  LET / LEMMA / OPERATOR-LET definitions                                    */
+/*  LET / LEMMA / OPERATOR-LET / FIX definitions                                    */
 /* ========================================================================= */
+
+fix_def
+: VAR                           /* f            */
+  BR_OPN VAR COLON expression   /* (x : A)      */
+  BR_CLS
+  COLON expression              /* : B          */
+  EQUAL expression              /* := body      */
+    { make (FixDef ($1, $3, $5, $8, $10)) }
+;
 
 let_args
 : VAR EQUAL expression                                    { make (Lambda ($1, None, $3)) }
@@ -254,6 +263,7 @@ lemma_def
 expression_definition
 : LET let_def   { $2 }
 | LEMMA lemma_def { $2 }
+| FIX fix_def     { $2 }
 | adt_def         { $1 }
 ;
 

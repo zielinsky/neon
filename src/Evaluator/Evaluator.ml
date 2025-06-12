@@ -10,6 +10,7 @@ let find_matching_matchPat (nm : string) (patterns : Core.branch list) :
 (** [whnf_to_nf w env] fully normalizes a [whnf] node [w] in context [env],
     producing a [term] in normal form. *)
 let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
+  (* Print the current term being normalized for debugging purposes. *)
   match w with
   | Type ->
       (* Already a normal form. *)
@@ -54,59 +55,15 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
       let nf_args = List.map (fun arg -> eval arg env) (List.rev rev_args) in
       let hole = Core.Hole (nm, nf_tp) in
       List.fold_left (fun acc arg -> Core.App (acc, arg)) hole nf_args
-  | Lambda (nm, _, tp, body) ->
-      (* Generate a fresh variable identifier *)
-      let fresh_var = Env.fresh_var () in
-      (* Add the definition of 'tp' to the environment with the fresh variable *)
-      Env.add_to_internal_env env fresh_var (Opaque tp);
-      (* Evaluate type and body *)
-      (* let nf_tp =
-        eval
-          (TypeChecker.Substitution.substitute tp
-             (TypeChecker.Substitution.singleton_sub_map x
-                (Core.Var (nm, fresh_var))))
-          env
-      in
-      let nf_body =
-        eval
-          (TypeChecker.Substitution.substitute body
-             (TypeChecker.Substitution.singleton_sub_map x
-                (Core.Var (nm, fresh_var))))
-          env
-      in *)
-      (* Remove the fresh variable from the environment *)
-      Env.rm_from_internal_env env fresh_var;
-      (* Return the normalized lambda *)
-      Lambda (nm, fresh_var, tp, body)
+  | Lambda (nm, x, tp, body) ->
+      Lambda (nm, x, tp, body)
   | Product (nm, x, tp, body) ->
       if Core.Var.equal x (Core.Var.of_int (-1)) then
         let nf_tp = eval tp env in
         let nf_body = eval body env in
         TypeArrow (nf_tp, nf_body)
       else
-        (* Generate a fresh variable identifier *)
-        let fresh_var = Env.fresh_var () in
-        (* Add the definition of 'tp' to the environment with the fresh variable *)
-        Env.add_to_internal_env env fresh_var (Opaque tp);
-        (* Evaluate type and body *)
-        (* let nf_tp =
-          eval
-            (TypeChecker.Substitution.substitute tp
-               (TypeChecker.Substitution.singleton_sub_map x
-                  (Core.Var (nm, fresh_var))))
-            env
-        in
-        let nf_body =
-          eval
-            (TypeChecker.Substitution.substitute body
-               (TypeChecker.Substitution.singleton_sub_map x
-                  (Core.Var (nm, fresh_var))))
-            env
-        in *)
-        (* Remove the fresh variable from the environment *)
-        Env.rm_from_internal_env env fresh_var;
-        (* Return the normalized product *)
-        Product (nm, fresh_var, tp, body)
+        Product (nm, x, tp, body)
   | Case (scrutinee, _, _, _, patterns) -> (
       match scrutinee with
       | Neu (nm, _, rev_args) -> (
@@ -114,22 +71,15 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
           match pattern with
           | PatWild -> eval term env
           | PatCon (_, args) ->
-              let bindings =
-                Env.add_pattern_vars_to_internal_env args (List.rev rev_args)
-                  env
-              in
               let sub_map =
                 List.fold_left
-                  (fun acc (nm, var, fresh_var) ->
-                    TypeChecker.Substitution.add_to_sub_map var
-                      (Var (nm, fresh_var))
-                      acc)
-                  TypeChecker.Substitution.empty_sub_map bindings
+                  (fun acc ((_, var), term) ->
+                    TypeChecker.Substitution.add_to_sub_map var term acc)
+                  TypeChecker.Substitution.empty_sub_map (List.combine args (List.rev rev_args))
               in
               let nf_term =
                 eval (TypeChecker.Substitution.substitute term sub_map) env
               in
-              let _ = Env.rm_pattern_vars_from_internal_env bindings env in
               nf_term)
       | _ ->
           failwith "RUNTIME ERROR while evaluating Case, scrutinee is not Neu.")
@@ -142,9 +92,10 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
   | Refl (t, tp) -> Refl (t, tp)
   | Subst (nm, var, t1, t2, t3) -> 
     let t2 = whnf_to_nf t2 env in
-    match t2 with
+    begin match t2 with
     | Refl _ -> eval t3 env
     | _ ->  Subst (nm, var, t1, t2, t3)
+    end
 
 and eval (t : Core.term) (env : Env.internal) : Core.term =
   let w = TypeChecker.Whnf.to_whnf t env in

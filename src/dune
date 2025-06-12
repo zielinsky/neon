@@ -10,4 +10,5 @@
   smart-print
   unix
   evaluator
-  builtIn))
+  builtIn
+  guard))

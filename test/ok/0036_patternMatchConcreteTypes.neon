@@ -1,0 +1,10 @@
+data List (A: Type) = 
+| Nil
+| Cons (x: A) (tl: List(A))
+
+let (map: List(Int) -> List(Int)) (xs: List(Int)) = 
+  match xs with
+  | Nil(A)              -> Nil(A)
+  | Cons(A, elem, tail) -> Cons(A, elem, tail)
+
+let test = map(Nil(Int))

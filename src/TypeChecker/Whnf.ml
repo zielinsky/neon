@@ -91,18 +91,12 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
               match pattern with
               | PatWild -> failwith "Impossible"
               | PatCon (_, args) ->
-                  let bindings =
-                    Env.add_pattern_vars_to_internal_env args
-                      (List.rev rev_args) env
-                  in
-                  let sub_map =
-                    List.fold_left
-                      (fun acc (nm, var, fresh_var) ->
-                        Substitution.add_to_sub_map var
-                          (Var (nm, fresh_var))
-                          acc)
-                      Substitution.empty_sub_map bindings
-                  in
+                let sub_map =
+                  List.fold_left
+                    (fun acc ((_, var), term) ->
+                      Substitution.add_to_sub_map var term acc)
+                    Substitution.empty_sub_map (List.combine args (List.rev rev_args))
+                in
                   let term = Substitution.substitute term sub_map in
 
                   let whnf_term =
@@ -124,7 +118,6 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
                         term_whnf
                     | None -> to_whnf term env
                   in
-                  let _ = Env.rm_pattern_vars_from_internal_env bindings env in
                   whnf_term)
           | None -> Case (scrut_whnf, scrut_tp, maybe_var, tp, branches))
       | _ -> Case (scrut_whnf, scrut_tp, maybe_var, tp, branches))
@@ -137,6 +130,7 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
   | Refl (t, tp) -> Refl (t, tp)
   | Subst (nm, var, t1, t2, t3) -> 
     let t2 = to_whnf t2 env in
-    match t2 with
+    begin match t2 with
     | Refl _ -> to_whnf t3 env
     | _ ->  Subst (nm, var, t1, t2, t3)
+    end

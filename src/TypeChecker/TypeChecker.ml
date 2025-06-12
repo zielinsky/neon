@@ -428,6 +428,26 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       Error.create_infer_type_error pos
         "The type of Subst must be an EqType" term env
     end
+  | FixDef(nm, arg, arg_tp, body_tp, body) ->
+      let arg_tp, arg_tp_of_tp = infer_type env arg_tp in
+      let body_tp, body_tp_of_tp = infer_type env body_tp in
+      begin match arg_tp_of_tp, body_tp_of_tp with
+      | (Type | Kind), (Type | Kind) ->
+          let nm_fresh_var = Env.add_to_env env nm (Opaque (TypeArrow (arg_tp, body_tp))) in
+          let arg_fresh_var = Env.add_to_env env arg (Opaque arg_tp) in
+          let body = check_type env body body_tp in
+          let _ = Env.rm_from_env env nm in
+          let _ = Env.rm_from_env env arg in
+
+          let nm_fresh_var' = Env.fresh_var () in
+          let body = Substitution.substitute body
+            (Substitution.singleton_sub_map nm_fresh_var (Core.Var (nm, nm_fresh_var'))) in
+          let _ = Env.add_to_env_with_var env nm (Transparent(Lambda(arg, arg_fresh_var, arg_tp, body), (TypeArrow (arg_tp, body_tp)))) nm_fresh_var' in
+          (Lambda(arg, arg_fresh_var, arg_tp, body), TypeArrow (arg_tp, body_tp))
+      | _ ->
+          Error.create_infer_type_error pos
+            "The type of FixDef arguments must be either Type or Kind" term env
+      end
 
 (** [check_type env term tp] checks whether the term [term] has the expected
     type [tp] in the context of environment [env].
@@ -444,7 +464,7 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
   match t with
   | Type | Var _ | App _ | Product _ | TermWithTypeAnno _ | TypeArrow _
   | IntType | StringType | BoolType | IntLit _ | StringLit _ | BoolLit _
-  | ADTSig _ | ADTDecl _ | Case _ | Refl _ | EqType _ | Subst _ ->
+  | ADTSig _ | ADTDecl _ | Case _ | Refl _ | EqType _ | Subst _ | FixDef _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
       if Equiv.equiv tp t_tp env.internal then t
@@ -588,6 +608,9 @@ and check_pattern_matching_branches (env : Env.env) (ps : Raw.branch list)
       let tsD_all_vars = subs_and_add_tsD_to_env env tsD argsD in
       let ts_all_vars = tsT_all_vars @ tsD_all_vars in
       let term, tp' = infer_type env term in
+      let tp' = Substitution.substitute tp' 
+          (Substitution.of_list_sub_map
+             (List.combine (List.map (fun (_,(_, var)) -> var) tsT_all_vars) tsT_types)) in 
       let ts_names, ts_vars = List.split (snd (List.split ts_all_vars)) in
       (* We need to remove the names from the env as the branches could over shadow each others variables but
        we need to keep the internal representation in order to check if all branches have matching types *)
