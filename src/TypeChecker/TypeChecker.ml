@@ -464,7 +464,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
           let nm_fresh_var = Env.add_to_env env nm (Opaque fix_tp) in
           let body = check_type env body body_tp in
 
-          let _ = Guard.check_totality body arg_fresh_var env.internal in 
+          let _ = Guard.check_totality nm_fresh_var arg_fresh_var (List.length dep_args) body env.internal in 
 
           let _ = Env.rm_from_env env nm in
           let _ = Env.rm_from_env env arg in
@@ -478,6 +478,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
           let fix_body = List.fold_left (
             fun (acc: Core.term)(nm, var, tp) -> Core.Lambda(nm, var, tp, acc)
           ) fix_pure_args_body (List.rev dep_args) in
+          (* TODO: Refresh variable and substitute *)
           let _ = Env.add_to_env_with_var env nm (Transparent(fix_body, fix_tp)) nm_fresh_var' in
           (fix_body, fix_tp)
       | _ ->
