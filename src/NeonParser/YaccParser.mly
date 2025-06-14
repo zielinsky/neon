@@ -204,8 +204,7 @@ expression
 
 fix_args
   :                                             { [] }
-  | BR_OPN VAR COLON expression BR_CLS fix_args
-                                                { ($2, $4) :: $6 }
+  | BR_OPN VAR COLON expression BR_CLS fix_args { ($2, $4) :: $6 }
 ;
 
 
