@@ -22,19 +22,19 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
       | Neu (_, v_fn, rev_args) when Core.Var.equal v_fn fn_var -> (
           let args = List.rev rev_args in
           if List.length args <= arg_pos then
-            failwith "[Guard] Not enough arguments in the application";
+            failwith "Not enough arguments in the application";
           let dec_arg = List.nth args arg_pos in
           if not ctx.matched then
             failwith
-              "[Guard] Application before matching on a structure argument";
+              "Application before matching on a structure argument";
           if OccursCheck.occurs_check_term arg_var dec_arg then
-            failwith "[Guard] Recursion does not allow self-reference";
+            failwith "Recursion does not allow self-reference";
           match Whnf.to_whnf dec_arg env with
           | Neu (_, v_arg, _) ->
               if not (VS.mem v_arg ctx.allowed) then
-                failwith "[Guard] Recursion on a variable that is not allowed";
+                failwith "Recursion on a variable that is not allowed";
               ()
-          | _ -> failwith "[Guard] Recursion on a non-variable argument")
+          | _ -> failwith "Recursion on a non-variable argument")
       | _ ->
           traverse fn_var arg_var arg_pos ctx env t1;
           traverse fn_var arg_var arg_pos ctx env t2)
@@ -101,4 +101,4 @@ let check_totality (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
     let init = { matched = false; allowed = VS.empty } in
     traverse fn_var arg_var arg_pos init env body
   with Failure msg ->
-    raise (Failure ("[Guard] totality check failed: " ^ msg))
+    Error.create_guard_error msg body
