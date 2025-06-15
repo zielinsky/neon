@@ -32,7 +32,8 @@ let add_to_env (env : env) (nm : string) (var : env_var) : Core.Var.t =
   let _ = VarHashtbl.add env.internal y var in
   y
 
-let add_to_env_with_var (env : env) (nm : string) (var : env_var) (y : Core.Var.t) : Core.Var.t =
+let add_to_env_with_var (env : env) (nm : string) (var : env_var)
+    (y : Core.Var.t) : Core.Var.t =
   let _ = StringHashtbl.add env.surface nm y in
   let _ = VarHashtbl.add env.internal y var in
   y

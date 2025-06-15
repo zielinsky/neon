@@ -87,13 +87,15 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
   | IfExpr (t, b1, b2) ->
       nest
         (!^"if" ^^ pp_term t ^^ !^"then" ^^ pp_term b1 ^^ !^"else" ^^ pp_term b2)
-  | EqType (t1, t2, tp) -> nest (pp_term t1 ^^ !^"==" ^^ pp_term t2 ^^ !^ ":>" ^^ pp_term tp)
-  | Refl (t, tp) ->
-      nest (!^"refl" ^^ pp_term t ^^ !^":" ^^ pp_term tp)
-  | Subst(nm, var, t1, t2, t3) ->
+  | EqType (t1, t2, tp) ->
+      nest (pp_term t1 ^^ !^"==" ^^ pp_term t2 ^^ !^":>" ^^ pp_term tp)
+  | Refl (t, tp) -> nest (!^"refl" ^^ pp_term t ^^ !^":" ^^ pp_term tp)
+  | Subst (nm, var, t1, t2, t3) ->
       nest
-        (!^"subst" ^^ !^nm ^^ !^"(" ^^ !^ (Core.Var.to_string var) ^-^ !^"," ^^ pp_term t1
-       ^-^ !^"," ^^ pp_term t2 ^-^ !^"," ^^ pp_term t3 ^-^ !^")")
+        (!^"subst" ^^ !^nm ^^ !^"("
+        ^^ !^(Core.Var.to_string var)
+        ^-^ !^"," ^^ pp_term t1 ^-^ !^"," ^^ pp_term t2 ^-^ !^"," ^^ pp_term t3
+        ^-^ !^")")
 
 let term_to_string (t : Core.term) : string = to_string 40 2 (pp_term t)
 
@@ -184,35 +186,28 @@ let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
       nest
         (!^"if" ^^ pp_uterm t ^^ !^"then" ^^ pp_uterm b1 ^^ !^"else"
        ^^ pp_uterm b2)
-  | EqType (t1, t2, tp) -> nest (pp_uterm t1 ^^ !^"==" ^^ pp_uterm t2 ^^ !^ ":>" ^^ pp_uterm tp)
-  | Refl (t, tp) ->
-      nest (!^"refl" ^^ pp_uterm t ^^ !^":" ^^ pp_uterm tp)
-  | Subst(nm, t1, t2, t3) ->
+  | EqType (t1, t2, tp) ->
+      nest (pp_uterm t1 ^^ !^"==" ^^ pp_uterm t2 ^^ !^":>" ^^ pp_uterm tp)
+  | Refl (t, tp) -> nest (!^"refl" ^^ pp_uterm t ^^ !^":" ^^ pp_uterm tp)
+  | Subst (nm, t1, t2, t3) ->
       nest
         (!^"subst" ^^ !^nm ^^ !^"(" ^^ pp_uterm t1 ^-^ !^"," ^^ pp_uterm t2
        ^-^ !^"," ^^ pp_uterm t3 ^-^ !^")")
-  | FixDef(nm, dep_args, arg, arg_tp, pure_args, body_tp, body) ->
+  | FixDef (nm, dep_args, arg, arg_tp, pure_args, body_tp, body) ->
       let pp_dep_args =
         List.fold_left
-          (fun acc (nm, tp) ->
-            acc ^-^ !^nm ^-^ !^":" ^^ pp_uterm tp ^-^ !^",")
+          (fun acc (nm, tp) -> acc ^-^ !^nm ^-^ !^":" ^^ pp_uterm tp ^-^ !^",")
           !^"" dep_args
       in
       let pp_pure_args =
         List.fold_left
-          (fun acc (nm, tp) ->
-            acc ^-^ !^nm ^-^ !^":" ^^ pp_uterm tp ^-^ !^",")
+          (fun acc (nm, tp) -> acc ^-^ !^nm ^-^ !^":" ^^ pp_uterm tp ^-^ !^",")
           !^"" pure_args
       in
       nest
-        (!^"fix" ^^ !^nm
-        ^^ !^"(" ^-^ pp_dep_args ^-^ !^")"
-        ^^ !^arg ^-^ !^":" ^^ pp_uterm arg_tp
-        ^^ !^"("
-        ^-^ pp_pure_args
-        ^-^ !^")"
-        ^^ !^":" ^^ pp_uterm body_tp
-        ^^ !^"=" ^^ pp_uterm body)
+        (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_dep_args ^-^ !^")" ^^ !^arg ^-^ !^":"
+       ^^ pp_uterm arg_tp ^^ !^"(" ^-^ pp_pure_args ^-^ !^")" ^^ !^":"
+       ^^ pp_uterm body_tp ^^ !^"=" ^^ pp_uterm body)
 
 and pp_telescope (ts : Raw.telescope) : SmartPrint.t =
   match ts with
@@ -271,13 +266,15 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
   | IfExpr (t, b1, b2) ->
       nest
         (!^"if" ^^ pp_whnf t ^^ !^"then" ^^ pp_term b1 ^^ !^"else" ^^ pp_term b2)
-  | EqType (t1, t2, tp) -> nest (pp_term t1 ^^ !^"==" ^^ pp_term t2 ^^ !^ ":>" ^^ pp_term tp)
-  | Refl (t, tp) ->
-      nest (!^"refl" ^^ pp_term t ^^ !^":" ^^ pp_term tp)
-  | Subst(nm, var, t1, t2, t3) ->
+  | EqType (t1, t2, tp) ->
+      nest (pp_term t1 ^^ !^"==" ^^ pp_term t2 ^^ !^":>" ^^ pp_term tp)
+  | Refl (t, tp) -> nest (!^"refl" ^^ pp_term t ^^ !^":" ^^ pp_term tp)
+  | Subst (nm, var, t1, t2, t3) ->
       nest
-        (!^"subst" ^^ !^nm ^^ !^"(" ^^ !^ (Core.Var.to_string var) ^-^ !^"," ^^ pp_term t1
-       ^-^ !^"," ^^ pp_whnf t2 ^-^ !^"," ^^ pp_term t3 ^-^ !^")")
+        (!^"subst" ^^ !^nm ^^ !^"("
+        ^^ !^(Core.Var.to_string var)
+        ^-^ !^"," ^^ pp_term t1 ^-^ !^"," ^^ pp_whnf t2 ^-^ !^"," ^^ pp_term t3
+        ^-^ !^")")
 
 let rec whnf_to_string (t : Core.whnf) : string = to_string 40 2 (pp_whnf t)
 

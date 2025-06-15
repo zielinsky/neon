@@ -91,12 +91,13 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
               match pattern with
               | PatWild -> failwith "Impossible"
               | PatCon (_, args) ->
-                let sub_map =
-                  List.fold_left
-                    (fun acc ((_, var), term) ->
-                      Substitution.add_to_sub_map var term acc)
-                    Substitution.empty_sub_map (List.combine args (List.rev rev_args))
-                in
+                  let sub_map =
+                    List.fold_left
+                      (fun acc ((_, var), term) ->
+                        Substitution.add_to_sub_map var term acc)
+                      Substitution.empty_sub_map
+                      (List.combine args (List.rev rev_args))
+                  in
                   let term = Substitution.substitute term sub_map in
 
                   let whnf_term =
@@ -128,9 +129,6 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       | _ -> IfExpr (t, b1, b2))
   | EqType (t1, t2, tp) -> EqType (t1, t2, tp)
   | Refl (t, tp) -> Refl (t, tp)
-  | Subst (nm, var, t1, t2, t3) -> 
-    let t2 = to_whnf t2 env in
-    begin match t2 with
-    | Refl _ -> to_whnf t3 env
-    | _ ->  Subst (nm, var, t1, t2, t3)
-    end
+  | Subst (nm, var, t1, t2, t3) -> (
+      let t2 = to_whnf t2 env in
+      match t2 with Refl _ -> to_whnf t3 env | _ -> Subst (nm, var, t1, t2, t3))

@@ -38,4 +38,3 @@ val add_pattern_vars_to_internal_env :
 
 val rm_pattern_vars_from_internal_env :
   (string * Core.Var.t * Core.Var.t) list -> internal -> unit
- 

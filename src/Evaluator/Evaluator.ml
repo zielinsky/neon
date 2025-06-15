@@ -55,15 +55,13 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
       let nf_args = List.map (fun arg -> eval arg env) (List.rev rev_args) in
       let hole = Core.Hole (nm, nf_tp) in
       List.fold_left (fun acc arg -> Core.App (acc, arg)) hole nf_args
-  | Lambda (nm, x, tp, body) ->
-      Lambda (nm, x, tp, body)
+  | Lambda (nm, x, tp, body) -> Lambda (nm, x, tp, body)
   | Product (nm, x, tp, body) ->
       if Core.Var.equal x (Core.Var.of_int (-1)) then
         let nf_tp = eval tp env in
         let nf_body = eval body env in
         TypeArrow (nf_tp, nf_body)
-      else
-        Product (nm, x, tp, body)
+      else Product (nm, x, tp, body)
   | Case (scrutinee, _, _, _, patterns) -> (
       match scrutinee with
       | Neu (nm, _, rev_args) -> (
@@ -75,7 +73,8 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
                 List.fold_left
                   (fun acc ((_, var), term) ->
                     TypeChecker.Substitution.add_to_sub_map var term acc)
-                  TypeChecker.Substitution.empty_sub_map (List.combine args (List.rev rev_args))
+                  TypeChecker.Substitution.empty_sub_map
+                  (List.combine args (List.rev rev_args))
               in
               let nf_term =
                 eval (TypeChecker.Substitution.substitute term sub_map) env
@@ -90,12 +89,9 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
           if TypeChecker.Equiv.equiv b1 b2 env then b1 else IfExpr (t, b1, b2))
   | EqType (t1, t2, tp) -> EqType (t1, t2, tp)
   | Refl (t, tp) -> Refl (t, tp)
-  | Subst (nm, var, t1, t2, t3) -> 
-    let t2 = whnf_to_nf t2 env in
-    begin match t2 with
-    | Refl _ -> eval t3 env
-    | _ ->  Subst (nm, var, t1, t2, t3)
-    end
+  | Subst (nm, var, t1, t2, t3) -> (
+      let t2 = whnf_to_nf t2 env in
+      match t2 with Refl _ -> eval t3 env | _ -> Subst (nm, var, t1, t2, t3))
 
 and eval (t : Core.term) (env : Env.internal) : Core.term =
   let w = TypeChecker.Whnf.to_whnf t env in
