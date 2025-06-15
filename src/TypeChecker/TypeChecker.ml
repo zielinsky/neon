@@ -484,6 +484,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
           dep_args
       in
       let arg_tp, arg_tp_of_tp = infer_type env arg_tp in
+      let arg_fresh_var = Env.add_to_env env arg (Opaque arg_tp) in
       let pure_args =
         List.map
           (fun (nm, tp) ->
@@ -505,7 +506,6 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       in
       match (arg_tp_of_tp, body_tp_of_tp) with
       | (Type | Kind), (Type | Kind) ->
-          let arg_fresh_var = Env.add_to_env env arg (Opaque arg_tp) in
           let fix_pure_args_tp =
             List.fold_left
               (fun acc (_, _, tp) -> Core.TypeArrow (tp, acc))
