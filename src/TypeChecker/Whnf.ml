@@ -135,8 +135,6 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       | _ -> IfExpr (t, b1, b2))
   | EqType (t1, t2, tp) -> EqType (t1, t2, tp)
   | Refl (t, tp) -> Refl (t, tp)
-  | Subst (nm, var, t1, t2, t3) -> 
-    let t2 = to_whnf t2 env in
-    match t2 with
-    | Refl _ -> to_whnf t3 env
-    | _ ->  Subst (nm, var, t1, t2, t3)
+  | Subst (nm, var, t1, t2, t3) -> (
+      let t2 = to_whnf t2 env in
+      match t2 with Refl _ -> to_whnf t3 env | _ -> Subst (nm, var, t1, t2, t3))

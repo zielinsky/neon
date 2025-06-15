@@ -386,48 +386,51 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       | _ ->
           Error.create_infer_type_error pos
             "The condition's type must be a Bool type" term env)
-  | EqType (t1, t2, tp) ->
+  | EqType (t1, t2, tp) -> (
       let tp, tp_of_tp = infer_type env tp in
-      begin match tp_of_tp with
+      match tp_of_tp with
       | Type | Kind ->
           let t1 = check_type env t1 tp in
           let t2 = check_type env t2 tp in
-            (EqType (t1, t2, tp), Type)
+          (EqType (t1, t2, tp), Type)
       | _ ->
           Error.create_infer_type_error pos
-            "The type of EqType must be either Type or Kind" term env
-      end
-  | Refl (t1, tp) -> 
+            "The type of EqType must be either Type or Kind" term env)
+  | Refl (t1, tp) -> (
       let tp, tp_of_tp = infer_type env tp in
       let t1 = check_type env t1 tp in
-      begin match tp_of_tp with
-      | Type | Kind ->
-          (Refl (t1, tp), EqType (t1, t1, tp))
+      match tp_of_tp with
+      | Type | Kind -> (Refl (t1, tp), EqType (t1, t1, tp))
       | _ ->
           Error.create_infer_type_error pos
-            "The type of Refl must be either Type or Kind" term env
-      end
-  | Subst (x, t1, t2, t3) -> 
-    let t2, t2_tp = infer_type env t2 in
-    begin match Whnf.to_whnf t2_tp env.internal with
-    | EqType (a, b, t) ->  
-      let fresh_var = Env.add_to_env env x (Opaque(t)) in
-      let t1, t1_tp = infer_type env t1 in
-      (* let test = Core.App(t1_tp, Core.Var (x, fresh_var)) in *)
-      begin match Whnf.to_whnf t1_tp env.internal with
-      | Type | Kind -> 
-        let t3 = check_type env t3 (Substitution.substitute t1 (Substitution.singleton_sub_map fresh_var a)) in
-        let ret_type = Substitution.substitute t1 (Substitution.singleton_sub_map fresh_var b) in
-        let _ = Env.rm_from_env env x in
-        (Subst(x, fresh_var, t1, t2, t3), ret_type)
-      | _ -> 
-        Error.create_infer_type_error pos
-          "The type of Subst first argument must be either Type or Kind" term env;
-      end
-    | _ -> 
-      Error.create_infer_type_error pos
-        "The type of Subst must be an EqType" term env
-    end
+            "The type of Refl must be either Type or Kind" term env)
+  | Subst (x, t1, t2, t3) -> (
+      let t2, t2_tp = infer_type env t2 in
+      match Whnf.to_whnf t2_tp env.internal with
+      | EqType (a, b, t) -> (
+          let fresh_var = Env.add_to_env env x (Opaque t) in
+          let t1, t1_tp = infer_type env t1 in
+          (* let test = Core.App(t1_tp, Core.Var (x, fresh_var)) in *)
+          match Whnf.to_whnf t1_tp env.internal with
+          | Type | Kind ->
+              let t3 =
+                check_type env t3
+                  (Substitution.substitute t1
+                     (Substitution.singleton_sub_map fresh_var a))
+              in
+              let ret_type =
+                Substitution.substitute t1
+                  (Substitution.singleton_sub_map fresh_var b)
+              in
+              let _ = Env.rm_from_env env x in
+              (Subst (x, fresh_var, t1, t2, t3), ret_type)
+          | _ ->
+              Error.create_infer_type_error pos
+                "The type of Subst first argument must be either Type or Kind"
+                term env)
+      | _ ->
+          Error.create_infer_type_error pos
+            "The type of Subst must be an EqType" term env)
 
 (** [check_type env term tp] checks whether the term [term] has the expected
     type [tp] in the context of environment [env].
