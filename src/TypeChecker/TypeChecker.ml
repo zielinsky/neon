@@ -63,8 +63,7 @@ let check_exhaustivity_and_constructor_names (ps : Raw.branch list)
     | (PatCon (dataCName, _), _) :: ps ->
         let cs, contaisWild = collect_constructor_names ps in
         (Core.dataCName_of_string dataCName :: cs, contaisWild)
-    | (PatWild, _) :: [] ->
-        ([], true)
+    | (PatWild, _) :: [] -> ([], true)
     | (PatWild, _) :: _ ->
         failwith "Wild card must be the last branch in pattern matching"
     | [] -> ([], false)
@@ -106,7 +105,7 @@ let rec subst_and_add_tsT_to_env (env : Env.env) (tsT : Core.telescope)
       let tsT =
         Substitution.substitute_in_telescope tsT
           (Substitution.singleton_sub_map var (Core.Var (new_nm, fresh_var)))
-      (* let tsT =
+        (* let tsT =
         Substitution.substitute_in_telescope tsT
           (Substitution.singleton_sub_map var concrete_tp) *)
       in
