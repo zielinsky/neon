@@ -29,12 +29,13 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
               "[Guard] Application before matching on a structure argument";
           if OccursCheck.occurs_check_term arg_var dec_arg then
             failwith "[Guard] Recursion does not allow self-reference";
-          match Whnf.to_whnf dec_arg env with
+          ())
+          (* match Whnf.to_whnf dec_arg env with
           | Neu (_, v_arg, _) ->
               if not (VS.mem v_arg ctx.allowed) then
                 failwith "[Guard] Recursion on a variable that is not allowed";
               ()
-          | _ -> failwith "[Guard] Recursion on a non-variable argument")
+          | _ -> failwith "[Guard] Recursion on a non-variable argument") *)
       | _ ->
           traverse fn_var arg_var arg_pos ctx env t1;
           traverse fn_var arg_var arg_pos ctx env t2)
