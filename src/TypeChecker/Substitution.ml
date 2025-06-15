@@ -60,7 +60,7 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
   | Type | Kind | Hole _ | IntType | StringType | BoolType | IntLit _
   | StringLit _ | BoolLit _ ->
       t
-  | Case (scrutinee, scrutinee_tp, var, tp, matchPats) ->
+  | Case (scrutinee, scrutinee_tp, var, tp, branches) ->
       let scrutinee' = substitute scrutinee sub in
       let scrutinee_tp' = substitute scrutinee_tp sub in
       let var_sub, var' =
@@ -71,12 +71,8 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
               Some (nm, fresh_var) )
         | None -> (empty_sub_map, None)
       in
-      let tp' =
-        match tp with
-        | Some tp -> Some (substitute tp (merge_sub_maps sub var_sub))
-        | None -> None
-      in
-      let matchPats' =
+      let tp' = substitute tp (merge_sub_maps sub var_sub) in
+      let branches' =
         List.map
           (fun (pattern, t) ->
             match pattern with
@@ -85,17 +81,17 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
             | Core.PatCon (con_nm, vars) ->
                 let sub, rev_vars =
                   List.fold_left
-                    (fun (sub_map, new_vars) (nm, var) ->
+                    (fun (sub_map, new_vars) (nm, var, tp) ->
                       let fresh_var = Env.fresh_var () in
                       ( add_to_sub_map var (Core.Var (nm, fresh_var)) sub_map,
-                        (nm, fresh_var) :: new_vars ))
+                        (nm, fresh_var, tp) :: new_vars ))
                     (sub, []) vars
                 in
                 ( Core.PatCon (con_nm, List.rev rev_vars),
                   substitute t (merge_sub_maps sub var_sub) ))
-          matchPats
+          branches
       in
-      Case (scrutinee', scrutinee_tp', var', tp', matchPats')
+      Case (scrutinee', scrutinee_tp', var', tp', branches')
   | IfExpr (t, b1, b2) ->
       IfExpr (substitute t sub, substitute b1 sub, substitute b2 sub)
   | EqType (t1, t2, tp) ->
@@ -132,11 +128,7 @@ let rec substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
               Some (nm, fresh_var) )
         | None -> (empty_sub_map, None)
       in
-      let tp' =
-        match tp with
-        | Some tp -> Some (substitute tp (merge_sub_maps sub var_sub))
-        | None -> None
-      in
+      let tp' = substitute tp (merge_sub_maps sub var_sub) in
       let matchPats' =
         List.map
           (fun (pattern, t) ->
@@ -146,10 +138,10 @@ let rec substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
             | Core.PatCon (con_nm, vars) ->
                 let sub, rev_vars =
                   List.fold_left
-                    (fun (sub_map, new_vars) (nm, var) ->
+                    (fun (sub_map, new_vars) (nm, var, tp) ->
                       let fresh_var = Env.fresh_var () in
                       ( add_to_sub_map var (Core.Var (nm, fresh_var)) sub_map,
-                        (nm, fresh_var) :: new_vars ))
+                        (nm, fresh_var, tp) :: new_vars ))
                     (sub, []) vars
                 in
                 ( Core.PatCon (con_nm, List.rev rev_vars),

@@ -93,7 +93,7 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
               | PatCon (_, args) ->
                   let sub_map =
                     List.fold_left
-                      (fun acc ((_, var), term) ->
+                      (fun acc ((_, var, _), term) ->
                         Substitution.add_to_sub_map var term acc)
                       Substitution.empty_sub_map
                       (List.combine args (List.rev rev_args))

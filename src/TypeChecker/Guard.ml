@@ -7,7 +7,7 @@ end)
 let vars_of_pattern : Core.pattern -> VS.t = function
   | PatWild -> VS.empty
   | PatCon (_, xs) ->
-      List.fold_left (fun acc (_, v) -> VS.add v acc) VS.empty xs
+      List.fold_left (fun acc (_, v, _) -> VS.add v acc) VS.empty xs
 
 type ctx = {
   matched : bool; (* If were in a branch after matching on arg_var? *)
@@ -29,13 +29,12 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
               "[Guard] Application before matching on a structure argument";
           if OccursCheck.occurs_check_term arg_var dec_arg then
             failwith "[Guard] Recursion does not allow self-reference";
-          ())
-          (* match Whnf.to_whnf dec_arg env with
+          match Whnf.to_whnf dec_arg env with
           | Neu (_, v_arg, _) ->
               if not (VS.mem v_arg ctx.allowed) then
                 failwith "[Guard] Recursion on a variable that is not allowed";
               ()
-          | _ -> failwith "[Guard] Recursion on a non-variable argument") *)
+          | _ -> failwith "[Guard] Recursion on a non-variable argument")
       | _ ->
           traverse fn_var arg_var arg_pos ctx env t1;
           traverse fn_var arg_var arg_pos ctx env t2)
@@ -66,6 +65,7 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
       in
       List.iter
         (fun (pat, br_body) ->
+          let _ = Env.add_pattern_to_internal_env env pat in
           let allowed' =
             if is_on_arg then VS.union ctx.allowed (vars_of_pattern pat)
             else ctx.allowed
@@ -73,7 +73,8 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
           let ctx' =
             { matched = ctx.matched || is_on_arg; allowed = allowed' }
           in
-          traverse fn_var arg_var arg_pos ctx' env br_body)
+          traverse fn_var arg_var arg_pos ctx' env br_body;
+          Env.rm_pattern_from_internal_env env pat)
         branches
   | IfExpr (c, t1, t2) ->
       traverse fn_var arg_var arg_pos ctx env c;

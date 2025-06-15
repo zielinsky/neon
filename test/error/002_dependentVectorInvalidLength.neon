@@ -22,17 +22,13 @@ let cons (m : Nat) (hd : Int) (tl : VecInt(m)) =
        , hd
        , tl)
 
-let two : VecInt(Succ(Succ(Zero))) = 
+let two = 
+cons(
+  Zero,
+  1,
   cons(
-    Succ(Zero),
-    1,
-    cons(
-      Succ(Zero),
-      1,
-      cons(
-        Zero,
-        2,
-        vnil
-      )
-    )
+    Zero,
+    2,
+    vnil
   )
+)

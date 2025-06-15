@@ -1,0 +1,18 @@
+data Option (A: Type) = 
+| None
+| Some (x: A)
+
+data List (A: Type) = 
+| Nil
+| Cons (x: A) (tl: List(A))
+
+fix map (A: Type) {xs: List(A)} (f: A -> A) : Option(List(A)) = 
+    match xs with
+    | Nil(A)              -> None(List(A))
+    | Cons(A, elem, tail) -> Some(List(A), Cons(A, f(elem), 
+      match map(A)(Cons(Int, 42, Nil(Int)))(f) with
+      | None(B)    -> Nil(A)
+      | Some(B, x) -> x
+    ))
+
+let test = map(Int)(Cons(Int, 10, Cons(Int, 20, Nil(Int))))(fun (x: Int) => x * 15)

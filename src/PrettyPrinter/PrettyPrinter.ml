@@ -8,25 +8,13 @@ let separate_map sep f l =
   in
   aux !^"" l
 
-let string_of_var (x : Core.Var.t) : string = string_of_int (Core.Var.to_int x)
-
-let rec pp_pattern (p : Core.pattern) : SmartPrint.t =
-  match p with
-  | PatWild -> !^"_"
-  | PatCon (nm, vars) ->
-      !^(Core.dataCName_to_string nm)
-      ^^ !^"("
-      ^^ separate_map !^"," (fun (nm, _) -> !^nm) vars
-      ^^ !^")"
+let string_of_var (x : Core.Var.t) : string = Core.Var.to_string x
 
 let rec pp_uTerm_pattern (p : Raw.pattern) : SmartPrint.t =
   match p with
   | PatWild -> !^"_"
   | PatCon (nm, vars) ->
       !^nm ^-^ !^"(" ^-^ separate_map !^"," (fun nm -> !^nm) vars ^^ !^")"
-
-let pattern_to_string (p : Core.pattern) : string =
-  to_string 40 2 (pp_pattern p)
 
 let rec pp_term (e : Core.term) : SmartPrint.t =
   let parens_if_app (t : Core.term) =
@@ -43,8 +31,8 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
   | StringLit s -> !^"\"" ^-^ !^s ^-^ !^"\""
   | BoolLit true -> !^"true"
   | BoolLit false -> !^"false"
-  | Type -> !^"type"
-  | Kind -> !^"kind"
+  | Type -> !^"Type"
+  | Kind -> !^"Kind"
   | Var (nm, var) ->
       !^"(" ^-^ !^nm ^-^ !^"@" ^-^ !^(string_of_var var) ^-^ !^")"
   | Lambda (nm, var, tp_x, body) ->
@@ -72,9 +60,7 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
             !^" as " ^-^ !^nm ^-^ !^"@" ^-^ !^(string_of_var var)
         | None -> !^""
       in
-      let tp_str =
-        match tp with Some tp -> !^" return" ^^ pp_term tp | None -> !^""
-      in
+      let tp_str = !^" return" ^^ pp_term tp in
       nest
         (!^"match" ^^ pp_term scrut ^-^ !^":" ^^ pp_term scrut_tp ^^ var_str
        ^^ tp_str ^^ !^" with" ^^ newline
@@ -97,7 +83,24 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
         ^-^ !^"," ^^ pp_term t1 ^-^ !^"," ^^ pp_term t2 ^-^ !^"," ^^ pp_term t3
         ^-^ !^")")
 
+and pp_pattern (p : Core.pattern) : SmartPrint.t =
+  match p with
+  | PatWild -> !^"_"
+  | PatCon (nm, vars) ->
+      !^(Core.dataCName_to_string nm)
+      ^^ !^"("
+      ^^ separate_map !^","
+           (fun (nm, var, tp) ->
+             !^"(" ^-^ !^nm ^-^ !^"@"
+             ^-^ !^(string_of_var var)
+             ^-^ !^":" ^^ pp_term tp ^-^ !^")")
+           vars
+      ^^ !^")"
+
 let term_to_string (t : Core.term) : string = to_string 40 2 (pp_term t)
+
+let pattern_to_string (p : Core.pattern) : string =
+  to_string 40 2 (pp_pattern p)
 
 let print (term, tp) =
   print_endline
@@ -251,9 +254,7 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
             !^" as " ^-^ !^nm ^-^ !^"@" ^-^ !^(string_of_var var)
         | None -> !^""
       in
-      let tp_str =
-        match tp with Some tp -> !^" return" ^^ pp_term tp | None -> !^""
-      in
+      let tp_str = !^" return" ^^ pp_term tp in
       nest
         (!^"match" ^^ pp_whnf scrut ^-^ !^":" ^^ pp_term scrut_tp ^^ var_str
        ^^ tp_str ^^ !^"with" ^^ newline

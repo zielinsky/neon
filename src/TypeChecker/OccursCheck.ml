@@ -17,7 +17,7 @@ let rec occurs_check_whnf (var : Core.Var.t) (whnf_term : Core.whnf) : bool =
       || (match as_var with
          | Some (_, x) -> Core.Var.equal var x
          | None -> false)
-      || (match tp with Some tp -> occurs_check_term var tp | None -> false)
+      || occurs_check_term var tp
       || List.exists (fun (_, body) -> occurs_check_term var body) branches
   | IfExpr (t, b1, b2) ->
       occurs_check_whnf var t || occurs_check_term var b1
@@ -54,7 +54,7 @@ and occurs_check_term (var : Core.Var.t) (term : Core.term) : bool =
       || (match as_var with
          | Some (_, x) -> Core.Var.equal var x
          | None -> false)
-      || (match tp with Some tp -> occurs_check_term var tp | None -> false)
+      || occurs_check_term var tp
       || List.exists (fun (_, body) -> occurs_check_term var body) branches
   | IfExpr (t, b1, b2) ->
       occurs_check_term var t || occurs_check_term var b1

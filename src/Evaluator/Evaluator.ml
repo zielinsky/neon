@@ -71,7 +71,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
           | PatCon (_, args) ->
               let sub_map =
                 List.fold_left
-                  (fun acc ((_, var), term) ->
+                  (fun acc ((_, var, _), term) ->
                     TypeChecker.Substitution.add_to_sub_map var term acc)
                   TypeChecker.Substitution.empty_sub_map
                   (List.combine args (List.rev rev_args))

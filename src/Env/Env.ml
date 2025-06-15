@@ -132,18 +132,18 @@ let copy (env : env) : env =
     adt = StringHashtbl.copy env.adt;
   }
 
-let add_pattern_vars_to_internal_env (vars : (string * Core.Var.t) list)
-    (values : Core.term list) (env : internal) :
-    (string * Core.Var.t * Core.Var.t) list =
-  let _ = assert (List.length vars == List.length values) in
-  List.fold_left
-    (fun acc ((nm, var), term) ->
-      let fresh_var = fresh_var () in
-      let _ = add_to_internal_env env fresh_var (Transparent (term, Type)) in
-      (nm, var, fresh_var) :: acc)
-    [] (List.combine vars values)
-
-let rm_pattern_vars_from_internal_env
-    (bindings : (string * Core.Var.t * Core.Var.t) list) (env : internal) : unit
+let add_pattern_to_internal_env (env : internal) (pattern : Core.pattern) : unit
     =
-  List.iter (fun (_, _, x) -> rm_from_internal_env env x) bindings
+  match pattern with
+  | PatCon (_, vars) ->
+      List.iter
+        (fun (_, var, tp) -> add_to_internal_env env var (Opaque tp))
+        vars
+  | PatWild -> ()
+
+let rm_pattern_from_internal_env (env : internal) (pattern : Core.pattern) :
+    unit =
+  match pattern with
+  | PatCon (_, vars) ->
+      List.iter (fun (_, var, _) -> rm_from_internal_env env var) vars
+  | PatWild -> ()

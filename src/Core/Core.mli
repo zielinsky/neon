@@ -28,7 +28,7 @@ type term =
   | Hole of string * tp
   | Let of string * Var.t * term * tp * term
   | TypeArrow of tp * tp
-  | Case of term * tp * (string * Var.t) option * tp option * branch list
+  | Case of term * tp * (string * Var.t) option * tp * branch list
   | IfExpr of term * term * term
   | EqType of term * term * tp
   | Refl of term * tp
@@ -37,7 +37,7 @@ type term =
 and constructor_def = { cname : string; telescope : telescope }
 and telescope = Empty | Cons of string * Var.t * tp * telescope
 and branch = pattern * term
-and pattern = PatWild | PatCon of dataCName * (string * Var.t) list
+and pattern = PatWild | PatCon of dataCName * (string * Var.t * tp) list
 and tp = term
 
 (* The term list in Neu is stored in reverse order. *)
@@ -54,7 +54,7 @@ type whnf =
   | BoolLit of bool
   | Lambda of string * Var.t * tp * term
   | Product of string * Var.t * tp * tp
-  | Case of whnf * tp * (string * Var.t) option * tp option * branch list
+  | Case of whnf * tp * (string * Var.t) option * tp * branch list
   | IfExpr of whnf * term * term
   | EqType of term * term * tp
   | Refl of term * tp
