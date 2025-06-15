@@ -12,7 +12,7 @@ let raise_error (lexbuf : Lexing.lexbuf) reason =
 let whitespace = ['\011'-'\r' '\t' ' ']
 let var_start = ['a'-'z' '_']
 let con_start = ['A' - 'Z']
-let var_char = ['a'-'z' 'A'-'Z' '_']
+let var_char = ['a'-'z' 'A'-'Z' '_' '\'' '0'-'9']
 let op_char = ['!' '$' '%' '&' '*' '+' '-' '/' ':' '<' '>' '?' '@' '^' '|' '~' '#' '=']
 
 rule token = parse
