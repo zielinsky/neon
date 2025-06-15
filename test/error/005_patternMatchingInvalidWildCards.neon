@@ -1,0 +1,14 @@
+data Test =
+| One
+| Two
+| Three
+
+let test1 = match One with
+  | One -> 1
+  | _ -> 2
+  | Three -> 3
+
+let test1 = match One with
+| One -> 1
+| _ -> 2
+| _ -> 3

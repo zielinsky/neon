@@ -64,10 +64,7 @@ let check_exhaustivity_and_constructor_names (ps : Raw.branch list)
         let cs, contaisWild = collect_constructor_names ps in
         (Core.dataCName_of_string dataCName :: cs, contaisWild)
     | (PatWild, _) :: [] ->
-        let cs, contaisWild = collect_constructor_names ps in
-        if contaisWild then
-          failwith "There can't be more than 1 wildcard branch"
-        else (cs, true)
+        ([], true)
     | (PatWild, _) :: _ ->
         failwith "Wild card must be the last branch in pattern matching"
     | [] -> ([], false)
@@ -104,9 +101,14 @@ let rec subst_and_add_tsT_to_env (env : Env.env) (tsT : Core.telescope)
       let fresh_var =
         Env.add_to_env env new_nm (Transparent (concrete_tp, tp))
       in
+      (* Changed the substituion: Instead of substituting concrete_tp for the old var
+         we pass newly create Var instead. ASK PPO *)
       let tsT =
         Substitution.substitute_in_telescope tsT
-          (Substitution.singleton_sub_map var concrete_tp)
+          (Substitution.singleton_sub_map var (Core.Var (new_nm, fresh_var)))
+      (* let tsT =
+        Substitution.substitute_in_telescope tsT
+          (Substitution.singleton_sub_map var concrete_tp) *)
       in
       (var, (new_nm, fresh_var, tp))
       :: subst_and_add_tsT_to_env env tsT (List.tl tsT_types) (List.tl argsT)
@@ -382,8 +384,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
                              Type or Kind"
                             res_type env)
                   | None ->
-                      infer_pattern_matching env ps scrut_tp' var' tsT tsT_args
-                        dataCNames
+                      infer_pattern_matching env ps tsT tsT_args dataCNames
                 in
                 let result_type =
                   match var' with
@@ -766,10 +767,9 @@ and telescope_check_type_and_extend_env (env : Env.env)
       in
       res
 
-and infer_pattern_matching (env : Env.env) (ps : Raw.branch list) (_ : Core.tp)
-    (_ : (string * Core.Var.t) option) (tsT : Core.telescope)
-    (tsT_types : Core.tp list) (dataCNames : Core.dataCName list) :
-    Core.branch list * Core.tp =
+and infer_pattern_matching (env : Env.env) (ps : Raw.branch list)
+    (tsT : Core.telescope) (tsT_types : Core.tp list)
+    (dataCNames : Core.dataCName list) : Core.branch list * Core.tp =
   let infer_branch (env : Env.env) (tsT : Core.telescope)
       (tsT_types : Core.tp list) (tsD : Core.telescope) (args : string list)
       (term : Raw.term) :
@@ -790,7 +790,7 @@ and infer_pattern_matching (env : Env.env) (ps : Raw.branch list) (_ : Core.tp)
     (term, tp', ts_vars)
   in
 
-  let infer_and_check_all_branches (env : Env.env) (ps : Raw.branch list)
+  let infer_all_branches (env : Env.env) (ps : Raw.branch list)
       (tsT : Core.telescope) (tsT_types : Core.tp list) :
       (Core.branch * Core.tp) list =
     let rec loop_over_branches (env : Env.env) (ps : Raw.branch list)
@@ -827,11 +827,8 @@ and infer_pattern_matching (env : Env.env) (ps : Raw.branch list) (_ : Core.tp)
     let _ = purge_all_branches_internal_env env all_ts_vars in
     result
   in
-
   let _ = check_exhaustivity_and_constructor_names ps dataCNames in
-  let branches, tps =
-    List.split (infer_and_check_all_branches env ps tsT tsT_types)
-  in
+  let branches, tps = List.split (infer_all_branches env ps tsT tsT_types) in
   if List.is_empty tps then
     failwith "List of inferred types of branches is empty"
   else (branches, List.hd tps)
