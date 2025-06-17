@@ -56,25 +56,11 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
   | Hole (nm, tp) ->
       (* A hole is treated as a neutral term with a hole *)
       Neu_with_Hole (nm, tp, [])
-  | Let (nm, var, t1, tp_t1, t2) ->
+  | Let (_, var, t1, _, t2) ->
       (* Let-binding 'let nm = t1 in t2' *)
-      (* Introduce a fresh variable to avoid capture *)
-      let fresh_var = Env.fresh_var () in
-      let _ = Env.add_to_internal_env env fresh_var (Transparent (t1, tp_t1)) in
-      (* Substitute 'var' with the fresh variable in 't2' and reduce *)
-      let t2_whnf =
-        to_whnf
-          (Substitution.substitute t2
-             (Substitution.singleton_sub_map var (Core.Var (nm, fresh_var))))
-          env
-      in
-      (* Substitute the fresh variable with 't1' in the result *)
-      let t2_whnf_substituted =
-        Substitution.substitute_whnf t2_whnf
-          (Substitution.singleton_sub_map fresh_var t1)
-      in
-      let _ = Env.rm_from_internal_env env fresh_var in
-      t2_whnf_substituted
+      to_whnf
+        (Substitution.substitute t2 (Substitution.singleton_sub_map var t1))
+        env
   | Case (scrut, scrut_tp, maybe_var, tp, branches) -> (
       let scrut_whnf = to_whnf scrut env in
       match scrut_whnf with
@@ -129,6 +115,8 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       | _ -> IfExpr (t, b1, b2))
   | EqType (t1, t2, tp) -> EqType (t1, t2, tp)
   | Refl (t, tp) -> Refl (t, tp)
-  | Subst (nm, var, t1, t2, t3) -> (
-      let t2 = to_whnf t2 env in
-      match t2 with Refl _ -> to_whnf t3 env | _ -> Subst (nm, var, t1, t2, t3))
+  | Subst (nm, var, tp, t1, t2, t3) -> (
+      let t2_whnf = to_whnf t2 env in
+      match t2_whnf with
+      | Refl _ -> to_whnf t3 env
+      | _ -> Subst (nm, var, tp, t1, t2, t3))

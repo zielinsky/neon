@@ -201,12 +201,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       | Type | Kind ->
           let fresh_var = Env.add_to_env env x (Opaque tp) in
           let body, body_tp = infer_type env t in
-          (* Normalize to WHNF before dependency check *)
-          let body_tp_whnf = Whnf.to_whnf body_tp env.internal in
-          let is_dependent =
-            OccursCheck.occurs_check_whnf fresh_var body_tp_whnf
-          in
-          (* ASK PPO whether it's okay for the body_tp to have x *)
+          let is_dependent = OccursCheck.occurs_check_term fresh_var body_tp in
           let _ = Env.rm_from_env env x in
           if is_dependent then
             ( Lambda (x, fresh_var, tp, body),
@@ -459,7 +454,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
                   (Substitution.singleton_sub_map fresh_var b)
               in
               let _ = Env.rm_from_env env x in
-              (Subst (x, fresh_var, t1, t2, t3), ret_type)
+              (Subst (x, fresh_var, t, t1, t2, t3), ret_type)
           | _ ->
               Error.create_infer_type_error pos
                 "The type of Subst first argument must be either Type or Kind"

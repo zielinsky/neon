@@ -88,7 +88,6 @@ let create_whnf_error (term : Core.term) (env : Env.internal)
   in
   failwith "Error when converting to WHNF"
 
-
 (** [create_guard_error error_msg term] raises a failure exception with an error
     message when an error occurs while checking the guard of a fixpoint. It
     prints detailed information about the term, the error, and the environment.
@@ -96,26 +95,20 @@ let create_whnf_error (term : Core.term) (env : Env.internal)
     @param error_msg A message describing the error.
     @param term The term whose guard was being checked when the error occurred.
     @raise Failure Always raises a [Failure] exception with an error message. *)
-let create_guard_error(error_msg : string)
-    (term : Core.term): 'a =
+let create_guard_error (error_msg : string) (term : Core.term) : 'a =
   let _ =
     print_endline
       ("While checking fixpoint guard: "
       ^ PrettyPrinter.term_to_string term
       ^ "\n\nThe following error occurred:\n\t" ^ error_msg ^ "\n")
   in
-  failwith ("Error in guard check:")
+  failwith "Error in guard check:"
 
 let () =
   Printexc.register_printer (function
-    | Type_error (InferTypeError msg) ->
-        Some ("Type inference error: " ^ msg)
-    | Type_error (CheckTypeError msg) ->
-        Some ("Type checking error: " ^ msg)
-    | Type_error (EqualityError msg) ->
-        Some ("Type equality error: " ^ msg)
-    | Type_error (WhnfError msg) ->
-        Some ("WHNF conversion error: " ^ msg)
-    | Type_error (GuardError msg) ->
-        Some ("Guard check error: " ^ msg)
+    | Type_error (InferTypeError msg) -> Some ("Type inference error: " ^ msg)
+    | Type_error (CheckTypeError msg) -> Some ("Type checking error: " ^ msg)
+    | Type_error (EqualityError msg) -> Some ("Type equality error: " ^ msg)
+    | Type_error (WhnfError msg) -> Some ("WHNF conversion error: " ^ msg)
+    | Type_error (GuardError msg) -> Some ("Guard check error: " ^ msg)
     | _ -> None)

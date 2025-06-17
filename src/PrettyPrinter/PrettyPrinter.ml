@@ -76,12 +76,12 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
   | EqType (t1, t2, tp) ->
       nest (pp_term t1 ^^ !^"==" ^^ pp_term t2 ^^ !^":>" ^^ pp_term tp)
   | Refl (t, tp) -> nest (!^"refl" ^^ pp_term t ^^ !^":" ^^ pp_term tp)
-  | Subst (nm, var, t1, t2, t3) ->
+  | Subst (nm, var, tp, t1, t2, t3) ->
       nest
-        (!^"subst" ^^ !^nm ^^ !^"("
-        ^^ !^(Core.Var.to_string var)
-        ^-^ !^"," ^^ pp_term t1 ^-^ !^"," ^^ pp_term t2 ^-^ !^"," ^^ pp_term t3
-        ^-^ !^")")
+        (!^"subst" ^-^ !^"(" ^-^ !^nm ^-^ !^"@"
+        ^-^ !^(string_of_var var)
+        ^-^ !^":" ^^ pp_term tp ^-^ !^")" ^-^ !^"." ^-^ pp_term t1 ^^ !^"using"
+        ^^ pp_term t2 ^^ !^"in" ^^ pp_term t3)
 
 and pp_pattern (p : Core.pattern) : SmartPrint.t =
   match p with
@@ -194,8 +194,8 @@ let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
   | Refl (t, tp) -> nest (!^"refl" ^^ pp_uterm t ^^ !^":" ^^ pp_uterm tp)
   | Subst (nm, t1, t2, t3) ->
       nest
-        (!^"subst" ^^ !^nm ^^ !^"(" ^^ pp_uterm t1 ^-^ !^"," ^^ pp_uterm t2
-       ^-^ !^"," ^^ pp_uterm t3 ^-^ !^")")
+        (!^"subst" ^-^ !^nm ^-^ !^"." ^-^ pp_uterm t1 ^^ !^"using"
+       ^^ pp_uterm t2 ^^ !^"in" ^^ pp_uterm t3)
   | FixDef (nm, dep_args, arg, arg_tp, pure_args, body_tp, body) ->
       let pp_dep_args =
         List.fold_left
@@ -270,12 +270,12 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
   | EqType (t1, t2, tp) ->
       nest (pp_term t1 ^^ !^"==" ^^ pp_term t2 ^^ !^":>" ^^ pp_term tp)
   | Refl (t, tp) -> nest (!^"refl" ^^ pp_term t ^^ !^":" ^^ pp_term tp)
-  | Subst (nm, var, t1, t2, t3) ->
+  | Subst (nm, var, tp, t1, t2, t3) ->
       nest
-        (!^"subst" ^^ !^nm ^^ !^"("
-        ^^ !^(Core.Var.to_string var)
-        ^-^ !^"," ^^ pp_term t1 ^-^ !^"," ^^ pp_whnf t2 ^-^ !^"," ^^ pp_term t3
-        ^-^ !^")")
+        (!^"subst" ^-^ !^"(" ^-^ !^nm ^-^ !^"@"
+        ^-^ !^(string_of_var var)
+        ^-^ !^":" ^^ pp_term tp ^-^ !^")" ^-^ !^"." ^-^ pp_term t1 ^^ !^"using"
+        ^^ pp_term t2 ^^ !^"in" ^^ pp_term t3)
 
 let rec whnf_to_string (t : Core.whnf) : string = to_string 40 2 (pp_whnf t)
 

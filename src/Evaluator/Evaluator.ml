@@ -89,9 +89,7 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
           if TypeChecker.Equiv.equiv b1 b2 env then b1 else IfExpr (t, b1, b2))
   | EqType (t1, t2, tp) -> EqType (t1, t2, tp)
   | Refl (t, tp) -> Refl (t, tp)
-  | Subst (nm, var, t1, t2, t3) -> (
-      let t2 = whnf_to_nf t2 env in
-      match t2 with Refl _ -> eval t3 env | _ -> Subst (nm, var, t1, t2, t3))
+  | Subst (nm, var, tp, t1, t2, t3) -> Subst (nm, var, tp, t1, t2, t3)
 
 and eval (t : Core.term) (env : Env.internal) : Core.term =
   let w = TypeChecker.Whnf.to_whnf t env in

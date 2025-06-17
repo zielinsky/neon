@@ -97,11 +97,12 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
   | EqType (t1, t2, tp) ->
       EqType (substitute t1 sub, substitute t2 sub, substitute tp sub)
   | Refl (t, tp) -> Refl (substitute t sub, substitute tp sub)
-  | Subst (nm, var, t1, t2, t3) ->
+  | Subst (nm, var, tp, t1, t2, t3) ->
       let y = Env.fresh_var () in
       Subst
         ( nm,
           y,
+          substitute tp (add_to_sub_map var (Core.Var (nm, y)) sub),
           substitute t1 (add_to_sub_map var (Core.Var (nm, y)) sub),
           substitute t2 (add_to_sub_map var (Core.Var (nm, y)) sub),
           substitute t3 (add_to_sub_map var (Core.Var (nm, y)) sub) )
@@ -112,64 +113,6 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
     @param t The WHNF term in which to perform substitution.
     @param sub The substitution map.
     @return A new WHNF term with substitutions applied. *)
-let rec substitute_whnf (t : Core.whnf) (sub : sub_map) : Core.whnf =
-  match t with
-  | Type | Kind | IntType | StringType | BoolType | IntLit _ | StringLit _
-  | BoolLit _ ->
-      t
-  | Case (scrutinee, scrutinee_tp, var, tp, matchPats) ->
-      let scrutinee' = substitute_whnf scrutinee sub in
-      let scrutinee_tp' = substitute scrutinee_tp sub in
-      let var_sub, var' =
-        match var with
-        | Some (nm, var) ->
-            let fresh_var = Env.fresh_var () in
-            ( singleton_sub_map var (Core.Var (nm, fresh_var)),
-              Some (nm, fresh_var) )
-        | None -> (empty_sub_map, None)
-      in
-      let tp' = substitute tp (merge_sub_maps sub var_sub) in
-      let matchPats' =
-        List.map
-          (fun (pattern, t) ->
-            match pattern with
-            | Core.PatWild ->
-                (Core.PatWild, substitute t (merge_sub_maps sub var_sub))
-            | Core.PatCon (con_nm, vars) ->
-                let sub, rev_vars =
-                  List.fold_left
-                    (fun (sub_map, new_vars) (nm, var, tp) ->
-                      let fresh_var = Env.fresh_var () in
-                      ( add_to_sub_map var (Core.Var (nm, fresh_var)) sub_map,
-                        (nm, fresh_var, tp) :: new_vars ))
-                    (sub, []) vars
-                in
-                ( Core.PatCon (con_nm, List.rev rev_vars),
-                  substitute t (merge_sub_maps sub var_sub) ))
-          matchPats
-      in
-      Case (scrutinee', scrutinee_tp', var', tp', matchPats')
-  | Neu (nm, var, term_list) ->
-      Neu (nm, var, List.map (fun t -> substitute t sub) term_list)
-  | Neu_with_Hole (nm, tp, term_list) ->
-      Neu_with_Hole (nm, tp, List.map (fun t -> substitute t sub) term_list)
-  | Lambda (nm, var, tp, body) ->
-      Lambda (nm, var, substitute tp sub, substitute body sub)
-  | Product (nm, var, tp, body) ->
-      Product (nm, var, substitute tp sub, substitute body sub)
-  | IfExpr (t, b1, b2) ->
-      IfExpr (substitute_whnf t sub, substitute b1 sub, substitute b2 sub)
-  | EqType (t1, t2, tp) ->
-      EqType (substitute t1 sub, substitute t2 sub, substitute tp sub)
-  | Refl (t, tp) -> Refl (substitute t sub, substitute tp sub)
-  | Subst (nm, var, t1, t2, t3) ->
-      let y = Env.fresh_var () in
-      Subst
-        ( nm,
-          y,
-          substitute t1 (add_to_sub_map var (Core.Var (nm, y)) sub),
-          substitute_whnf t2 (add_to_sub_map var (Core.Var (nm, y)) sub),
-          substitute t3 (add_to_sub_map var (Core.Var (nm, y)) sub) )
 
 let rec substitute_in_telescope (ts : Core.telescope) (sub : sub_map) :
     Core.telescope =

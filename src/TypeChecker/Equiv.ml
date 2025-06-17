@@ -112,13 +112,54 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
       in
       let eq_res_types = equiv res_type1 res_type2 env in
       let eq_scrut_types = equiv scrut1_tp scrut2_tp env in
+
       let eq_branches =
-        List.fold_left
-          (fun acc (b1, b2) -> acc && equiv (snd b1) (snd b2) env)
-          true
-          (List.combine branches1 branches2)
+        List.length branches1 = List.length branches2
+        && List.fold_left
+             (fun acc (b1, b2) ->
+               acc
+               &&
+               match (b1, b2) with
+               | (Core.PatCon (nm1, args1), t1), (Core.PatCon (nm2, args2), t2)
+                 ->
+                   if nm1 = nm2 then
+                     let _ =
+                       List.iter
+                         (fun (_, var, tp) ->
+                           Env.add_to_internal_env env var (Env.Opaque tp))
+                         args1
+                     in
+                     let _ =
+                       List.iter
+                         (fun (_, var, tp) ->
+                           Env.add_to_internal_env env var (Env.Opaque tp))
+                         args2
+                     in
+                     let res = equiv t1 t2 env in
+                     let _ =
+                       List.iter
+                         (fun (_, var, _) -> Env.rm_from_internal_env env var)
+                         args1
+                     in
+                     let _ =
+                       List.iter
+                         (fun (_, var, _) -> Env.rm_from_internal_env env var)
+                         args2
+                     in
+                     res
+                   else false
+               | _ -> false)
+             true
+             (List.combine branches1 branches2)
       in
       eq_scrut_types && eq_res_types && eq_branches
+  | Subst (_, var1, tp1, t1, t2, t3), Subst (_, var2, tp2, t4, t5, t6) ->
+      let _ = Env.add_to_internal_env env var1 (Env.Opaque tp1) in
+      let _ = Env.add_to_internal_env env var2 (Env.Opaque tp2) in
+      let res = equiv t1 t4 env && equiv t2 t5 env && equiv t3 t6 env in
+      let _ = Env.rm_from_internal_env env var1 in
+      let _ = Env.rm_from_internal_env env var2 in
+      res
   | _ ->
       (* Terms are not equivalent *)
       false
