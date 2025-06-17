@@ -1,0 +1,17 @@
+data List (A: Type) =
+| Nil
+| Cons (x: A) (xs: List(A))
+
+let xs = Cons(Int, 1, Nil(Int))
+
+let x = match xs with
+| Cons(A, x, xs) -> x
+| Nil(A) -> 42
+
+let extracted_type = match xs return Type with
+| Cons(A, x, xs) -> A
+| Nil(A) -> A
+
+let id = match xs as e with
+| Cons(A, x, xs) -> e
+| Nil(A) -> e
