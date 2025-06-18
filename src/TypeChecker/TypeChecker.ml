@@ -417,24 +417,13 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       | _ ->
           Error.create_infer_type_error pos
             "The condition's type must be a Bool type" term env)
-  | EqType (t1, t2, tp) -> (
-      let tp, tp_of_tp = infer_type env tp in
-      match tp_of_tp with
-      | Type | Kind ->
-          let t1 = check_type env t1 tp in
-          let t2 = check_type env t2 tp in
-          (EqType (t1, t2, tp), Type)
-      | _ ->
-          Error.create_infer_type_error pos
-            "The type of EqType must be either Type or Kind" term env)
-  | Refl (t1, tp) -> (
-      let tp, tp_of_tp = infer_type env tp in
-      let t1 = check_type env t1 tp in
-      match tp_of_tp with
-      | Type | Kind -> (Refl (t1, tp), EqType (t1, t1, tp))
-      | _ ->
-          Error.create_infer_type_error pos
-            "The type of Refl must be either Type or Kind" term env)
+  | EqType (t1, t2) -> 
+    let t1, tp = infer_type env t1 in
+    let t2 = check_type env t2 tp in
+    (EqType (t1, t2, tp), Type)
+  | Refl (t1) ->
+      let t1, tp = infer_type env t1 in
+      (Refl (t1, tp), EqType (t1, t1, tp))
   | Subst (x, t1, t2, t3) -> (
       let t2, t2_tp = infer_type env t2 in
       match Whnf.to_whnf t2_tp env.internal with

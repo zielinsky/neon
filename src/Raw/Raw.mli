@@ -29,8 +29,8 @@ and term_data =
   | ADTDecl of typeCName * telescope * constructor_def list
   | Case of term * string option * term option * branch list
   | IfExpr of term * term * term
-  | EqType of term * term * term
-  | Refl of term * term
+  | EqType of term * term
+  | Refl of term
   | Subst of string * term * term * term
   | FixDef of
       string

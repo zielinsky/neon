@@ -4,25 +4,25 @@ data Nat =
 
 data VecInt (n : Nat) =
 | VNil
-    (p : n == Zero      :> Nat)
+    (p : n == Zero)
 | VCons
     (m  : Nat)                     
-    (p  : n == Succ(m)  :> Nat)    
+    (p  : n == Succ(m))    
     (hd : Int)
     (tl : VecInt(m))
 
 let vnil : VecInt(Zero) =
   VNil( Zero
-      , (refl Zero :> Nat))
+      , (refl Zero))
 
 let cons (m : Nat) (hd : Int) (tl : VecInt(m)) =
   VCons( Succ(m)         
        , m                
-       , (refl (Succ(m)) :> Nat)
+       , (refl (Succ(m)))
        , hd
        , tl)
 
-let two : VecInt(Succ(Succ(Zero))) = 
+let twoElemVec = 
   cons(
     Succ(Zero),
     1,

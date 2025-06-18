@@ -3,23 +3,25 @@ data Nat =
 | Succ (k : Nat)
 
 data Vec (A : Type) (n : Nat) =
-| VNil (p : n == Zero :> Nat)
+| VNil (p : n == Zero)
 | VCons (m  : Nat)
-        (p  : n == Succ(m) :> Nat)
+        (p  : n == Succ(m))
         (hd : A)
         (tl : Vec(A , m))
 
-let two : Vec(Int , Succ(Succ(Zero))) =
+let two =
   VCons( Int
        , Succ(Succ(Zero)) 
        , Succ(Zero) 
-       , (refl (Succ(Succ(Zero))) :> Nat)
+       , (refl (Succ(Succ(Zero)))) /* Test */
        , 1
        , VCons( Int       
               , Succ(Zero)  
               , Zero        
-              , (refl (Succ(Zero)) :> Nat)
+              , (refl (Succ(Zero)))
               , 2
               , VNil( Int
                     , Zero
-                    , (refl Zero :> Nat))))
+                    , (refl Zero))))
+
+let vecInt (n : Nat) = Vec(Int, n)

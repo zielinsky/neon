@@ -1,5 +1,5 @@
-let (trans : forall (T:Type) (a: T) (b: T) (c: T) =>
-             (a == b :> T) -> (b == c :> T) -> (a == c :> T))
-    T a b c p q =
-  subst x. a == x :> T using q in
+let (trans : forall (T: Type) (x: T) (y: T) (z: T) =>
+             (x == y) -> (y == z) -> (x == z))
+    T x y z p q =
+  subst c. x == c using q in 
     p

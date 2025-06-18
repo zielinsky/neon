@@ -173,8 +173,8 @@ op_expr
 /*  equality, non-assoc */
 eq_expr
 : op_expr                                      { $1 }
-| REFLTYPE op_expr EQUALTYPE op_expr           { make (Refl ($2, $4)) }
-| op_expr EQUALITY op_expr EQUALTYPE op_expr   { make (EqType ($1, $3, $5)) }
+| REFLTYPE op_expr                             { make (Refl ($2)) }
+| op_expr EQUALITY op_expr                     { make (EqType ($1, $3)) }
 ;
 
 /*  type arrow, right-assoc */

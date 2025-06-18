@@ -15,7 +15,7 @@ let bool_and (b1: MyBool) (b2: MyBool) =
     | False -> False
     | True -> b2
 
-let isTrue(b: MyBool) = True == b :> MyBool
+let isTrue(b: MyBool) = True == b
 
 fix leBool {n : Nat} (m : Nat) : MyBool =
   match n with

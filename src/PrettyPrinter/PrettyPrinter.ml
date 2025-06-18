@@ -189,9 +189,9 @@ let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
       nest
         (!^"if" ^^ pp_uterm t ^^ !^"then" ^^ pp_uterm b1 ^^ !^"else"
        ^^ pp_uterm b2)
-  | EqType (t1, t2, tp) ->
-      nest (pp_uterm t1 ^^ !^"==" ^^ pp_uterm t2 ^^ !^":>" ^^ pp_uterm tp)
-  | Refl (t, tp) -> nest (!^"refl" ^^ pp_uterm t ^^ !^":" ^^ pp_uterm tp)
+  | EqType (t1, t2) ->
+      nest (pp_uterm t1 ^^ !^"==" ^^ pp_uterm t2)
+  | Refl (t) -> nest (!^"refl" ^^ pp_uterm t)
   | Subst (nm, t1, t2, t3) ->
       nest
         (!^"subst" ^-^ !^nm ^-^ !^"." ^-^ pp_uterm t1 ^^ !^"using"

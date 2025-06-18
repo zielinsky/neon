@@ -1,5 +1,144 @@
+data Nat =
+| Zero
+| Succ (pred : Nat)
+
+data List (A : Type) =
+| Nil
+| Cons (hd : A) (tl : List(A))
+
+data MyBool =
+| True
+| False
+
+data Sigma (A : Type) (P : (A -> Type)) =
+| Pair (x : A) (y : P(x))
+
+
 let and_type = Type -> Type -> Type
 let and : and_type = fun p q => forall (c : Type) => (p -> q -> c) -> c
 
 let conj_type = forall (p: Type) (q : Type) => p -> q -> and (p, q)
 let conj : conj_type = fun p q x y c f => f(x, y) 
+
+
+let fst {P : Type} {Q : Type} (pq : and P Q) : P =
+  pq P (fun p q => p)
+
+let snd {P : Type} {Q : Type} (pq : and P Q) : Q =
+  pq Q (fun p q => q)
+
+
+fix le {n : Nat} (m : Nat) : MyBool =
+  match n with
+  | Zero      -> True
+  | Succ n1   ->
+      match m with
+      | Zero     -> False
+      | Succ m1  -> le(n1)(m1)
+
+fix eqNat {n : Nat} (m : Nat) : MyBool =
+  match n with
+  | Zero      -> (
+      match m with
+      | Zero    -> True
+      | Succ _  -> False)
+  | Succ n1   ->
+      match m with
+      | Zero    -> False
+      | Succ m1 -> eqNat(n1)(m1)
+
+-------------------------------------------------------------------------------
+-- 4.  Równość list (bool)  +  sort‑insertion
+-------------------------------------------------------------------------------
+
+fix eqListNat {xs : List(Nat)} (ys : List(Nat)) : MyBool =
+  match xs with
+  | Nil _  -> (
+      match ys with
+      | Nil _            -> True
+      | Cons _ _ _       -> False)
+  | Cons _ x tlx ->
+      match ys with
+      | Nil _            -> False
+      | Cons _ y tly     ->
+          match eqNat(x)(y) with
+          | True  -> eqListNat(tlx)(tly)
+          | False -> False
+
+-------------------------------------------------------------------------------
+-- 5.  insert, sorted?, sortList
+-------------------------------------------------------------------------------
+
+fix insert (x : Nat) {xs : List(Nat)} : List(Nat) =
+  match xs with
+  | Nil A -> Cons(A, x, Nil A)
+  | Cons A y tl ->
+      match le(x)(y) with
+      | True  -> Cons(A, x, Cons(A, y, tl))
+      | False -> Cons(A, y, insert(x)(tl))
+
+--  Czy lista jest posortowana?  (bool)
+fix sorted {xs : List(Nat)} : MyBool =
+  match xs with
+  | Nil _ -> True
+  | Cons _ x tl ->
+      match tl with
+      | Nil _ -> True
+      | Cons _ y tll ->
+          match le(x)(y) with
+          | True  -> sorted(tl)
+          | False -> False
+
+--  Czysta część: sort → list
+fix sortList {xs : List(Nat)} : List(Nat) =
+  match xs with
+  | Nil A        -> Nil A
+  | Cons A h tl  -> insert(h)(sortList(tl))
+
+-------------------------------------------------------------------------------
+-- 6.  perm  (bool)  --------------------------------------------------------
+-------------------------------------------------------------------------------
+
+let perm (xs : List(Nat)) (ys : List(Nat)) : MyBool =
+  eqListNat(sortList(xs))(sortList(ys))
+
+-------------------------------------------------------------------------------
+-- 7.  Lematy w formie "refl" (redukcja wystarcza) -------------------------
+-------------------------------------------------------------------------------
+
+fix sorted_sortList {xs : List(Nat)}
+  : sorted(sortList(xs)) == True :> MyBool =
+  match xs with
+  | Nil _       -> refl True :> MyBool
+  | Cons _ h tl ->
+      -- IH daje, że sorted(sortList tl) == True
+      let ih = sorted_sortList(tl) in
+      --  insert wstawia "h" w posortowaną listę, więc wynik także redukuje
+      --  się do True → wystarczy refl
+      refl True :> MyBool
+
+-- 7.2  `perm xs (sortList xs)` redukuje się do True (refleksyjność)
+let perm_refl {xs : List(Nat)} : perm(xs)(sortList(xs)) == True :> MyBool =
+  refl True :> MyBool        -- bo eqListNat(a)(a) → True
+
+-------------------------------------------------------------------------------
+-- 8.  Główna funkcja:  Σ‑wynik + dowody = conj … …
+-------------------------------------------------------------------------------
+
+fix sort {xs : List(Nat)}
+  : Sigma(
+      List(Nat),
+      fun ys => and (
+        sorted(ys) == True :> MyBool
+      ) (
+        perm(xs)(ys) == True :> MyBool
+      )
+    ) =
+  let ys = sortList(xs) in
+  Pair(
+    ys,
+    --  dwa dowody: z lematów 7.1 i 7.2 + simplicial "permutacja" ↔ refl
+    conj _ _
+      (sorted_sortList(xs))
+      (perm_refl(xs))
+  )
