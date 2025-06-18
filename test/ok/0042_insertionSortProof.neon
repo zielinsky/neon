@@ -1,0 +1,57 @@
+data Nat =
+| Zero
+| Succ (pred : Nat)
+
+data List (A : Type) =
+| Nil
+| Cons (hd : A) (tl : List(A))
+
+data MyBool = 
+| True
+| False
+
+let bool_and (b1: MyBool) (b2: MyBool) =
+    match b1 with
+    | False -> False
+    | True -> b2
+
+let isTrue(b: MyBool) = True == b :> MyBool
+
+fix leBool {n : Nat} (m : Nat) : MyBool =
+  match n with
+  | Zero      -> True
+  | Succ(n)  ->
+      match m with
+      | Zero     -> False
+      | Succ(m) -> leBool(n, m)
+// Swap x, y w leBool
+fix insert (x : Nat) {xs : List(Nat)} : List(Nat) =
+  match xs with
+  | Nil(A) ->
+      Cons(A, x, Nil(A))
+  | Cons(A, y, tl) ->
+      match leBool(x, y) with
+      | True  -> Cons(A, x, Cons(A, y, tl))
+      | False -> Cons(A, y, insert(x)(tl))
+
+fix sort {xs : List(Nat)} : List(Nat) =
+  match xs with
+  | Nil(A) ->
+      Nil(A)
+  | Cons(A, h, tl) ->
+      insert(h)(sort(tl))
+
+fix bounded (elem : Nat) {xs : List(Nat)} : MyBool =
+    match xs with
+    | Nil(A) -> True
+    | Cons(A, h, tl) -> bool_and(leBool(elem, h), bounded(h, tl))
+
+let is_sorted (xs : List(Nat)) = 
+    match xs with
+    | Nil(A) -> True
+    | Cons(A, h, tl) -> bounded(h, tl)
+
+fix insert_bounded (b: Nat) (elem: Nat) {xs : List(Nat)} (H : isTrue(leBool(b, elem))) : isTrue(bounded(b, xs)) -> isTrue(bounded(b, insert(elem, xs))) =
+    match xs as ys return isTrue(bounded(b, ys)) -> isTrue(bounded(b, insert(elem, ys))) with
+    | Nil(A) -> ?hole1
+    | Cons(A, hd, tl) -> ?hole2

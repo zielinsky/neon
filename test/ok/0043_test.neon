@@ -1,0 +1,24 @@
+data Flag =
+  | On
+  | Off
+
+
+let flagTy (f: Flag) = 
+    match f with
+    | On   -> Int
+    | Off  -> Bool
+
+
+let choose (f: Flag) = 
+    match f as x return flagTy(x) with
+    | On   -> 0
+    | Off  -> true
+
+let x : Int = choose (On)
+
+let y : Bool = choose (Off)
+
+fix choose_check {f: Flag} : flagTy(f) -> Int = 
+  match f as x return flagTy(x) -> Int with
+    | On   -> fun x => 42
+    | Off  -> ?hole
