@@ -69,15 +69,6 @@ type whnf =
   | EqType of term * term * tp
   | Refl of term * tp
   | Subst of string * Var.t * tp * term * term * term
-  | FixDef of
-      string
-      * Var.t
-      * (string * Var.t * tp) list
-      * string
-      * Var.t
-      * tp
-      * tp
-      * term
 
 val dataCName_of_string : string -> dataCName
 val typeCName_of_string : string -> typeCName

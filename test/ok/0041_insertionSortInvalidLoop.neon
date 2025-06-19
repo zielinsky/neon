@@ -17,7 +17,7 @@ let bool_and (b1: MyBool) (b2: MyBool) =
 
 let isTrue(b: MyBool) = True == b 
 
-fix leBool {n : Nat} (m : Nat) : MyBool =
+fix leBool (n : Nat) {m : Nat} : MyBool =
   match n with
   | Zero      -> True
   | Succ(n)  ->
@@ -51,7 +51,7 @@ let is_sorted (xs : List(Nat)) =
     | Nil(A) -> True
     | Cons(A, h, tl) -> bounded(h, tl)
 
-let insert_bounded (b: Nat) (elem: Nat)(xs : List(Nat)) (H : isTrue(leBool(b, elem))) =
+let insert_bounded (b: Nat) (elem: Nat) (xs : List(Nat)) (H : isTrue(leBool(b, elem))) =
     match xs as ys return isTrue(bounded(b, ys)) -> isTrue(bounded(b, insert(elem, ys))) with
     | Nil(A) -> ?hole1
     | Cons(A, hd, tl) -> ?hole2

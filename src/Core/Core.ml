@@ -79,15 +79,6 @@ type whnf =
   | EqType of term * term * tp
   | Refl of term * tp
   | Subst of string * Var.t * tp * term * term * term
-  | FixDef of
-      string
-      * Var.t
-      * (string * Var.t * tp) list
-      * string
-      * Var.t
-      * tp
-      * tp
-      * term
 
 let dataCName_of_string (s : string) : dataCName = s
 let typeCName_of_string (s : string) : typeCName = s

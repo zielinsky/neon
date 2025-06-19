@@ -90,8 +90,6 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
   | EqType (t1, t2, tp) -> EqType (t1, t2, tp)
   | Refl (t, tp) -> Refl (t, tp)
   | Subst (nm, var, tp, t1, t2, t3) -> Subst (nm, var, tp, t1, t2, t3)
-  | FixDef (fn_nm, fn_var, dep_args, arg, arg_var, arg_tp, body_tp, body) ->
-      FixDef (fn_nm, fn_var, dep_args, arg, arg_var, arg_tp, body_tp, body)
 
 and eval (t : Core.term) (env : Env.internal) : Core.term =
   let w = TypeChecker.Whnf.to_whnf t env in

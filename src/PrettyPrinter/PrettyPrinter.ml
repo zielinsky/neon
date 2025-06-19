@@ -280,15 +280,6 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
         ^-^ !^(string_of_var var)
         ^-^ !^":" ^^ pp_term tp ^-^ !^")" ^-^ !^"." ^-^ pp_term t1 ^^ !^"using"
         ^^ pp_term t2 ^^ !^"in" ^^ pp_term t3)
-  | FixDef(nm, _, dep_args, arg, _, arg_tp, body_tp, body) ->
-      let pp_dep_args =
-        List.fold_left
-          (fun acc (nm, _, tp) -> acc ^-^ !^nm ^-^ !^":" ^^ pp_term tp ^-^ !^",")
-          !^"" dep_args
-      in
-      nest
-        (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_dep_args ^-^ !^")" ^^ !^arg ^-^ !^":"
-       ^^ pp_term arg_tp ^^ !^":" ^^ pp_term body_tp ^^ !^"=" ^^ pp_term body)
 
 let rec whnf_to_string (t : Core.whnf) : string = to_string 40 2 (pp_whnf t)
 
@@ -296,6 +287,7 @@ let print_def ({ pos; data } : Raw.term) : unit =
   match data with
   | LetDef (nm, _)
   | LemmaDef (nm, _)
+  | FixDef (nm, _, _, _, _, _)
   | TermWithTypeAnno
       ( ( { pos = _; data = LetDef (nm, _) }
         | { pos = _; data = LemmaDef (nm, _) } ),

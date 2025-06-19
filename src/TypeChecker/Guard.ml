@@ -18,13 +18,6 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
       match Whnf.to_whnf app env with
       | Neu (_, v_fn, rev_args) when Core.Var.equal v_fn fn_var -> (
           let args = List.rev rev_args in
-          let _ = print_endline
-            ("Checking totality of " ^ Core.Var.to_string v_fn ^ " with "
-            ^ string_of_int (List.length args) ^ " arguments") in 
-          let _ = List.iteri
-            (fun i arg -> print_endline
-              ("Argument " ^ string_of_int i ^ ": " ^ (PrettyPrinter.term_to_string arg)))
-            args in
           if List.length args <= arg_pos then
             failwith "Not enough arguments in the application";
           let dec_arg = List.nth args arg_pos in
@@ -157,3 +150,5 @@ let rec check_strict_positivity ?(isPositive = true) (var : Core.Var.t)
       && check_strict_positivity ~isPositive var t1
       && check_strict_positivity ~isPositive var t2
       && check_strict_positivity ~isPositive var t3
+  | _ -> 
+      true
