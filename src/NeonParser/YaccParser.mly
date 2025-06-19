@@ -207,10 +207,9 @@ fix_args
   | BR_OPN VAR COLON expression BR_CLS fix_args { ($2, $4) :: $6 }
 ;
 
-
 fix_def
-: VAR fix_args BR_OPN2 VAR COLON expression BR_CLS2 fix_args COLON expression EQUAL expression
-                                              { make (FixDef ($1, $2, $4, $6, $8, $10, $12)) }
+: VAR fix_args BR_OPN2 VAR COLON expression BR_CLS2 COLON expression EQUAL expression
+                                              { make (FixDef ($1, $2, $4, $6, $9, $11)) }
 ;
 
 let_args

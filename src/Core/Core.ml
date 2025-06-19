@@ -42,6 +42,15 @@ type term =
   | EqType of term * term * tp
   | Refl of term * tp
   | Subst of string * Var.t * tp * term * term * term
+  | FixDef of
+      string
+      * Var.t
+      * (string * Var.t * tp) list
+      * string
+      * Var.t
+      * tp
+      * tp
+      * term
 
 and constructor_def = { cname : string; telescope : telescope }
 and telescope = Empty | Cons of string * Var.t * tp * telescope
@@ -68,6 +77,15 @@ type whnf =
   | EqType of term * term * tp
   | Refl of term * tp
   | Subst of string * Var.t * tp * term * term * term
+  | FixDef of
+      string
+      * Var.t
+      * (string * Var.t * tp) list
+      * string
+      * Var.t
+      * tp
+      * tp
+      * term
 
 let dataCName_of_string (s : string) : dataCName = s
 let typeCName_of_string (s : string) : typeCName = s

@@ -48,6 +48,53 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
           to_whnf
             (Substitution.substitute body (Substitution.singleton_sub_map x t2))
             env
+      | FixDef (fn_nm, fn_var, dep_args, arg, arg_var, arg_tp, body_tp, body) ->
+          begin match dep_args, body_tp with
+          | [], _ ->
+              to_whnf
+                (Substitution.substitute body
+                   (Substitution.singleton_sub_map arg_var t2))
+                env
+          | (_, dep_arg_var, _) :: dep_args, Product (_, _, _, p_body) ->
+              let sub_map =
+                Substitution.singleton_sub_map dep_arg_var t2
+              in
+              let new_body = 
+                Substitution.substitute body sub_map
+              in
+              let new_body_tp =
+                Substitution.substitute p_body sub_map
+              in
+              let new_arg_tp = 
+                Substitution.substitute arg_tp sub_map
+              in
+              let new_dep_args =
+                List.map
+                  (fun (nm, var, tp) ->
+                    (nm, var, Substitution.substitute tp sub_map))
+                  dep_args
+              in
+              to_whnf (FixDef (fn_nm, fn_var, new_dep_args, arg, arg_var, new_arg_tp, new_body_tp, new_body)) env
+          | _ ->
+              let _ = print_endline
+                ("Error: FixDef " ^ fn_nm ^ " has dependent arguments but no body type")
+              in
+              let _ =
+                print_endline
+                  ("Dependent arguments: "
+                   ^ String.concat ", " (List.map (fun (_, v, _) -> Core.Var.to_string v) dep_args))
+              in
+              let _ =
+                print_endline
+                  ("Body type: "
+                   ^ PrettyPrinter.term_to_string body_tp)
+              in
+              let _ = 
+                print_endline (PrettyPrinter.term_to_string t)
+              in
+              Error.create_whnf_error t env
+                ("When reducing Application expected FixDef with dependent arguments\n")
+          end
       | whnf_term ->
           Error.create_whnf_error t env
             ("When reducing Application expected Neu or Lambda\n" ^ "Got "
@@ -120,3 +167,6 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       match t2_whnf with
       | Refl _ -> to_whnf t3 env
       | _ -> Subst (nm, var, tp, t1, t2, t3))
+  | FixDef (nm, nm_var, dep_args, arg, arg_var, arg_tp, body_tp, body) ->
+    FixDef (nm, nm_var, dep_args, arg, arg_var, arg_tp, body_tp, body)
+    

@@ -451,7 +451,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       | _ ->
           Error.create_infer_type_error pos
             "The type of Subst must be an EqType" term env)
-  | FixDef (nm, dep_args, arg, arg_tp, pure_args, body_tp, body) -> (
+  | FixDef (nm, dep_args, arg, arg_tp, body_tp, body) -> (
       let dep_args =
         List.map
           (fun (nm, tp) ->
@@ -469,38 +469,14 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       in
       let arg_tp, arg_tp_of_tp = infer_type env arg_tp in
       let arg_fresh_var = Env.add_to_env env arg (Opaque arg_tp) in
-      let pure_args =
-        List.map
-          (fun (nm, tp) ->
-            let tp, tp_of_tp = infer_type env tp in
-            match tp_of_tp with
-            | Type | Kind -> (nm, tp)
-            | _ ->
-                Error.create_infer_type_error pos
-                  "The type of FixDef pure arguments must be either Type or \
-                   Kind"
-                  term env)
-          pure_args
-      in
       let body_tp, body_tp_of_tp = infer_type env body_tp in
-      let pure_args =
-        List.map
-          (fun (nm, tp) -> (nm, Env.add_to_env env nm (Opaque tp), tp))
-          pure_args
-      in
       match (arg_tp_of_tp, body_tp_of_tp) with
       | (Type | Kind), (Type | Kind) ->
-          let fix_pure_args_tp =
-            List.fold_left
-              (fun acc (_, _, tp) -> Core.TypeArrow (tp, acc))
-              body_tp
-              (List.rev ((arg, arg_fresh_var, arg_tp) :: pure_args))
-          in
           let fix_tp =
             List.fold_left
               (fun (acc : Core.term) (nm, var, tp) ->
                 Core.Product (nm, var, tp, acc))
-              fix_pure_args_tp (List.rev dep_args)
+              body_tp ((arg, arg_fresh_var, arg_tp) :: (List.rev dep_args))
           in
           let nm_fresh_var = Env.add_to_env env nm (Opaque fix_tp) in
           let body = check_type env body body_tp in
@@ -515,35 +491,19 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
           let _ =
             List.iter (fun (nm, _, _) -> Env.rm_from_env env nm) dep_args
           in
-          let _ =
-            List.iter (fun (nm, _, _) -> Env.rm_from_env env nm) pure_args
-          in
           let nm_fresh_var' = Env.fresh_var () in
           let body =
             Substitution.substitute body
               (Substitution.singleton_sub_map nm_fresh_var
                  (Core.Var (nm, nm_fresh_var')))
           in
-          let fix_pure_args_body =
-            List.fold_left
-              (fun (acc : Core.term) (nm, var, tp) ->
-                Core.Lambda (nm, var, tp, acc))
-              body
-              (List.rev ((arg, arg_fresh_var, arg_tp) :: pure_args))
-          in
-          let fix_body =
-            List.fold_left
-              (fun (acc : Core.term) (nm, var, tp) ->
-                Core.Lambda (nm, var, tp, acc))
-              fix_pure_args_body (List.rev dep_args)
-          in
-          (* TODO: Refresh variable and substitute *)
+          let fix : Core.term = Core.FixDef (nm, nm_fresh_var', dep_args, arg, arg_fresh_var, arg_tp, body_tp, body) in
           let _ =
             Env.add_to_env_with_var env nm
-              (Transparent (fix_body, fix_tp))
+              (Transparent (fix, fix_tp))
               nm_fresh_var'
           in
-          (fix_body, fix_tp)
+          (fix, fix_tp)
       | _ ->
           Error.create_infer_type_error pos
             "The type of FixDef arguments must be either Type or Kind" term env)

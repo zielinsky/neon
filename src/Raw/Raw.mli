@@ -37,7 +37,6 @@ and term_data =
       * (string * term) list
       * string
       * term
-      * (string * term) list
       * term
       * term
 

@@ -10,7 +10,7 @@ data MyBool =
 | True
 | False
 
-fix leBool {n : Nat} (m : Nat) : MyBool =
+fix leBool (n : Nat) {m : Nat} : MyBool =
   match n with
   | Zero      -> True
   | Succ(n)  ->

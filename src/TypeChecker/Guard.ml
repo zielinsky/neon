@@ -18,12 +18,13 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
       match Whnf.to_whnf app env with
       | Neu (_, v_fn, rev_args) when Core.Var.equal v_fn fn_var -> (
           let args = List.rev rev_args in
-          let _ = print_endline "Checking application of fix" in
-          let _ =
-            List.iter
-              (fun x -> print_endline (PrettyPrinter.term_to_string x))
-              args
-          in
+          let _ = print_endline
+            ("Checking totality of " ^ Core.Var.to_string v_fn ^ " with "
+            ^ string_of_int (List.length args) ^ " arguments") in 
+          let _ = List.iteri
+            (fun i arg -> print_endline
+              ("Argument " ^ string_of_int i ^ ": " ^ (PrettyPrinter.term_to_string arg)))
+            args in
           if List.length args <= arg_pos then
             failwith "Not enough arguments in the application";
           let dec_arg = List.nth args arg_pos in
@@ -38,8 +39,9 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
                 rev_args
           | _ -> failwith "Recursion on a non-variable argument")
       | _ ->
-          traverse fn_var arg_var arg_pos ctx env t1;
-          traverse fn_var arg_var arg_pos ctx env t2)
+        traverse fn_var arg_var arg_pos ctx env t1;
+        traverse fn_var arg_var arg_pos ctx env t2
+      )
   | Lambda (_, var, var_tp, body) ->
       Env.add_to_internal_env env var (Opaque var_tp);
       traverse fn_var arg_var arg_pos ctx env body;
@@ -92,6 +94,10 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
       traverse fn_var arg_var arg_pos ctx env t1;
       traverse fn_var arg_var arg_pos ctx env t2;
       traverse fn_var arg_var arg_pos ctx env t3
+  | FixDef _ ->
+    (* Impossible case, since we are checking totality of a fixpoint definition *)
+    ()
+  (* Base cases *)
   | Hole _ | Type | Kind | IntType | StringType | BoolType | IntLit _
   | StringLit _ | BoolLit _ | Var _ ->
       ()
