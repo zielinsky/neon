@@ -148,14 +148,13 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
                      in
                      res
                    else false
-               | _ -> false)
-               (* Add comparison between 2 wildcards *)
+               | _ -> false) (* Add comparison between 2 wildcards *)
              true
              (List.combine branches1 branches2)
       in
       eq_scrut_types && eq_res_types && eq_branches
   | Subst (_, var1, tp1, t1, t2, t3), Subst (_, var2, tp2, t4, t5, t6) ->
-    (* Fix this, look like we treat binders in Lambdas *)
+      (* Fix this, look like we treat binders in Lambdas *)
       let _ = Env.add_to_internal_env env var1 (Env.Opaque tp1) in
       let _ = Env.add_to_internal_env env var2 (Env.Opaque tp2) in
       let res = equiv t1 t4 env && equiv t2 t5 env && equiv t3 t6 env in

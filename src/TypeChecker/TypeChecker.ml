@@ -23,9 +23,7 @@ let split_pattern_args (tsT_len : int) (args : string list) :
 let rec build_adt_sig (env : Env.env) (ts : Core.telescope) : Core.term =
   match ts with
   | Empty -> Type
-  | Cons (nm, var, tp, ts) ->
-      let res : Core.term = Product (nm, var, tp, build_adt_sig env ts) in
-      res
+  | Cons (nm, var, tp, ts) -> Product (nm, var, tp, build_adt_sig env ts)
 
 let rec build_adt_data (env : Env.env) (tsType : Core.telescope)
     (tsData : Core.telescope) (var_list : (string * Core.Var.t) list)
@@ -54,6 +52,14 @@ let rec build_adt_data (env : Env.env) (tsType : Core.telescope)
             build_adt_data env ts tsData ((nm, var) :: var_list) adt_sig_var )
       in
       res
+
+let rec check_telescope_strict_positivity (ts : Core.telescope)
+    (var : Core.Var.t) =
+  match ts with
+  | Empty -> true
+  | Cons (_, _, tp, ts) ->
+      Guard.check_strict_positivity var tp
+      && check_telescope_strict_positivity ts var
 
 let check_exhaustivity_and_constructor_names (ps : Raw.branch list)
     (dataCNames : Core.dataCName list) : unit =
@@ -321,12 +327,19 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
         List.map
           (fun { Raw.cname = nmCon; Raw.telescope = tsCon } ->
             let tsCon' = telescope_check_type_and_extend_env env tsCon in
-            let _ =
-              Env.add_to_adt_env env.adt nmCon
-                (AdtDSig (Core.typeCName_of_string nm, tsCon'))
-            in
-            let _ = Env.rm_telescope_from_env env tsCon' in
-            { Core.cname = nmCon; Core.telescope = tsCon' })
+            if not (check_telescope_strict_positivity tsCon' fresh_var) then
+              Error.create_infer_type_error pos
+                ("Constructor " ^ nmCon
+               ^ " isn't strictly positively recursive.")
+                term env
+            else
+              (* let _ = print_endline (PrettyPrinter.telescope_to_string tsCon') in *)
+              let _ =
+                Env.add_to_adt_env env.adt nmCon
+                  (AdtDSig (Core.typeCName_of_string nm, tsCon'))
+              in
+              let _ = Env.rm_telescope_from_env env tsCon' in
+              { Core.cname = nmCon; Core.telescope = tsCon' })
           cs
       in
       let _ = Env.rm_telescope_from_env env ts' in

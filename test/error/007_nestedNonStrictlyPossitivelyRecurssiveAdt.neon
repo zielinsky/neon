@@ -1,0 +1,2 @@
+data NestedBad (A : Type) = 
+| MkNestedBad (x : (NestedBad(A) -> A) -> A)

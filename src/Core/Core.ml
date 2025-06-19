@@ -10,6 +10,7 @@ module Var : sig
   val of_int : int -> t
   val to_int : t -> int
   val to_string : t -> string
+  val dummy_var : t
 end = struct
   type t = int
 
@@ -19,6 +20,7 @@ end = struct
   let to_string = Int.to_string
   let of_int x = x
   let to_int x = x
+  let dummy_var = -1
 end
 
 type term =

@@ -33,7 +33,7 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
   | Product (nm, x, x_tp, body) -> Product (nm, x, x_tp, body)
   | TypeArrow (tp1, tp2) ->
       (* Type arrow is syntactic sugar for a product type without a parameter name *)
-      Product ("", Core.Var.of_int (-1), tp1, tp2)
+      Product ("", Core.Var.dummy_var, tp1, tp2)
   | App (t1, t2) -> (
       (* Application of function 't1' to argument 't2' *)
       match to_whnf t1 env with

@@ -108,3 +108,52 @@ let check_totality (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
     let init = { allowed = VS.empty } in
     traverse fn_var arg_var arg_pos init env body
   with Failure msg -> Error.create_guard_error msg body
+
+let rec check_strict_positivity ?(isPositive = true) (var : Core.Var.t)
+    (term : Core.term) : bool =
+  match term with
+  | Type | Kind | IntType | StringType | BoolType | IntLit _ | StringLit _
+  | BoolLit _ ->
+      true
+  | Var (_, x) -> if Core.Var.equal var x then isPositive else true
+  | Lambda (_, _, x_tp, body) ->
+      check_strict_positivity ~isPositive var x_tp
+      && check_strict_positivity ~isPositive var body
+  | Product (_, _, x_tp, body_tp) ->
+      check_strict_positivity ~isPositive:false var x_tp
+      && check_strict_positivity ~isPositive var body_tp
+  | App (t1, t2) ->
+      check_strict_positivity ~isPositive var t1
+      && check_strict_positivity ~isPositive var t2
+  | Hole (_, tp) -> check_strict_positivity ~isPositive var tp
+  | Let (_, _, t1, tp_t1, t2) ->
+      check_strict_positivity ~isPositive var t1
+      && check_strict_positivity ~isPositive var tp_t1
+      && check_strict_positivity ~isPositive var t2
+  | TypeArrow (tp1, tp2) ->
+      check_strict_positivity ~isPositive:false var tp1
+      && check_strict_positivity ~isPositive var tp2
+  | Case (scrutinee, scrutinee_tp, _, tp, branches) ->
+      check_strict_positivity ~isPositive var scrutinee
+      && check_strict_positivity ~isPositive var scrutinee_tp
+      && check_strict_positivity ~isPositive var tp
+      && List.for_all
+           (fun (_, body) -> check_strict_positivity ~isPositive var body)
+           branches
+  | IfExpr (t, b1, b2) ->
+      check_strict_positivity ~isPositive var t
+      && check_strict_positivity ~isPositive var b1
+      && check_strict_positivity ~isPositive var b2
+  | EqType (t1, t2, tp) ->
+      check_strict_positivity ~isPositive var t1
+      && check_strict_positivity ~isPositive var t2
+      && check_strict_positivity ~isPositive var tp
+  | Refl (t, tp) ->
+      check_strict_positivity ~isPositive var t
+      && check_strict_positivity ~isPositive var tp
+  | Subst (_, x, tp, t1, t2, t3) ->
+      (if Core.Var.equal var x then not isPositive else true)
+      && check_strict_positivity ~isPositive var tp
+      && check_strict_positivity ~isPositive var t1
+      && check_strict_positivity ~isPositive var t2
+      && check_strict_positivity ~isPositive var t3
