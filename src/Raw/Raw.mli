@@ -32,13 +32,7 @@ and term_data =
   | EqType of term * term
   | Refl of term
   | Subst of string * term * term * term
-  | FixDef of
-      string
-      * (string * term) list
-      * string
-      * term
-      * term
-      * term
+  | FixDef of string * (string * term) list * string * term * term * term
 
 and constructor_def = { cname : dataCName; telescope : telescope }
 and telescope = Empty | Cons of string * term * telescope

@@ -48,8 +48,19 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
           to_whnf
             (Substitution.substitute body (Substitution.singleton_sub_map x t2))
             env
-      | FixNeu (fn_nm, fn_var, args, arg, arg_var, arg_tp, body_tp, body, arg_list) ->
-        FixNeu (fn_nm, fn_var, args, arg, arg_var, arg_tp, body_tp, body, t2 :: arg_list)
+      | FixNeu
+          (fn_nm, fn_var, args, arg, arg_var, arg_tp, body_tp, body, arg_list)
+        ->
+          FixNeu
+            ( fn_nm,
+              fn_var,
+              args,
+              arg,
+              arg_var,
+              arg_tp,
+              body_tp,
+              body,
+              t2 :: arg_list )
       | whnf_term ->
           Error.create_whnf_error t env
             ("When reducing Application expected Neu or Lambda\n" ^ "Got "
@@ -123,5 +134,4 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       | Refl _ -> to_whnf t3 env
       | _ -> Subst (nm, var, tp, t1, t2, t3))
   | FixDef (nm, nm_var, args, arg_nm, arg_var, arg_tp, body_tp, body) ->
-    FixNeu (nm, nm_var, args, arg_nm, arg_var, arg_tp, body_tp, body, [])
-    
+      FixNeu (nm, nm_var, args, arg_nm, arg_var, arg_tp, body_tp, body, [])

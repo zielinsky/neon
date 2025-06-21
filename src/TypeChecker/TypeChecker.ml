@@ -430,11 +430,11 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       | _ ->
           Error.create_infer_type_error pos
             "The condition's type must be a Bool type" term env)
-  | EqType (t1, t2) -> 
-    let t1, tp = infer_type env t1 in
-    let t2 = check_type env t2 tp in
-    (EqType (t1, t2, tp), Type)
-  | Refl (t1) ->
+  | EqType (t1, t2) ->
+      let t1, tp = infer_type env t1 in
+      let t2 = check_type env t2 tp in
+      (EqType (t1, t2, tp), Type)
+  | Refl t1 ->
       let t1, tp = infer_type env t1 in
       (Refl (t1, tp), EqType (t1, t1, tp))
   | Subst (x, t1, t2, t3) -> (
@@ -475,8 +475,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
                 (nm, fresh_var, tp)
             | _ ->
                 Error.create_infer_type_error pos
-                  "The type of FixDef arguments must be either Type \
-                   or Kind"
+                  "The type of FixDef arguments must be either Type or Kind"
                   term env)
           args
       in
@@ -489,28 +488,37 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
             List.fold_left
               (fun (acc : Core.term) (nm, var, tp) ->
                 Core.Product (nm, var, tp, acc))
-              body_tp ((arg, arg_fresh_var, arg_tp) :: (List.rev args))
+              body_tp
+              ((arg, arg_fresh_var, arg_tp) :: List.rev args)
           in
           let nm_fresh_var = Env.add_to_env env nm (Opaque fix_tp) in
           let body = check_type env body body_tp in
 
           let _ =
-            Guard.check_totality nm_fresh_var arg_fresh_var
-              (List.length args) body env.internal
+            Guard.check_totality nm_fresh_var arg_fresh_var (List.length args)
+              body env.internal
           in
 
           let _ = Env.rm_from_env env nm in
           let _ = Env.rm_from_env env arg in
-          let _ =
-            List.iter (fun (nm, _, _) -> Env.rm_from_env env nm) args
-          in
+          let _ = List.iter (fun (nm, _, _) -> Env.rm_from_env env nm) args in
           let nm_fresh_var' = Env.fresh_var () in
           let body =
             Substitution.substitute body
               (Substitution.singleton_sub_map nm_fresh_var
                  (Core.Var (nm, nm_fresh_var')))
           in
-          let fix : Core.term = Core.FixDef (nm, nm_fresh_var', args, arg, arg_fresh_var, arg_tp, body_tp, body) in
+          let fix : Core.term =
+            Core.FixDef
+              ( nm,
+                nm_fresh_var',
+                args,
+                arg,
+                arg_fresh_var,
+                arg_tp,
+                body_tp,
+                body )
+          in
           let _ =
             Env.add_to_env_with_var env nm
               (Transparent (fix, fix_tp))

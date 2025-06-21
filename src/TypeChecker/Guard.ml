@@ -32,9 +32,8 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
                 rev_args
           | _ -> failwith "Recursion on a non-variable argument")
       | _ ->
-        traverse fn_var arg_var arg_pos ctx env t1;
-        traverse fn_var arg_var arg_pos ctx env t2
-      )
+          traverse fn_var arg_var arg_pos ctx env t1;
+          traverse fn_var arg_var arg_pos ctx env t2)
   | Lambda (_, var, var_tp, body) ->
       Env.add_to_internal_env env var (Opaque var_tp);
       traverse fn_var arg_var arg_pos ctx env body;
@@ -88,8 +87,8 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
       traverse fn_var arg_var arg_pos ctx env t2;
       traverse fn_var arg_var arg_pos ctx env t3
   | FixDef _ ->
-    (* Impossible case, since we are checking totality of a fixpoint definition *)
-    ()
+      (* Impossible case, since we are checking totality of a fixpoint definition *)
+      ()
   (* Base cases *)
   | Hole _ | Type | Kind | IntType | StringType | BoolType | IntLit _
   | StringLit _ | BoolLit _ | Var _ ->
@@ -150,5 +149,4 @@ let rec check_strict_positivity ?(isPositive = true) (var : Core.Var.t)
       && check_strict_positivity ~isPositive var t1
       && check_strict_positivity ~isPositive var t2
       && check_strict_positivity ~isPositive var t3
-  | _ -> 
-      true
+  | _ -> true

@@ -82,10 +82,11 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
         ^-^ !^(string_of_var var)
         ^-^ !^":" ^^ pp_term tp ^-^ !^")" ^-^ !^"." ^-^ pp_term t1 ^^ !^"using"
         ^^ pp_term t2 ^^ !^"in" ^^ pp_term t3)
-  | FixDef(nm, _, args, arg, _, arg_tp, body_tp, body) ->
+  | FixDef (nm, _, args, arg, _, arg_tp, body_tp, body) ->
       let pp_args =
         List.fold_left
-          (fun acc (nm, _, tp) -> acc ^-^ !^nm ^-^ !^":" ^^ pp_term tp ^-^ !^",")
+          (fun acc (nm, _, tp) ->
+            acc ^-^ !^nm ^-^ !^":" ^^ pp_term tp ^-^ !^",")
           !^"" args
       in
       nest
@@ -198,9 +199,8 @@ let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
       nest
         (!^"if" ^^ pp_uterm t ^^ !^"then" ^^ pp_uterm b1 ^^ !^"else"
        ^^ pp_uterm b2)
-  | EqType (t1, t2) ->
-      nest (pp_uterm t1 ^^ !^"==" ^^ pp_uterm t2)
-  | Refl (t) -> nest (!^"refl" ^^ pp_uterm t)
+  | EqType (t1, t2) -> nest (pp_uterm t1 ^^ !^"==" ^^ pp_uterm t2)
+  | Refl t -> nest (!^"refl" ^^ pp_uterm t)
   | Subst (nm, t1, t2, t3) ->
       nest
         (!^"subst" ^-^ !^nm ^-^ !^"." ^-^ pp_uterm t1 ^^ !^"using"
@@ -213,8 +213,8 @@ let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
       in
       nest
         (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_args ^-^ !^")" ^^ !^arg ^-^ !^":"
-       ^^ pp_uterm arg_tp ^^ !^":"
-       ^^ pp_uterm body_tp ^^ !^"=" ^^ pp_uterm body)
+       ^^ pp_uterm arg_tp ^^ !^":" ^^ pp_uterm body_tp ^^ !^"=" ^^ pp_uterm body
+        )
 
 and pp_telescope (ts : Raw.telescope) : SmartPrint.t =
   match ts with
@@ -280,10 +280,11 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
         ^-^ !^(string_of_var var)
         ^-^ !^":" ^^ pp_term tp ^-^ !^")" ^-^ !^"." ^-^ pp_term t1 ^^ !^"using"
         ^^ pp_term t2 ^^ !^"in" ^^ pp_term t3)
-  | FixNeu(nm, _, args, arg, _, arg_tp, body_tp, body, _) ->
+  | FixNeu (nm, _, args, arg, _, arg_tp, body_tp, body, _) ->
       let pp_args =
         List.fold_left
-          (fun acc (nm, _, tp) -> acc ^-^ !^nm ^-^ !^":" ^^ pp_term tp ^-^ !^",")
+          (fun acc (nm, _, tp) ->
+            acc ^-^ !^nm ^-^ !^":" ^^ pp_term tp ^-^ !^",")
           !^"" args
       in
       nest
