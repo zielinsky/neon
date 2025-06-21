@@ -1,0 +1,42 @@
+data List (A : Type) =
+| Nil
+| Cons (x : A) (tl : List(A))
+
+let list_cons (A : Type) (x: A) (xs : List(A)) : List(A) =
+    Cons(A, x, xs)
+
+let list_is_empty (A : Type) (xs : List(A)) : Bool =
+    match xs with
+    | Nil(A) -> true
+    | Cons(A, hd, tl) -> false
+
+fix list_map (A : Type) (B : Type) (f : A -> B) {xs : List(A)} : List(B) =
+    match xs with
+    | Nil(A) -> Nil(B)
+    | Cons(A, hd, tl) -> Cons(B, f(hd), list_map(A, B, f, tl))
+
+let list_hd_opt (A : Type) (xs : List(A)) : Option(A) =
+    match xs with
+    | Nil(A) -> None(A)
+    | Cons(A, hd, tl) -> Some(A, hd)
+
+let list_tl_opt (A : Type) (xs : List(A)) : Option(List(A)) =
+    match xs with
+    | Nil(A) -> None(List(A))
+    | Cons(A, hd, tl) -> Some(List(A), tl)
+
+fix list_fold_left (A : Type) (B : Type) (f : B -> A -> B) (acc : B) {xs : List(A)} : B =
+    match xs with
+    | Nil(A) -> acc
+    | Cons(A, hd, tl) -> list_fold_left(A, B, f, f(acc, hd), tl)
+
+fix list_fold_right (A : Type) (B : Type) (f : A -> B -> B) (acc : B) {xs : List(A)} : B =
+    match xs with
+    | Nil(A) -> acc
+    | Cons(A, hd, tl) -> f(hd, list_fold_right(A, B, f, acc, tl))
+
+let list_length (A : Type) (xs : List(A)) : Int =
+    list_fold_left(A, Int, fun acc x => _builtin_int_add(acc, 1), 0, xs)
+
+let list_rev (A : Type) (xs : List(A)) : List(A) =
+    list_fold_right(A, List(A), list_cons(A), Nil(A), xs)

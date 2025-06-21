@@ -1,0 +1,32 @@
+data Option (A : Type) =
+| None
+| Some (x : A)
+
+let option_map (A : Type) (B : Type) (f : A -> B) (o : Option(A)) : Option(B) =
+    match o with
+    | None(A) -> None(B)
+    | Some(A, x) -> Some(B, f(x))
+
+let option_get_or_else (A : Type) (o : Option(A)) (e : A) : A =
+    match o with
+    | None(A) -> e
+    | Some(A, x) -> x
+
+let option_fold (A : Type) (B : Type) (f : B -> A -> B) (acc : B) (o : Option(A)) : Option(B) =
+    match o with
+    | None(A) -> None(B)
+    | Some(A, x) -> Some(B, f(acc, x))
+
+let x = Some(Int, 42)
+
+let test1 = option_map(Int, Int, fun x => x, x)
+
+let test2 = option_map(Int, Bool, fun x => true, x)
+
+let test3 = option_map(Int, Int, fun x => _builtin_int_add(x, 5), x)
+
+let test4 = option_map(Int, Int, fun x => x, None(Int))
+
+let test5 = option_get_or_else(Int, x, 0)
+
+let test6 = option_fold(Int, Bool, fun acc x => acc, true, x)

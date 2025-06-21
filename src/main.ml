@@ -80,7 +80,7 @@ let load_prelude env prelude_dir =
   if not (file_exists prelude_dir && is_directory prelude_dir) then
     failwith ("Prelude directory not found: " ^ prelude_dir)
   else
-    let neon_files = list_neon_files prelude_dir in
+    let neon_files = List.sort String.compare (list_neon_files prelude_dir) in
     List.iter
       (fun file ->
         if !verbose_mode then Printf.printf "Loading prelude file: %s\n%!" file;

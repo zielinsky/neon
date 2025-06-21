@@ -1,9 +1,1 @@
-data Option (A: Type) =
-| Some (x: A)
-| None
-
-let test = Some(Int, 5)
-
-let res = match test with
-| Some(B, y) -> y
-| None(D) -> 42
+let x = 5
