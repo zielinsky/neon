@@ -1,0 +1,86 @@
+data Nat =
+| Zero
+| Succ (pred : Nat)
+
+data List (A : Type) =
+| Nil
+| Cons (hd : A) (tl : List(A))
+
+data MyBool =
+| True
+| False
+
+data Sigma (A : Type) (P : (A -> Type)) =
+| Pair (x : A) (y : P(x))
+
+data And (P : Type) (Q : Type) =
+| Conj (p : P) (q : Q)
+
+
+fix le (m : Nat) {n : Nat} : MyBool =
+  match n with
+  | Zero        -> True
+  | Succ(n1)    ->
+      match m with
+      | Zero       -> False
+      | Succ(m1)   -> le(n1)(m1)
+
+fix eqNat {n : Nat} (m : Nat) : MyBool =
+  match n with
+  | Zero      ->(
+      match m with
+      | Zero     -> True
+      | Succ(yy)  -> False
+    )
+  | Succ(n1)  ->
+      match m with
+      | Zero     -> False
+      | Succ(m1) -> eqNat(n1)(m1)
+
+
+fix eqListNat {xs : List(Nat)} (ys : List(Nat)) : MyBool =
+  match xs with
+  | Nil(yy) ->(
+      match ys with
+      | Nil(yy)            -> True
+      | Cons(yy, yyy, yyyy)     -> False)
+  | Cons(yy, x, tlx) ->
+      match ys with
+      | Nil(yy)            -> False
+      | Cons(yy, y, tly)   ->
+          match eqNat(x)(y) with
+          | True  -> eqListNat(tlx)(tly)
+          | False -> False
+
+
+fix insert (x : Nat) {xs : List(Nat)} : List(Nat) =
+  match xs with
+  | Nil(A) ->
+      Cons(A, x, Nil(A))
+  | Cons(A, y, tl) ->
+      match le(x)(y) with
+      | True  -> Cons(A, x, Cons(A, y, tl))
+      | False -> Cons(A, y, insert(x)(tl))
+
+
+fix sorted {xs : List(Nat)} : MyBool =
+  match xs with
+  | Nil(yy) ->
+      True
+  | Cons(yy, x, tl) ->
+      match tl with
+      | Nil(yy) -> True
+      | Cons(yy, y, tll) ->
+          match le(x)(y) with
+          | True  -> sorted(tl)
+          | False -> False
+
+
+fix sortList {xs : List(Nat)} : List(Nat) =
+  match xs with
+  | Nil(A)       -> Nil(A)
+  | Cons(A, h, tl) -> insert(h)(sortList(tl))
+
+
+fix perm (xs : List(Nat)) (ys : List(Nat)) : MyBool =
+  eqListNat(sortList(xs))(sortList(ys))

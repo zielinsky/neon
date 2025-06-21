@@ -1,0 +1,1 @@
+let (^) = _builtin_string_concat

@@ -6,7 +6,7 @@ data List (A: Type) =
 | Nil
 | Cons (x: A) (tl: List(A))
 
-let (*) = _builtin_mul
+let (*) = _builtin_int_mul
 
 fix map {xs: List(Int)} : ((Int -> Int) -> (Int -> Int) -> Option(List(Int))) = 
   fun (f: Int -> Int) (g: Int -> Int) =>

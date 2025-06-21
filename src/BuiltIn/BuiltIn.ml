@@ -43,6 +43,54 @@ let int_less (w : Core.whnf) : Core.term option =
 let int_less_or_eq (w : Core.whnf) : Core.term option =
   int_binary_function w (fun n1 n2 -> BoolLit (n1 <= n2))
 
+let bool_binary_function (w : Core.whnf) (f : bool -> bool -> Core.term) :
+    Core.term option =
+  match w with
+  | Neu (_, _, rev_args) -> (
+      if length rev_args <> 2 then None
+      else
+        let arg1 = hd rev_args in
+        let arg2 = hd (tl rev_args) in
+        match (arg1, arg2) with
+        | BoolLit b1, BoolLit b2 -> Some (f b1 b2)
+        | _ -> None)
+  | _ -> None
+
+let bool_and (w : Core.whnf) : Core.term option =
+  bool_binary_function w (fun b1 b2 -> BoolLit (b1 && b2))
+
+let bool_or (w : Core.whnf) : Core.term option =
+  bool_binary_function w (fun b1 b2 -> BoolLit (b1 || b2))
+
+let bool_unary_function (w : Core.whnf) (f : bool -> Core.term) :
+    Core.term option =
+  match w with
+  | Neu (_, _, rev_args) -> (
+      if length rev_args <> 1 then None
+      else
+        let arg = hd rev_args in
+        match arg with BoolLit b -> Some (f b) | _ -> None)
+  | _ -> None
+
+let bool_not (w : Core.whnf) : Core.term option =
+  bool_unary_function w (fun b -> BoolLit (not b))
+
+let string_binary_function (w : Core.whnf) (f : string -> string -> Core.term) :
+    Core.term option =
+  match w with
+  | Neu (_, _, rev_args) -> (
+      if length rev_args <> 2 then None
+      else
+        let arg1 = hd rev_args in
+        let arg2 = hd (tl rev_args) in
+        match (arg1, arg2) with
+        | StringLit s1, StringLit s2 -> Some (f s1 s2)
+        | _ -> None)
+  | _ -> None
+
+let string_concat (w : Core.whnf) : Core.term option =
+  string_binary_function w (fun s1 s2 -> StringLit (s1 ^ s2))
+
 let io_read_int (w : Core.whnf) : Core.term option =
   match w with
   | Neu (_, _, rev_args) ->
@@ -66,24 +114,32 @@ let io_print_int (w : Core.whnf) : Core.term option =
 let builtIn_functions : (name, builtInFunction) Hashtbl.t = Hashtbl.create 10
 
 let () =
-  Hashtbl.add builtIn_functions "_builtin_add"
+  Hashtbl.add builtIn_functions "_builtin_int_add"
     (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_add);
-  Hashtbl.add builtIn_functions "_builtin_sub"
+  Hashtbl.add builtIn_functions "_builtin_int_sub"
     (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_sub);
-  Hashtbl.add builtIn_functions "_builtin_mul"
+  Hashtbl.add builtIn_functions "_builtin_int_mul"
     (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_mul);
-  Hashtbl.add builtIn_functions "_builtin_div"
+  Hashtbl.add builtIn_functions "_builtin_int_div"
     (TypeArrow (IntType, TypeArrow (IntType, IntType)), int_div);
-  Hashtbl.add builtIn_functions "_builtin_eq"
+  Hashtbl.add builtIn_functions "_builtin_int_eq"
     (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_eq);
-  Hashtbl.add builtIn_functions "_builtin_g"
+  Hashtbl.add builtIn_functions "_builtin_int_g"
     (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_greater);
-  Hashtbl.add builtIn_functions "_builtin_ge"
+  Hashtbl.add builtIn_functions "_builtin_int_ge"
     (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_greater_or_eq);
-  Hashtbl.add builtIn_functions "_builtin_l"
+  Hashtbl.add builtIn_functions "_builtin_int_l"
     (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_less);
-  Hashtbl.add builtIn_functions "_builtin_le"
-    (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_less_or_eq)
+  Hashtbl.add builtIn_functions "_builtin_int_le"
+    (TypeArrow (IntType, TypeArrow (IntType, BoolType)), int_less_or_eq);
+  Hashtbl.add builtIn_functions "_builtin_bool_and"
+    (TypeArrow (BoolType, TypeArrow (BoolType, BoolType)), bool_and);
+  Hashtbl.add builtIn_functions "_builtin_bool_or"
+    (TypeArrow (BoolType, TypeArrow (BoolType, BoolType)), bool_or);
+  Hashtbl.add builtIn_functions "_builtin_bool_not"
+    (TypeArrow (BoolType, BoolType), bool_not);
+  Hashtbl.add builtIn_functions "_builtin_string_concat"
+    (TypeArrow (StringType, TypeArrow (StringType, StringType)), string_concat)
 
 let load_builtins env : unit =
   let add_builtin name (ty, _) env =

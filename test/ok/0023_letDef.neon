@@ -2,7 +2,7 @@ let x = 5
 
 let foo (x: Int) = 42
 
-let add (x: Int) (y: Int) = _builtin_add (x,  y)
+let add (x: Int) (y: Int) = _builtin_int_add (x,  y)
 
 let id_type = forall (A: Type) => A -> A
 

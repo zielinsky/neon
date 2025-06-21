@@ -213,10 +213,12 @@ fix_def
 ;
 
 let_args
-: VAR EQUAL expression                                    { make (Lambda ($1, None, $3)) }
-| VAR let_args                                            { make (Lambda ($1, None, $2)) }
-| BR_OPN VAR COLON expression BR_CLS EQUAL expression     { make (Lambda ($2, Some $4, $7)) }
-| BR_OPN VAR COLON expression BR_CLS let_args             { make (Lambda ($2, Some $4, $6)) }
+: VAR EQUAL expression                                                     { make (Lambda ($1, None, $3)) }
+| VAR COLON expression EQUAL expression                                    { make (Lambda ($1, None, make (TermWithTypeAnno ($3, $5)))) }
+| VAR let_args                                                             { make (Lambda ($1, None, $2)) }
+| BR_OPN VAR COLON expression BR_CLS EQUAL expression                      { make (Lambda ($2, Some $4, $7)) }
+| BR_OPN VAR COLON expression BR_CLS COLON expression EQUAL expression     { make (Lambda ($2, Some $4, make (TermWithTypeAnno ($9, $7)))) }
+| BR_OPN VAR COLON expression BR_CLS let_args                              { make (Lambda ($2, Some $4, $6)) }
 ;
 
 let_def
@@ -243,19 +245,19 @@ let_in
 | BR_OPN OPERATOR BR_CLS COLON expression EQUAL expression IN expression { make (TermWithTypeAnno (make (Let ($2, $7, $9)), $5)) }
 ;
 
-lemma_args
-: VAR EQUAL expression                                    { make (Lambda ($1, None, $3)) }
-| VAR lemma_args                                          { make (Lambda ($1, None, $2)) }
-| BR_OPN VAR COLON expression BR_CLS EQUAL expression     { make (Lambda ($2, Some $4, $7)) }
-| BR_OPN VAR COLON expression BR_CLS lemma_args           { make (Lambda ($2, Some $4, $6)) }
-;
+// lemma_args
+// : VAR EQUAL expression                                    { make (Lambda ($1, None, $3)) }
+// | VAR lemma_args                                          { make (Lambda ($1, None, $2)) }
+// | BR_OPN VAR COLON expression BR_CLS EQUAL expression     { make (Lambda ($2, Some $4, $7)) }
+// | BR_OPN VAR COLON expression BR_CLS lemma_args           { make (Lambda ($2, Some $4, $6)) }
+// ;
 
 lemma_def
 : VAR EQUAL expression                                    { make (LemmaDef ($1, $3)) }
-| VAR lemma_args                                          { make (LemmaDef ($1, $2)) }
+| VAR let_args                                            { make (LemmaDef ($1, $2)) }
 | VAR COLON expression EQUAL expression                   { make (TermWithTypeAnno (make (LemmaDef ($1, $5)), $3)) }
 | BR_OPN VAR COLON expression BR_CLS EQUAL expression     { make (TermWithTypeAnno (make (LemmaDef ($2, $7)), $4)) }
-| BR_OPN VAR COLON expression BR_CLS lemma_args           { make (TermWithTypeAnno (make (LemmaDef ($2, $6)), $4)) }
+| BR_OPN VAR COLON expression BR_CLS let_args             { make (TermWithTypeAnno (make (LemmaDef ($2, $6)), $4)) }
 ;
 
 /* ========================================================================= */

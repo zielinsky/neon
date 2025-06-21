@@ -1,4 +1,4 @@
-let foo : Int -> Type = fun n => if _builtin_eq(n, 0) then Int else String
+let foo : Int -> Type = fun n => if _builtin_int_eq(n, 0) then Int else String
 
 let x = foo(0)
 let y = foo(1)
@@ -10,4 +10,4 @@ let baz : forall (b: Bool) => bar(b)
 let x = baz(true)
 let y = baz(false)
 
-let fooz (n: Int) = if _builtin_eq(n, 0) then Int else String
+let fooz (n: Int) = if _builtin_int_eq(n, 0) then Int else String

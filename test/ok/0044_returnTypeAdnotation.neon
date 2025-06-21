@@ -1,0 +1,17 @@
+let foo (x : Int) : (Int -> Int) =
+    fun y => _builtin_int_add(x, y)
+
+let bar (x : Bool) : Bool =
+    true
+
+lemma thesis (A : Type) : Int =
+    5
+
+let fooz (x : Bool) : Int -> Int =
+    fun x => x
+
+let faz (x : Bool) : Int -> Int =
+    let x = fun (x : Int) => x in x
+
+let buz (x : Bool) : Int -> Int =
+    lemma x = fun (x : Int) => x in x

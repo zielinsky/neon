@@ -8,7 +8,7 @@ let id_type = forall (A: Type) => A -> A
 
 let id : id_type = fun A x => x
 
-let (+) = _builtin_add
+let (+) = _builtin_int_add
 
 let bar (x: Int) (y: Int) (z: Int) =
     let add (x: Int) (y: Int) = x + y in

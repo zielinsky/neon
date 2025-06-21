@@ -1,0 +1,3 @@
+let (&&) = _builtin_bool_and
+let (||) = _builtin_bool_or
+let (!) = _builtin_bool_not
