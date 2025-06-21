@@ -35,10 +35,10 @@ let rec occurs_check_term (var : Core.Var.t) (term : Core.term) : bool =
       Core.Var.equal var x || occurs_check_term var tp
       || occurs_check_term var t1 || occurs_check_term var t2
       || occurs_check_term var t3
-   | FixDef (_, fn_var, dep_args, _, arg_var, arg_tp, body_tp, body) ->
+   | FixDef (_, fn_var, args, _, arg_var, arg_tp, body_tp, body) ->
         Core.Var.equal var arg_var
         || Core.Var.equal var fn_var
         || occurs_check_term var arg_tp
         || occurs_check_term var body_tp
         || occurs_check_term var body
-        || List.exists (fun (_, _, tp) -> occurs_check_term var tp) dep_args
+        || List.exists (fun (_, _, tp) -> occurs_check_term var tp) args

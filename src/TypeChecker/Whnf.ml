@@ -48,48 +48,8 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
           to_whnf
             (Substitution.substitute body (Substitution.singleton_sub_map x t2))
             env
-      (* | FixDef (fn_nm, fn_var, dep_args, arg, arg_var, arg_tp, body_tp, body, arg_list) ->
-          begin match dep_args with
-          | [] ->
-              Neu(fn_nm, fn_var, t2 :: arg_list)
-              (* let arg_whnf = to_whnf t2 env in
-              begin match arg_whnf with
-              | Neu (_, _, ts) ->
-                  (* If the argument is a neutral term, we create a new neutral term with the argument applied *)
-                  Neu (fn_nm, fn_var, t2 :: ts)
-              | Neu_with_Hole (_, _, _) ->
-                  (* If the argument is a neutral term with a hole, we apply the argument to the hole *)
-                  Neu_with_Hole (fn_nm, arg_tp, [t2])
-              | _ ->
-                  Error.create_whnf_error t2 env
-                    ("Strucural argument must be a constructor or a hole, got "
-                    ^ PrettyPrinter.whnf_to_string arg_whnf)
-              end *)
-              (* to_whnf
-                (Substitution.substitute body
-                   (Substitution.singleton_sub_map arg_var t2))
-                env *)
-          | (_, dep_arg_var, _) :: dep_args ->
-              let sub_map =
-                Substitution.singleton_sub_map dep_arg_var t2
-              in
-              let new_body = 
-                Substitution.substitute body sub_map
-              in
-              let new_body_tp =
-                Substitution.substitute body_tp sub_map
-              in
-              let new_arg_tp = 
-                Substitution.substitute arg_tp sub_map
-              in
-              let new_dep_args =
-                List.map
-                  (fun (nm, var, tp) ->
-                    (nm, var, Substitution.substitute tp sub_map))
-                  dep_args
-              in
-              FixDef (fn_nm, fn_var, new_dep_args, arg, arg_var, new_arg_tp, new_body_tp, new_body, t2 :: arg_list) *)
-          (* end *)
+      | FixNeu (fn_nm, fn_var, args, arg, arg_var, arg_tp, body_tp, body, arg_list) ->
+        FixNeu (fn_nm, fn_var, args, arg, arg_var, arg_tp, body_tp, body, t2 :: arg_list)
       | whnf_term ->
           Error.create_whnf_error t env
             ("When reducing Application expected Neu or Lambda\n" ^ "Got "
@@ -148,8 +108,8 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
                     | None -> to_whnf term env
                   in
                   whnf_term)
-          | None -> Case (scrut_whnf, scrut_tp, maybe_var, tp, branches))
-      | _ -> Case (scrut_whnf, scrut_tp, maybe_var, tp, branches))
+          | None -> Case (scrut, scrut_tp, maybe_var, tp, branches))
+      | _ -> Case (scrut, scrut_tp, maybe_var, tp, branches))
   | IfExpr (t, b1, b2) -> (
       let t = to_whnf t env in
       match t with
@@ -162,6 +122,6 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       match t2_whnf with
       | Refl _ -> to_whnf t3 env
       | _ -> Subst (nm, var, tp, t1, t2, t3))
-  | FixDef (nm, nm_var, _, _, _, _, _, _) ->
-    Neu (nm, nm_var, [])
+  | FixDef (nm, nm_var, args, arg_nm, arg_var, arg_tp, body_tp, body) ->
+    FixNeu (nm, nm_var, args, arg_nm, arg_var, arg_tp, body_tp, body, [])
     

@@ -64,11 +64,21 @@ type whnf =
   | BoolLit of bool
   | Lambda of string * Var.t * tp * term
   | Product of string * Var.t * tp * tp
-  | Case of whnf * tp * (string * Var.t) option * tp * branch list
+  | Case of term * tp * (string * Var.t) option * tp * branch list
   | IfExpr of whnf * term * term
   | EqType of term * term * tp
   | Refl of term * tp
   | Subst of string * Var.t * tp * term * term * term
+  | FixNeu of
+      string
+      * Var.t
+      * (string * Var.t * tp) list
+      * string
+      * Var.t
+      * tp
+      * tp
+      * term
+      * term list
 
 val dataCName_of_string : string -> dataCName
 val typeCName_of_string : string -> typeCName

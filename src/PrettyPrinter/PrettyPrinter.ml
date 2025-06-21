@@ -82,14 +82,14 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
         ^-^ !^(string_of_var var)
         ^-^ !^":" ^^ pp_term tp ^-^ !^")" ^-^ !^"." ^-^ pp_term t1 ^^ !^"using"
         ^^ pp_term t2 ^^ !^"in" ^^ pp_term t3)
-  | FixDef(nm, _, dep_args, arg, _, arg_tp, body_tp, body) ->
-      let pp_dep_args =
+  | FixDef(nm, _, args, arg, _, arg_tp, body_tp, body) ->
+      let pp_args =
         List.fold_left
           (fun acc (nm, _, tp) -> acc ^-^ !^nm ^-^ !^":" ^^ pp_term tp ^-^ !^",")
-          !^"" dep_args
+          !^"" args
       in
       nest
-        (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_dep_args ^-^ !^")" ^^ !^arg ^-^ !^":"
+        (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_args ^-^ !^")" ^^ !^arg ^-^ !^":"
        ^^ pp_term arg_tp ^^ !^":" ^^ pp_term body_tp ^^ !^"=" ^^ pp_term body)
 
 and pp_pattern (p : Core.pattern) : SmartPrint.t =
@@ -205,14 +205,14 @@ let rec pp_uterm ({ data = e; pos } : Raw.term) : SmartPrint.t =
       nest
         (!^"subst" ^-^ !^nm ^-^ !^"." ^-^ pp_uterm t1 ^^ !^"using"
        ^^ pp_uterm t2 ^^ !^"in" ^^ pp_uterm t3)
-  | FixDef (nm, dep_args, arg, arg_tp, body_tp, body) ->
-      let pp_dep_args =
+  | FixDef (nm, args, arg, arg_tp, body_tp, body) ->
+      let pp_args =
         List.fold_left
           (fun acc (nm, tp) -> acc ^-^ !^nm ^-^ !^":" ^^ pp_uterm tp ^-^ !^",")
-          !^"" dep_args
+          !^"" args
       in
       nest
-        (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_dep_args ^-^ !^")" ^^ !^arg ^-^ !^":"
+        (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_args ^-^ !^")" ^^ !^arg ^-^ !^":"
        ^^ pp_uterm arg_tp ^^ !^":"
        ^^ pp_uterm body_tp ^^ !^"=" ^^ pp_uterm body)
 
@@ -260,7 +260,7 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
       in
       let tp_str = !^" return" ^^ pp_term tp in
       nest
-        (!^"match" ^^ pp_whnf scrut ^-^ !^":" ^^ pp_term scrut_tp ^^ var_str
+        (!^"match" ^^ pp_term scrut ^-^ !^":" ^^ pp_term scrut_tp ^^ var_str
        ^^ tp_str ^^ !^"with" ^^ newline
         ^^ nest
              (List.fold_left
@@ -280,6 +280,15 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
         ^-^ !^(string_of_var var)
         ^-^ !^":" ^^ pp_term tp ^-^ !^")" ^-^ !^"." ^-^ pp_term t1 ^^ !^"using"
         ^^ pp_term t2 ^^ !^"in" ^^ pp_term t3)
+  | FixNeu(nm, _, args, arg, _, arg_tp, body_tp, body, _) ->
+      let pp_args =
+        List.fold_left
+          (fun acc (nm, _, tp) -> acc ^-^ !^nm ^-^ !^":" ^^ pp_term tp ^-^ !^",")
+          !^"" args
+      in
+      nest
+        (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_args ^-^ !^")" ^^ !^arg ^-^ !^":"
+       ^^ pp_term arg_tp ^^ !^":" ^^ pp_term body_tp ^^ !^"=" ^^ pp_term body)
 
 let rec whnf_to_string (t : Core.whnf) : string = to_string 40 2 (pp_whnf t)
 

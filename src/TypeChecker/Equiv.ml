@@ -25,6 +25,11 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
       x1 = x2
       && List.length ts1 = List.length ts2
       && List.for_all2 (fun x y -> equiv x y env) ts1 ts2
+  | FixNeu (_, var1, args1, _, _, _, _, _, arg_list1), FixNeu (_, var2, args2, _, _, _, _, _, arg_list2) ->
+    var1 = var2
+    && List.length args1 = List.length args2
+    && List.length arg_list1 = List.length arg_list2
+    && List.for_all2 (fun x y -> equiv x y env) arg_list1 arg_list2
   | ( (Neu_with_Hole (_, tp1, ts1) as whnf_1),
       (Neu_with_Hole (_, tp2, ts2) as whnf_2) ) ->
       (* Both terms are neutral terms with holes *)

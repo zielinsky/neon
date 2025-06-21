@@ -106,18 +106,18 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
           substitute t1 (add_to_sub_map var (Core.Var (nm, y)) sub),
           substitute t2 (add_to_sub_map var (Core.Var (nm, y)) sub),
           substitute t3 (add_to_sub_map var (Core.Var (nm, y)) sub) )
-   | FixDef (nm, nm_var, dep_args, arg, arg_var, arg_tp, body_tp, body) ->
+   | FixDef (nm, nm_var, args, arg, arg_var, arg_tp, body_tp, body) ->
       let y = Env.fresh_var () in
       let sub = add_to_sub_map nm_var (Core.Var (nm, y)) sub in
 
-      let sub, dep_args_rev = 
+      let sub, args_rev = 
         List.fold_left
-          (fun (sub_map', dep_args') (var_nm, var, var_tp) -> 
+          (fun (sub_map', args') (var_nm, var, var_tp) -> 
             let var_tp = substitute var_tp sub in
             let fresh_var = Env.fresh_var () in
-            (add_to_sub_map var (Core.Var (var_nm, fresh_var)) sub_map', (var_nm, fresh_var, var_tp) :: dep_args')
-        ) (sub, []) dep_args in 
-      let dep_args = List.rev dep_args_rev in
+            (add_to_sub_map var (Core.Var (var_nm, fresh_var)) sub_map', (var_nm, fresh_var, var_tp) :: args')
+        ) (sub, []) args in 
+      let args = List.rev args_rev in
       let arg_tp = substitute arg_tp sub in
 
       let arg_var' = Env.fresh_var () in
@@ -126,7 +126,7 @@ let rec substitute (t : Core.term) (sub : sub_map) : Core.term =
       FixDef
         ( nm,
           y,
-          dep_args,
+          args,
           arg,
           arg_var',
           substitute arg_tp sub,
