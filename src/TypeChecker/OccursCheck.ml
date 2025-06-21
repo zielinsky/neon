@@ -24,8 +24,7 @@ let rec occurs_check_term (var : Core.Var.t) (term : Core.term) : bool =
       ||
       match as_var with
       | Some (_, x) ->
-          Core.Var.equal var x
-          || ((not (Core.Var.equal var x)) && occurs_check_term var tp)
+          ((not (Core.Var.equal var x)) && occurs_check_term var tp)
           || List.exists
                (fun (_, body) ->
                  (not (Core.Var.equal var x)) && occurs_check_term var body)
