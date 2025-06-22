@@ -1,0 +1,19 @@
+data List (A : Type) =
+| Nil
+| Cons (x : A) (tl : List(A))
+
+fix list_append (A : Type) (xs : List(A)) {ys : List(A)} : List(A) =
+    match ys with
+    | Nil(A)           -> xs
+    | Cons(A, hd, tl)  -> Cons(A, hd, list_append(A, xs, tl))
+
+let append (xs: List(Int)) (ys: List(Int)) = 
+    list_append(Int, ys, xs)
+
+fix proof_append_nil {xs: List(Int)} : append(xs, Nil(Int)) == xs = 
+    match xs as ys return append(ys, Nil(Int)) == ys with
+    | Nil(A) -> refl Nil(Int)
+    | Cons(A, hd, tl) -> 
+        let ih = proof_append_nil(tl) in 
+        subst l. Cons(Int, hd, append(tl, Nil(Int))) == Cons(Int, hd, l) using ih in
+            refl Cons(Int, hd, append(tl, Nil(Int)))
