@@ -1,1 +1,1 @@
-val equiv : Core.term -> Core.term -> Env.internal -> bool
+val equiv : Core.term -> Core.term -> Env.env -> bool

@@ -5,7 +5,7 @@
     @param t2 The second term.
     @param env The environment containing variable and term bindings.
     @return [true] if [t1] and [t2] are equivalent; [false] otherwise. *)
-let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
+let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.env) : bool =
   match (Whnf.to_whnf t1 env, Whnf.to_whnf t2 env) with
   | Type, Type ->
       (* Both terms are 'Type'; they are equivalent *)
@@ -53,7 +53,7 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
             ^ "\n" ^ "Whnf_2 "
             ^ PrettyPrinter.whnf_to_string whnf_2
             ^ "\nEnv at this moment:\n"
-            ^ Env.internal_env_to_string env)
+            ^ Env.internal_env_to_string env.internal)
         in
         true (* Returning Some here might be specific to handling holes *)
   | Lambda (nm1, x1, x1_tp, body1), Lambda (nm2, x2, x2_tp, body2)
@@ -63,7 +63,7 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
         (* If the parameter types are equivalent *)
         let fresh_var = Env.fresh_var () in
         (* Introduce a fresh variable to avoid variable capture *)
-        let _ = Env.add_to_internal_env env fresh_var (Opaque x1_tp) in
+        let _ = Env.add_to_internal_env env.internal fresh_var (Opaque x1_tp) in
         (* Substitute both bodies with the fresh variable *)
         let body1' =
           Substitution.substitute body1
@@ -78,7 +78,7 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
         (* Check if the bodies are equivalent *)
         let res = equiv body1' body2' env in
         (* Remove the fresh variable from the environment *)
-        let _ = Env.rm_from_internal_env env fresh_var in
+        let _ = Env.rm_from_internal_env env.internal fresh_var in
         res
       else
         (* Parameter types are not equivalent *)
@@ -97,7 +97,7 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
           ^ "\n" ^ "Whnf_2 "
           ^ PrettyPrinter.whnf_to_string whnf_2
           ^ "\n Env at this moment:\n"
-          ^ Env.internal_env_to_string env)
+          ^ Env.internal_env_to_string env.internal)
       in
       true
   | Refl (t1, t1_tp), Refl (t2, t2_tp) ->
@@ -108,12 +108,12 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
       Case (_, scrut2_tp, maybe_var2, res_type2, branches2) ) ->
       let _ =
         match maybe_var1 with
-        | Some (_, var1) -> Env.add_to_internal_env env var1 (Opaque scrut1_tp)
+        | Some (_, var1) -> Env.add_to_internal_env env.internal var1 (Opaque scrut1_tp)
         | None -> ()
       in
       let _ =
         match maybe_var2 with
-        | Some (_, var2) -> Env.add_to_internal_env env var2 (Opaque scrut2_tp)
+        | Some (_, var2) -> Env.add_to_internal_env env.internal var2 (Opaque scrut2_tp)
         | None -> ()
       in
       let eq_res_types = equiv res_type1 res_type2 env in
@@ -132,24 +132,24 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
                      let _ =
                        List.iter
                          (fun (_, var, tp) ->
-                           Env.add_to_internal_env env var (Env.Opaque tp))
+                           Env.add_to_internal_env env.internal var (Env.Opaque tp))
                          args1
                      in
                      let _ =
                        List.iter
                          (fun (_, var, tp) ->
-                           Env.add_to_internal_env env var (Env.Opaque tp))
+                           Env.add_to_internal_env env.internal var (Env.Opaque tp))
                          args2
                      in
                      let res = equiv t1 t2 env in
                      let _ =
                        List.iter
-                         (fun (_, var, _) -> Env.rm_from_internal_env env var)
+                         (fun (_, var, _) -> Env.rm_from_internal_env env.internal var)
                          args1
                      in
                      let _ =
                        List.iter
-                         (fun (_, var, _) -> Env.rm_from_internal_env env var)
+                         (fun (_, var, _) -> Env.rm_from_internal_env env.internal var)
                          args2
                      in
                      res
@@ -161,11 +161,11 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.internal) : bool =
       eq_scrut_types && eq_res_types && eq_branches
   | Subst (_, var1, tp1, t1, t2, t3), Subst (_, var2, tp2, t4, t5, t6) ->
       (* Fix this, look like we treat binders in Lambdas *)
-      let _ = Env.add_to_internal_env env var1 (Env.Opaque tp1) in
-      let _ = Env.add_to_internal_env env var2 (Env.Opaque tp2) in
+      let _ = Env.add_to_internal_env env.internal var1 (Env.Opaque tp1) in
+      let _ = Env.add_to_internal_env env.internal var2 (Env.Opaque tp2) in
       let res = equiv t1 t4 env && equiv t2 t5 env && equiv t3 t6 env in
-      let _ = Env.rm_from_internal_env env var1 in
-      let _ = Env.rm_from_internal_env env var2 in
+      let _ = Env.rm_from_internal_env env.internal var1 in
+      let _ = Env.rm_from_internal_env env.internal var2 in
       res
   | _ ->
       (* Terms are not equivalent *)

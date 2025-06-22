@@ -89,7 +89,7 @@ let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit =
   let _, isSameType =
     List.fold_left
       (fun (prev_tp, cond) tp ->
-        (tp, cond && Equiv.equiv prev_tp tp env.internal))
+        (tp, cond && Equiv.equiv prev_tp tp env))
       (hd, true) (List.tl branch_types)
   in
   if isSameType then ()
@@ -254,7 +254,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
   | App (t1, t2) -> (
       (* Application of function 't1' to argument 't2' *)
       let t1, t1_tp = infer_type env t1 in
-      match Whnf.to_whnf t1_tp env.internal with
+      match Whnf.to_whnf t1_tp env with
       | Product (_, x, x_tp, tp_body) ->
           let t2 = check_type env t2 x_tp in
           ( App (t1, t2),
@@ -361,7 +361,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       (Var (nm, fresh_var), adt_sig_tp)
   | Case (scrut, var, maybe_res_type, ps) -> (
       let scrut', scrut_tp' = infer_type env scrut in
-      match Whnf.to_whnf scrut_tp' env.internal with
+      match Whnf.to_whnf scrut_tp' env with
       | Neu (nm, _, tsT_args) -> (
           let tsT_args = List.rev tsT_args in
           match Env.find_opt_in_adt_env env.adt nm with
@@ -421,11 +421,11 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
             "Scrutinee's type whnf form should be a neutral term" term env)
   | IfExpr (t, b, c) -> (
       let t, tp = infer_type env t in
-      match Whnf.to_whnf tp env.internal with
+      match Whnf.to_whnf tp env with
       | BoolType ->
           let b, b_tp = infer_type env b in
           let c, c_tp = infer_type env c in
-          if Equiv.equiv b_tp c_tp env.internal then (IfExpr (t, b, c), b_tp)
+          if Equiv.equiv b_tp c_tp env then (IfExpr (t, b, c), b_tp)
           else (IfExpr (t, b, c), IfExpr (t, b_tp, c_tp))
       | _ ->
           Error.create_infer_type_error pos
@@ -439,12 +439,12 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
       (Refl (t1, tp), EqType (t1, t1, tp))
   | Subst (x, t1, t2, t3) -> (
       let t2, t2_tp = infer_type env t2 in
-      match Whnf.to_whnf t2_tp env.internal with
+      match Whnf.to_whnf t2_tp env with
       | EqType (a, b, t) -> (
           let fresh_var = Env.add_to_env env x (Opaque t) in
           let t1, t1_tp = infer_type env t1 in
           (* let test = Core.App(t1_tp, Core.Var (x, fresh_var)) in *)
-          match Whnf.to_whnf t1_tp env.internal with
+          match Whnf.to_whnf t1_tp env with
           | Type | Kind ->
               let t3 =
                 check_type env t3
@@ -496,7 +496,7 @@ let rec infer_type (env : Env.env) ({ pos; data = t } as term : Raw.term) :
 
           let _ =
             Guard.check_totality nm_fresh_var arg_fresh_var (List.length args)
-              body env.internal
+              body env
           in
 
           let _ = Env.rm_from_env env nm in
@@ -547,14 +547,14 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
   | ADTSig _ | ADTDecl _ | Refl _ | EqType _ | Subst _ | FixDef _ ->
       (* For these terms, infer their type and compare to the expected type *)
       let t, t_tp = infer_type env term in
-      if Equiv.equiv tp t_tp env.internal then t
+      if Equiv.equiv tp t_tp env then t
       else
         Error.create_check_type_error pos
           ("Instead got:\n" ^ PrettyPrinter.term_to_string t_tp)
           term tp env
   | Lambda (x, None, body) -> (
       (* Lambda with omitted argument type *)
-      match Whnf.to_whnf tp env.internal with
+      match Whnf.to_whnf tp env with
       | Product (_, y, y_tp, body_tp) ->
           let fresh_var = Env.add_to_env env x (Opaque y_tp) in
           (* Check the body against the expected body type with 'y' substituted by 'x' *)
@@ -577,7 +577,7 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
       | Lambda (_, _, arg_tp, _) as lambda ->
           (* Infer the type of the provided argument type 'x_tp' *)
           let x_tp, _ = infer_type env x_tp in
-          if Equiv.equiv x_tp arg_tp env.internal then lambda
+          if Equiv.equiv x_tp arg_tp env then lambda
           else
             Error.create_check_type_error pos
               ("Got:\n"
@@ -625,7 +625,7 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
       t
   | Case (scrut, maybe_nm, maybe_res_type, ps) -> (
       let scrut', scrut_tp' = infer_type env scrut in
-      match Whnf.to_whnf scrut_tp' env.internal with
+      match Whnf.to_whnf scrut_tp' env with
       | Neu (nm, _, tsT_args) -> (
           let tsT_args = List.rev tsT_args in
           match Env.find_opt_in_adt_env env.adt nm with
@@ -646,7 +646,7 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
                       let res_type', res_type'_tp = infer_type env res_type in
                       match res_type'_tp with
                       | Type | Kind ->
-                          if not (Equiv.equiv res_type' tp env.internal) then
+                          if not (Equiv.equiv res_type' tp env) then
                             Error.create_check_type_error pos
                               ("Provided return type of case: "
                               ^ PrettyPrinter.term_to_string res_type'
@@ -688,7 +688,7 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
             "Scrutinee's type whnf form should be a neutral term" term tp env)
   | IfExpr (t, b, c) -> (
       let t, t_tp = infer_type env t in
-      match Whnf.to_whnf t_tp env.internal with
+      match Whnf.to_whnf t_tp env with
       | BoolType -> (
           match t with
           | Var (nm, var) ->

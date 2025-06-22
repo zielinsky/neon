@@ -24,7 +24,7 @@ let take_after (n : int) (l : 'a list) : 'a list =
 
 (** [whnf_to_nf w env] fully normalizes a [whnf] node [w] in context [env],
     producing a [term] in normal form. *)
-let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
+let rec whnf_to_nf (w : Core.whnf) (env : Env.env) : Core.term =
   (* Print the current term being normalized for debugging purposes. *)
   match w with
   | Type ->
@@ -144,6 +144,6 @@ let rec whnf_to_nf (w : Core.whnf) (env : Env.internal) : Core.term =
         in
         if List.is_empty rest_args then body_red else eval body_app env
 
-and eval (t : Core.term) (env : Env.internal) : Core.term =
+and eval (t : Core.term) (env : Env.env) : Core.term =
   let w = TypeChecker.Whnf.to_whnf t env in
   whnf_to_nf w env

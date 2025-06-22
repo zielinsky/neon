@@ -38,7 +38,7 @@ let process_parsed_def env x =
     PrettyPrinter.print (inferred_term, inferred_ty);
     print_endline "-------------------");
 
-  let nf = Evaluator.eval inferred_term env.internal in
+  let nf = Evaluator.eval inferred_term env in
   (* let nf_tp = Evaluator.eval inferred_ty env.internal in *)
   if !verbose_mode then (
     print_endline "----- NORMAL FORM -----";

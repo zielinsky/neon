@@ -7,7 +7,7 @@
     @raise Failure
       If an error occurs during conversion, raises a failure with an appropriate
       error message. *)
-let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
+let rec to_whnf (t : Core.term) (env : Env.env) : Core.whnf =
   match t with
   | Type -> Type
   | Kind -> Kind
@@ -18,7 +18,7 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
   | StringLit s -> StringLit s
   | BoolLit s -> BoolLit s
   | Var (nm, x) -> (
-      match Env.find_opt_in_internal_env env x with
+      match Env.find_opt_in_internal_env env.internal x with
       | Some (Opaque _) ->
           (* Variable is opaque (e.g., a constant or parameter); cannot reduce further *)
           Neu (nm, x, [])
@@ -26,7 +26,7 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
           (* Variable is transparent (e.g., a let-bound variable); expand its definition *)
           to_whnf body env
       | None ->
-          Error.create_whnf_error t env
+          Error.create_whnf_error t env.internal
             ("Couldn't find Variable " ^ nm ^ " " ^ Core.Var.to_string x
            ^ " in environment"))
   | Lambda (nm, x, x_tp, body) -> Lambda (nm, x, x_tp, body)
@@ -49,28 +49,30 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
             (Substitution.substitute body (Substitution.singleton_sub_map x t2))
             env
       | FixNeu
-          (fn_nm, fn_var, args, arg, arg_var, arg_tp, body_tp, body, arg_list)
+          (fn_nm, fn_var, args, arg, arg_var, arg_tp, body_tp, body, rev_arg_list)
         ->
-          begin match args with 
-          | (_, var, _) :: args ->
-            assert (List.is_empty arg_list);
-            let sub_map = Substitution.singleton_sub_map var t2 in
-            let args' = List.map (fun (nm, v, tp) -> (nm, v, Substitution.substitute tp sub_map)) args in
-            let arg_tp' = Substitution.substitute arg_tp sub_map in 
-            let body_tp' = Substitution.substitute body_tp sub_map in 
-            let body' = Substitution.substitute body sub_map in 
+          if (List.length rev_arg_list) <> (List.length args) then
             FixNeu
             ( fn_nm,
               fn_var,
-              args',
+              args,
               arg,
               arg_var,
-              arg_tp',
-              body_tp',
-              body',
-              arg_list )
-          | [] ->  
-            FixNeu
+              arg_tp,
+              body_tp,
+              body,
+              t2 :: rev_arg_list )
+          else 
+            begin match to_whnf t2 env with
+            | Neu (nm, _, _) when Option.is_some (Env.find_opt_in_adt_env env.adt nm) ->
+              let arg_list = List.rev rev_arg_list in 
+              let sub_map = List.fold_left (
+                fun acc ((_, var, _), t) -> Substitution.add_to_sub_map var (Substitution.substitute t acc) acc
+              ) Substitution.empty_sub_map (List.combine args arg_list) in
+              let sub_map = Substitution.add_to_sub_map arg_var (Substitution.substitute t2 sub_map) sub_map in
+              to_whnf (Substitution.substitute body sub_map) env
+            | _ -> 
+              FixNeu
               ( fn_nm,
                 fn_var,
                 args,
@@ -79,10 +81,10 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
                 arg_tp,
                 body_tp,
                 body,
-                t2 :: arg_list )
-        end
+                t2 :: rev_arg_list )
+            end
       | whnf_term ->
-          Error.create_whnf_error t env
+          Error.create_whnf_error t env.internal
             ("When reducing Application expected Neu or Lambda\n" ^ "Got "
             ^ PrettyPrinter.whnf_to_string whnf_term
             ^ " instead"))
@@ -124,7 +126,7 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
                     | Some (nm, var) ->
                         let fresh_var = Env.fresh_var () in
                         let _ =
-                          Env.add_to_internal_env env fresh_var
+                          Env.add_to_internal_env env.internal fresh_var
                             (Transparent (scrut, scrut_tp))
                         in
                         let term_whnf =
@@ -134,7 +136,7 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
                                   (Core.Var (nm, fresh_var))))
                             env
                         in
-                        let _ = Env.rm_from_internal_env env fresh_var in
+                        let _ = Env.rm_from_internal_env env.internal fresh_var in
                         term_whnf
                     | None -> to_whnf term env
                   in

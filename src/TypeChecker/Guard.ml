@@ -12,7 +12,7 @@ let vars_of_pattern : Core.pattern -> VS.t = function
 type ctx = { allowed : VS.t (* Variables that are allowed in the argument *) }
 
 let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
-    (ctx : ctx) (env : Env.internal) (t : Core.term) : unit =
+    (ctx : ctx) (env : Env.env) (t : Core.term) : unit =
   match t with
   | App (t1, t2) as app -> (
       match Whnf.to_whnf app env with
@@ -35,23 +35,23 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
           traverse fn_var arg_var arg_pos ctx env t1;
           traverse fn_var arg_var arg_pos ctx env t2)
   | Lambda (_, var, var_tp, body) ->
-      Env.add_to_internal_env env var (Opaque var_tp);
+      Env.add_to_internal_env env.internal var (Opaque var_tp);
       traverse fn_var arg_var arg_pos ctx env body;
-      Env.rm_from_internal_env env var
+      Env.rm_from_internal_env env.internal var
   | Product (_, var, tp, body) ->
-      Env.add_to_internal_env env var (Opaque tp);
+      Env.add_to_internal_env env.internal var (Opaque tp);
       traverse fn_var arg_var arg_pos ctx env tp;
       traverse fn_var arg_var arg_pos ctx env body;
-      Env.rm_from_internal_env env var
+      Env.rm_from_internal_env env.internal var
   | TypeArrow (tp1, tp2) ->
       traverse fn_var arg_var arg_pos ctx env tp1;
       traverse fn_var arg_var arg_pos ctx env tp2
   | Let (_, var, t1, tp, t2) ->
-      Env.add_to_internal_env env var (Transparent (t1, tp));
+      Env.add_to_internal_env env.internal var (Transparent (t1, tp));
       traverse fn_var arg_var arg_pos ctx env t1;
       traverse fn_var arg_var arg_pos ctx env tp;
       traverse fn_var arg_var arg_pos ctx env t2;
-      Env.rm_from_internal_env env var
+      Env.rm_from_internal_env env.internal var
   | Case (scrut, _, _, _, branches) ->
       traverse fn_var arg_var arg_pos ctx env scrut;
       let is_on_arg =
@@ -61,14 +61,14 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
       in
       List.iter
         (fun (pat, br_body) ->
-          let _ = Env.add_pattern_to_internal_env env pat in
+          let _ = Env.add_pattern_to_internal_env env.internal pat in
           let allowed' =
             if is_on_arg then VS.union ctx.allowed (vars_of_pattern pat)
             else ctx.allowed
           in
           let ctx' = { allowed = allowed' } in
           traverse fn_var arg_var arg_pos ctx' env br_body;
-          Env.rm_pattern_from_internal_env env pat)
+          Env.rm_pattern_from_internal_env env.internal pat)
         branches
   | IfExpr (c, t1, t2) ->
       traverse fn_var arg_var arg_pos ctx env c;
@@ -95,7 +95,7 @@ let rec traverse (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
       ()
 
 let check_totality (fn_var : Core.Var.t) (arg_var : Core.Var.t) (arg_pos : int)
-    (body : Core.term) (env : Env.internal) : unit =
+    (body : Core.term) (env : Env.env) : unit =
   try
     let init = { allowed = VS.empty } in
     traverse fn_var arg_var arg_pos init env body
