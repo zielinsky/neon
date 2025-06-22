@@ -51,16 +51,36 @@ let rec to_whnf (t : Core.term) (env : Env.internal) : Core.whnf =
       | FixNeu
           (fn_nm, fn_var, args, arg, arg_var, arg_tp, body_tp, body, arg_list)
         ->
-          FixNeu
+          begin match args with 
+          | (_, var, _) :: args ->
+            assert (List.is_empty arg_list);
+            let sub_map = Substitution.singleton_sub_map var t2 in
+            let args' = List.map (fun (nm, v, tp) -> (nm, v, Substitution.substitute tp sub_map)) args in
+            let arg_tp' = Substitution.substitute arg_tp sub_map in 
+            let body_tp' = Substitution.substitute body_tp sub_map in 
+            let body' = Substitution.substitute body sub_map in 
+            FixNeu
             ( fn_nm,
               fn_var,
-              args,
+              args',
               arg,
               arg_var,
-              arg_tp,
-              body_tp,
-              body,
-              t2 :: arg_list )
+              arg_tp',
+              body_tp',
+              body',
+              arg_list )
+          | [] ->  
+            FixNeu
+              ( fn_nm,
+                fn_var,
+                args,
+                arg,
+                arg_var,
+                arg_tp,
+                body_tp,
+                body,
+                t2 :: arg_list )
+        end
       | whnf_term ->
           Error.create_whnf_error t env
             ("When reducing Application expected Neu or Lambda\n" ^ "Got "
