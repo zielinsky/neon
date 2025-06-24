@@ -10,10 +10,11 @@ lemma (trans : trans_type) A x y z xy yz =
 /* 
   Równość zdaniowa
   x == y
+  refl x : x == x
 */
 
 let trans_type2 = 
   forall (A: Type) (x: A) (y: A) (z: A) => x == y -> y == z -> x == z
 
-let (trans2 : trans_type2) T x y z xy yz =
+let (trans2 : trans_type2) A x y z xy yz =
   subst c. x == c using yz in xy

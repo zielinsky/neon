@@ -12,6 +12,6 @@ let choose (f: Flag) =
   | On   -> 0
   | Off  -> true
 
-let x : Int = choose(On)
+let x = choose(On)
 
-let y : Bool = choose(Off)
+let y = choose(Off)

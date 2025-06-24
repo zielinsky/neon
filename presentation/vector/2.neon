@@ -11,6 +11,6 @@ data VecInt (n : Nat) =
     (hd : Int)
     (tl : VecInt(m))
 
-let vnil : VecInt(Zero) =
+let vnil =
   VNil( Zero
       , refl Zero)
