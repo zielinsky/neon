@@ -1,0 +1,12 @@
+data Nat =
+| Zero
+| Succ (k : Nat)
+
+data VecInt (n : Nat) =
+| VNil
+    (p : n == Zero)
+| VCons
+    (m  : Nat)                     
+    (p  : n == Succ(m))    
+    (hd : Int)
+    (tl : VecInt(m))

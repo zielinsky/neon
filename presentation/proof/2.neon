@@ -1,0 +1,12 @@
+data IntList =
+| Nil
+| Cons (x: Int) (tl: IntList)
+
+fix append {xs : IntList} : IntList -> IntList =
+  fun ys =>
+    match xs with
+    | Nil -> ys
+    | Cons(hd, tl) -> Cons(hd, append(tl, ys))
+
+fix proof_append_nil {xs : IntList} : append(xs, Nil) == xs =
+  ?todo

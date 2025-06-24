@@ -2,12 +2,10 @@ data Flag =
   | On
   | Off
 
-
 let flagTy (f: Flag) = 
     match f with
     | On   -> Int
     | Off  -> Bool
-
 
 let choose (f: Flag) = 
     match f as x return flagTy(x) with
