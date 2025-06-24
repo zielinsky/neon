@@ -23,12 +23,8 @@ let cons (m : Nat) (hd : Int) (tl : VecInt(m)) =
        , tl)
 
 let twoElemVec = 
-  cons(
-    Succ(Zero),
-    1,
-    cons(
-      Zero,
-      2,
-      vnil
-    )
-  )
+  cons( Succ(Zero)
+      , 1
+      , cons( Zero
+            , 2
+            , vnil))

@@ -5,5 +5,5 @@ data IntList =
 fix append {xs : IntList} : IntList -> IntList =
   fun ys =>
     match xs with
-    | Nil -> ys
+    | Nil          -> ys
     | Cons(hd, tl) -> Cons(hd, append(tl, ys))

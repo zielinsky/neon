@@ -13,4 +13,4 @@ data VecInt (n : Nat) =
 
 let vnil : VecInt(Zero) =
   VNil( Zero
-      , (refl Zero))
+      , refl Zero)
