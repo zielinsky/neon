@@ -1,7 +1,7 @@
 {
   "name": "neon",
   "displayName": "Neon",
-  "description": "Neon Calcus of Construction Programming Language ",
+  "description": "Neon Calculus of Construction Programming Language ",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.86.0"

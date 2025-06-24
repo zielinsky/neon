@@ -1,39 +1,52 @@
 {
-	"name": "Neon",
-	"scopeName": "source.neon",
-	"patterns": [
-		{ "include": "#comments" },
-		{ "include": "#entities" },
-		{ "include": "#keywords" }
-	],
-	"repository": {
-		"comments": {
-			"patterns": [
-				{
-					"name": "comment.block.neon",
-					"begin": "/\\**",
-					"end": "\\*/"
-				}
-			]
-		},
-		"entities": {
-			"patterns": []
-		},
-		"keywords": {
-			"patterns": [
-				{
-					"name": "storage.modifier.neon",
-					"match": "\\b(=>|=|->)\\b"
-				},
-				{
-					"name": "entity.name.type.neon",
-					"match": "\\b(kind|type)\\b"
-				},
-				{
-					"name": "support.function.neon",
-					"match": "\\b(forall|let|fun|lemma)\\b"
-				}
-			]
-		}
-	}
+  "name": "Neon",
+  "scopeName": "source.neon",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#entities" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.neon",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "entities": {
+      "patterns": [
+        {
+          "name": "entity.name.function.neon",
+          "match": "\\b[A-Z][A-Za-z_][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.declaration.neon",
+          "match": "\\b(data)\\b|\\|"
+        },
+        {
+          "name": "keyword.control.neon", 
+          "match": "\\b(subst|refl|return|in|using|with|as|if|else|then|match)\\b"
+        },
+        {
+          "name": "keyword.other.neon",
+          "match": "\\b(forall|let|fun|lemma|fix)\\b"
+        },
+        {
+          "name": "entity.name.type.neon",
+          "match": "\\b(Kind|Type|Int|Bool|String)\\b"
+        },
+        {
+          "name": "keyword.operator.neon",
+          "match": "(=>|=|->|==)"
+        }
+      ]
+    }
+  }
 }
