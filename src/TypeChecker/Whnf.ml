@@ -49,30 +49,17 @@ let rec to_whnf (t : Core.term) (env : Env.env) : Core.whnf =
             (Substitution.substitute body (Substitution.singleton_sub_map x t2))
             env
       | FixNeu
-          (fn_nm, fn_var, args, arg, arg_var, arg_tp, body_tp, body, rev_arg_list)
-        ->
-          if (List.length rev_arg_list) <> (List.length args) then
+          ( fn_nm,
+            fn_var,
+            args,
+            arg,
+            arg_var,
+            arg_tp,
+            body_tp,
+            body,
+            rev_arg_list ) -> (
+          if List.length rev_arg_list <> List.length args then
             FixNeu
-            ( fn_nm,
-              fn_var,
-              args,
-              arg,
-              arg_var,
-              arg_tp,
-              body_tp,
-              body,
-              t2 :: rev_arg_list )
-          else 
-            begin match to_whnf t2 env with
-            | Neu (nm, _, _) when Option.is_some (Env.find_opt_in_adt_env env.adt nm) ->
-              let arg_list = List.rev rev_arg_list in 
-              let sub_map = List.fold_left (
-                fun acc ((_, var, _), t) -> Substitution.add_to_sub_map var (Substitution.substitute t acc) acc
-              ) Substitution.empty_sub_map (List.combine args arg_list) in
-              let sub_map = Substitution.add_to_sub_map arg_var (Substitution.substitute t2 sub_map) sub_map in
-              to_whnf (Substitution.substitute body sub_map) env
-            | _ -> 
-              FixNeu
               ( fn_nm,
                 fn_var,
                 args,
@@ -82,7 +69,37 @@ let rec to_whnf (t : Core.term) (env : Env.env) : Core.whnf =
                 body_tp,
                 body,
                 t2 :: rev_arg_list )
-            end
+          else
+            match to_whnf t2 env with
+            | Neu (nm, _, _)
+              when Option.is_some (Env.find_opt_in_adt_env env.adt nm) ->
+                let arg_list = List.rev rev_arg_list in
+                let sub_map =
+                  List.fold_left
+                    (fun acc ((_, var, _), t) ->
+                      Substitution.add_to_sub_map var
+                        (Substitution.substitute t acc)
+                        acc)
+                    Substitution.empty_sub_map
+                    (List.combine args arg_list)
+                in
+                let sub_map =
+                  Substitution.add_to_sub_map arg_var
+                    (Substitution.substitute t2 sub_map)
+                    sub_map
+                in
+                to_whnf (Substitution.substitute body sub_map) env
+            | _ ->
+                FixNeu
+                  ( fn_nm,
+                    fn_var,
+                    args,
+                    arg,
+                    arg_var,
+                    arg_tp,
+                    body_tp,
+                    body,
+                    t2 :: rev_arg_list ))
       | whnf_term ->
           Error.create_whnf_error t env.internal
             ("When reducing Application expected Neu or Lambda\n" ^ "Got "
@@ -136,7 +153,9 @@ let rec to_whnf (t : Core.term) (env : Env.env) : Core.whnf =
                                   (Core.Var (nm, fresh_var))))
                             env
                         in
-                        let _ = Env.rm_from_internal_env env.internal fresh_var in
+                        let _ =
+                          Env.rm_from_internal_env env.internal fresh_var
+                        in
                         term_whnf
                     | None -> to_whnf term env
                   in

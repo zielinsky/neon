@@ -88,8 +88,7 @@ let check_branch_types (env : Env.env) (branch_types : Core.tp list) : unit =
   let hd = List.hd branch_types in
   let _, isSameType =
     List.fold_left
-      (fun (prev_tp, cond) tp ->
-        (tp, cond && Equiv.equiv prev_tp tp env))
+      (fun (prev_tp, cond) tp -> (tp, cond && Equiv.equiv prev_tp tp env))
       (hd, true) (List.tl branch_types)
   in
   if isSameType then ()

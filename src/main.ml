@@ -8,6 +8,7 @@ let file = ref ""
 
 (* A reference to track whether we should print definitions verbosely *)
 let verbose_mode = ref false
+let debug_mode = ref false
 
 (* A reference to track whether we should load the prelude *)
 let load_prelude_mode = ref true
@@ -17,6 +18,7 @@ let load_builtins_mode = ref true
 let speclist =
   [
     ("-verbose", Set verbose_mode, "Enable verbose printing of definitions");
+    ("-debug", Set verbose_mode, "Enable debug mode");
     ("-no-prelude", Clear load_prelude_mode, "Do not load the prelude");
     ( "-no-builtin",
       Clear load_builtins_mode,
@@ -30,25 +32,24 @@ let process_parsed_def env x =
   if !verbose_mode then (
     print_endline "----- PARSED -----";
     PrettyPrinter.print_def x;
-    print_endline "-------------------");
+    let _ = print_endline "-------------------" in
 
-  let inferred_term, inferred_ty = TypeChecker.infer_type env x in
-  if !verbose_mode then (
+    let inferred_term, inferred_ty = TypeChecker.infer_type env x in
     print_endline "----- INFERRED TYPE -----";
     PrettyPrinter.print (inferred_term, inferred_ty);
-    print_endline "-------------------");
-
-  let nf = Evaluator.eval inferred_term env in
-  (* let nf_tp = Evaluator.eval inferred_ty env.internal in *)
-  if !verbose_mode then (
+    let _ = print_endline "-------------------" in
+    let nf = Evaluator.eval inferred_term env in
     print_endline "----- NORMAL FORM -----";
-    Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf))
-  else if
-    not
-      (String.starts_with ~prefix:"(_builtin_"
-         (PrettyPrinter.term_to_string nf))
-  then Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf)
-(* (PrettyPrinter.term_to_string nf_tp) *)
+    if !debug_mode then Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf)
+    else if
+      not
+        (String.starts_with ~prefix:"(_builtin_"
+           (PrettyPrinter.term_to_string nf))
+    then Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf))
+  else
+    let inferred_term, inferred_ty = TypeChecker.infer_type env x in
+    let _ = Evaluator.eval inferred_term env in
+    PrettyPrinter.print_def_with_type x inferred_ty
 
 (** Recursively lists all .neon files in the given directory. *)
 let list_neon_files dir =

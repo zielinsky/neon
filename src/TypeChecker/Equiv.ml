@@ -108,12 +108,14 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.env) : bool =
       Case (_, scrut2_tp, maybe_var2, res_type2, branches2) ) ->
       let _ =
         match maybe_var1 with
-        | Some (_, var1) -> Env.add_to_internal_env env.internal var1 (Opaque scrut1_tp)
+        | Some (_, var1) ->
+            Env.add_to_internal_env env.internal var1 (Opaque scrut1_tp)
         | None -> ()
       in
       let _ =
         match maybe_var2 with
-        | Some (_, var2) -> Env.add_to_internal_env env.internal var2 (Opaque scrut2_tp)
+        | Some (_, var2) ->
+            Env.add_to_internal_env env.internal var2 (Opaque scrut2_tp)
         | None -> ()
       in
       let eq_res_types = equiv res_type1 res_type2 env in
@@ -132,24 +134,28 @@ let rec equiv (t1 : Core.term) (t2 : Core.term) (env : Env.env) : bool =
                      let _ =
                        List.iter
                          (fun (_, var, tp) ->
-                           Env.add_to_internal_env env.internal var (Env.Opaque tp))
+                           Env.add_to_internal_env env.internal var
+                             (Env.Opaque tp))
                          args1
                      in
                      let _ =
                        List.iter
                          (fun (_, var, tp) ->
-                           Env.add_to_internal_env env.internal var (Env.Opaque tp))
+                           Env.add_to_internal_env env.internal var
+                             (Env.Opaque tp))
                          args2
                      in
                      let res = equiv t1 t2 env in
                      let _ =
                        List.iter
-                         (fun (_, var, _) -> Env.rm_from_internal_env env.internal var)
+                         (fun (_, var, _) ->
+                           Env.rm_from_internal_env env.internal var)
                          args1
                      in
                      let _ =
                        List.iter
-                         (fun (_, var, _) -> Env.rm_from_internal_env env.internal var)
+                         (fun (_, var, _) ->
+                           Env.rm_from_internal_env env.internal var)
                          args2
                      in
                      res

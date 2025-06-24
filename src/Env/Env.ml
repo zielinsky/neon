@@ -107,10 +107,10 @@ let env_to_string (env : env) : string =
   StringHashtbl.fold
     (fun key v acc ->
       acc
-      ^ Printf.sprintf "%s@%d %s\n" key (Core.Var.to_int v)
+      ^ Printf.sprintf "\n%s@%d %s\n" key (Core.Var.to_int v)
           (env_var_to_string (VarHashtbl.find_opt env.internal v)))
-    env.surface "\n"
-  ^ "\n"
+    env.surface "--------------------------"
+  ^ "--------------------------\n"
 
 let internal_env_to_string (env : internal) : string =
   VarHashtbl.fold

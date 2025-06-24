@@ -118,6 +118,26 @@ let print (term, tp) =
        (pp_term term ^-^ newline
        ^-^ nest (!^"\x1b[1mT:" ^^ pp_term tp ^-^ newline ^-^ !^"\x1b[0m")))
 
+let print_def_with_type ({ pos; data } : Raw.term) (tp : Core.tp) =
+  let def_string =
+    match data with
+    | LetDef (nm, _)
+    | LemmaDef (nm, _)
+    | FixDef (nm, _, _, _, _, _)
+    | TermWithTypeAnno
+        ( ( { pos = _; data = LetDef (nm, _) }
+          | { pos = _; data = LemmaDef (nm, _) } ),
+          _ )
+    | ADTSig (nm, _)
+    | ADTDecl (nm, _, _) ->
+        nm ^ ":"
+    | _ -> "Expected definition at top level"
+  in
+  print_endline
+    (to_string 40 2
+       (!^def_string ^-^
+       !^"\x1b[1m" ^^ nest (pp_term tp ^-^ newline) ^-^ !^"\x1b[0m"))
+
 let pp_telescope (ts : Core.telescope) : SmartPrint.t =
   let rec aux acc = function
     | Core.Cons (nm, var, tp, ts) ->
@@ -301,6 +321,8 @@ let print_def ({ pos; data } : Raw.term) : unit =
   | TermWithTypeAnno
       ( ( { pos = _; data = LetDef (nm, _) }
         | { pos = _; data = LemmaDef (nm, _) } ),
-        _ ) ->
+        _ )
+  | ADTSig (nm, _)
+  | ADTDecl (nm, _, _) ->
       print_endline ("\x1b[1m" ^ nm ^ "\x1b[0m")
   | _ -> print_endline "Expected definition at top level"
