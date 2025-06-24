@@ -74,8 +74,8 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
       nest
         (!^"if" ^^ pp_term t ^^ !^"then" ^^ pp_term b1 ^^ !^"else" ^^ pp_term b2)
   | EqType (t1, t2, tp) ->
-      nest (pp_term t1 ^^ !^"==" ^^ pp_term t2 ^^ !^":>" ^^ pp_term tp)
-  | Refl (t, tp) -> nest (!^"refl" ^^ pp_term t ^^ !^":" ^^ pp_term tp)
+      nest (pp_term t1 ^^ !^"==" ^^ pp_term t2)
+  | Refl (t, tp) -> nest (!^"refl" ^^ pp_term t)
   | Subst (nm, var, tp, t1, t2, t3) ->
       nest
         (!^"subst" ^-^ !^"(" ^-^ !^nm ^-^ !^"@"
@@ -85,13 +85,15 @@ let rec pp_term (e : Core.term) : SmartPrint.t =
   | FixDef (nm, _, args, arg, _, arg_tp, body_tp, body) ->
       let pp_args =
         List.fold_left
-          (fun acc (nm, _, tp) ->
-            acc ^-^ !^nm ^-^ !^":" ^^ pp_term tp ^-^ !^",")
+          (fun acc (nm, var, tp) ->
+            acc ^^ !^"(" ^-^ !^nm ^-^ !^"@"
+            ^-^ !^(string_of_var var)
+            ^-^ !^":" ^^ pp_term tp ^-^ !^")")
           !^"" args
       in
       nest
-        (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_args ^-^ !^")" ^^ !^arg ^-^ !^":"
-       ^^ pp_term arg_tp ^^ !^":" ^^ pp_term body_tp ^^ !^"=" ^^ pp_term body)
+        (!^"fix" ^^ !^nm ^^ pp_args ^^ !^ "{" ^-^ !^arg ^-^ !^":"
+       ^^ pp_term arg_tp ^-^ !^ "}" ^^ !^":" ^^ pp_term body_tp ^^ !^"=" ^^ pp_term body)
 
 and pp_pattern (p : Core.pattern) : SmartPrint.t =
   match p with
@@ -301,16 +303,11 @@ let rec pp_whnf (e : Core.whnf) : SmartPrint.t =
         ^-^ !^(string_of_var var)
         ^-^ !^":" ^^ pp_term tp ^-^ !^")" ^-^ !^"." ^-^ pp_term t1 ^^ !^"using"
         ^^ pp_term t2 ^^ !^"in" ^^ pp_term t3)
-  | FixNeu (nm, _, args, arg, _, arg_tp, body_tp, body, _) ->
-      let pp_args =
-        List.fold_left
-          (fun acc (nm, _, tp) ->
-            acc ^-^ !^nm ^-^ !^":" ^^ pp_term tp ^-^ !^",")
-          !^"" args
-      in
-      nest
-        (!^"fix" ^^ !^nm ^^ !^"(" ^-^ pp_args ^-^ !^")" ^^ !^arg ^-^ !^":"
-       ^^ pp_term arg_tp ^^ !^":" ^^ pp_term body_tp ^^ !^"=" ^^ pp_term body)
+  | FixNeu (nm, _, _, _, _, _, _, _, term_list) ->
+      !^nm
+      ^^ List.fold_left
+           (fun acc term -> parens (pp_term term) ^^ acc)
+           !^"" term_list
 
 let rec whnf_to_string (t : Core.whnf) : string = to_string 40 2 (pp_whnf t)
 
