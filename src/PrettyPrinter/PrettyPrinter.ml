@@ -135,8 +135,9 @@ let print_def_with_type ({ pos; data } : Raw.term) (tp : Core.tp) =
   in
   print_endline
     (to_string 40 2
-       (!^def_string ^-^
-       !^"\x1b[1m" ^^ nest (pp_term tp ^-^ newline) ^-^ !^"\x1b[0m"))
+       (!^def_string ^-^ !^"\x1b[1m"
+       ^^ nest (pp_term tp ^-^ newline)
+       ^-^ !^"\x1b[0m"))
 
 let pp_telescope (ts : Core.telescope) : SmartPrint.t =
   let rec aux acc = function
