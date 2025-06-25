@@ -15,7 +15,7 @@ let vnil =
   VNil( Zero
       , refl Zero)
 
-let cons (m : Nat) (hd : Int) (tl : VecInt(m)) =
+let cons (hd : Int) (m : Nat) (tl : VecInt(m)) =
   let n = Succ(m) in
   VCons( n         
        , m                
@@ -24,8 +24,8 @@ let cons (m : Nat) (hd : Int) (tl : VecInt(m)) =
        , tl)
 
 let twoElemVec = 
-  cons( Succ(Zero)
-      , 1
-      , cons( Zero
-            , 2
+  cons( 42
+      , Succ(Zero)
+      , cons( 19
+            , Zero
             , vnil))

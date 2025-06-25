@@ -11,6 +11,4 @@ fix append {xs : IntList} : IntList -> IntList =
 fix proof_append_nil {xs : IntList} : append(xs, Nil) == xs =
   match xs as xs return append(xs, Nil) == xs with
   | Nil          -> refl Nil
-  | Cons(hd, tl) ->
-    let ih = proof_append_nil(tl) in
-    ?todo_cons
+  | Cons(hd, tl) -> ?todo_cons

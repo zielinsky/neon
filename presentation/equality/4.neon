@@ -19,5 +19,5 @@ let trans_type2 =
   forall (A: Type) (x: A) (y: A) (z: A) => 
     x == y -> y == z -> x == z
 
-let (trans2 : trans_type2) A x y z xy yz =
+lemma (trans2 : trans_type2) A x y z xy yz =
   subst c. x == c using yz in xy

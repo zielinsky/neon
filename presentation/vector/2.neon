@@ -15,7 +15,7 @@ let vnil =
   VNil( Zero
       , refl Zero)
       
-let cons (m : Nat) (hd : Int) (tl : VecInt(m)) =
+let cons (hd : Int) (m : Nat) (tl : VecInt(m)) =
   let n = Succ(m) in
   VCons( n         
        , m                

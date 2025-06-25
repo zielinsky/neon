@@ -13,9 +13,4 @@ fix proof_append_nil {xs : IntList} : append(xs, Nil) == xs =
   | Nil          -> refl Nil
   | Cons(hd, tl) ->
     let ih = proof_append_nil(tl) in
-    subst c. Cons(hd, append(tl, Nil)) == Cons(hd, c) using ih in
-      refl Cons(hd, append(tl, Nil))
-
-/*
-
-*/
+    ?todo
