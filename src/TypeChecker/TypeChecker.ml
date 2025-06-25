@@ -607,9 +607,9 @@ and check_type (env : Env.env) ({ pos; data = t } as term : Raw.term)
       (* Record that the hole 'nm' has been assigned type 'tp' *)
       let _ =
         print_endline
-          ("Hole " ^ nm ^ " was assigned type "
-          ^ PrettyPrinter.term_to_string tp
-          ^ "\nThe state of the environment at that moment:\n"
+          ("Hole " ^ nm ^ " was assigned type:\n"
+          ^ "\x1b[1m" ^ PrettyPrinter.term_to_string tp ^ "\x1b[0m"
+          ^ "\n\nThe state of the environment at that moment:\n"
           ^ Env.env_to_string env)
       in
       Hole (nm, tp)
