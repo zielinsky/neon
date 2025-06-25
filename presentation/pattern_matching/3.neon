@@ -12,6 +12,6 @@ let choose (b: MyBool) =
   | True   -> 42
   | False  -> "abc"
 
-let x : Int = choose(True)
+let x = choose(True)
 
-let y : String = choose(False)
+let y = choose(False)
