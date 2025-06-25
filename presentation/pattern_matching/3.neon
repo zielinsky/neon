@@ -1,17 +1,17 @@
-data Flag =
-| On
-| Off
+data MyBool =
+| True
+| False
 
-let flagTy (f: Flag) = 
-  match f with
-  | On   -> Int
-  | Off  -> Bool
+let foo (b: MyBool) = 
+  match b with
+  | True   -> Int
+  | False  -> String
 
-let choose (f: Flag) = 
-  match f as x return flagTy(x) with
-  | On   -> 0
-  | Off  -> true
+let choose (b: MyBool) = 
+  match b as x return foo(x) with
+  | True   -> 42
+  | False  -> "abc"
 
-let x = choose(On)
+let x = choose(True)
 
-let y = choose(Off)
+let y = choose(False)

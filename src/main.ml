@@ -48,8 +48,10 @@ let process_parsed_def env x =
     then Printf.printf "%s\n\n" (PrettyPrinter.term_to_string nf))
   else
     let inferred_term, inferred_ty = TypeChecker.infer_type env x in
-    let _ = Evaluator.eval inferred_term env in
-    PrettyPrinter.print_def_with_type x inferred_ty
+    let nf = Evaluator.eval inferred_term env in
+    match nf with
+    | BoolLit _ | StringLit _ | IntLit _ -> PrettyPrinter.print_def_with_body_and_type x nf inferred_ty
+    | _ -> PrettyPrinter.print_def_with_type x inferred_ty
 
 (** Recursively lists all .neon files in the given directory. *)
 let list_neon_files dir =

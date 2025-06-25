@@ -14,3 +14,11 @@ data VecInt (n : Nat) =
 let vnil =
   VNil( Zero
       , refl Zero)
+      
+let cons (m : Nat) (hd : Int) (tl : VecInt(m)) =
+  let n = Succ(m) in
+  VCons( n         
+       , m                
+       , refl n
+       , hd
+       , tl)
