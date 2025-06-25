@@ -2,4 +2,5 @@ let eq (A : Type) (x : A) (y : A) =
   forall P : (A -> Type) => P(x) -> P(y)
 
 let trans_type = 
-  forall (A: Type) (x: A) (y: A) (z: A) => eq(A,x,y) -> eq(A,y,z) -> eq(A,x,z)
+  forall (A: Type) (x: A) (y: A) (z: A) => 
+    eq(A,x,y) -> eq(A,y,z) -> eq(A,x,z)

@@ -2,7 +2,8 @@ let eq (A: Type) (x: A) (y: A) =
   forall P : (A -> Type) => P(x) -> P(y)
 
 let trans_type = 
-  forall (A: Type) (x: A) (y: A) (z: A) => eq(A,x,y) -> eq(A,y,z) -> eq(A,x,z)
+  forall (A: Type) (x: A) (y: A) (z: A) => 
+    eq(A,x,y) -> eq(A,y,z) -> eq(A,x,z)
 
 lemma (trans : trans_type) A x y z xy yz = 
   fun P px => yz(P, xy(P, px))
@@ -11,10 +12,12 @@ lemma (trans : trans_type) A x y z xy yz =
   Równość zdaniowa
   x == y
   refl x : x == x
+  subst x.e1 using e2 in e3
 */
 
 let trans_type2 = 
-  forall (A: Type) (x: A) (y: A) (z: A) => x == y -> y == z -> x == z
+  forall (A: Type) (x: A) (y: A) (z: A) => 
+    x == y -> y == z -> x == z
 
 let (trans2 : trans_type2) A x y z xy yz =
   subst c. x == c using yz in xy
